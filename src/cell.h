@@ -10,7 +10,7 @@
 #include "pugixml.hpp"
 
 #include "position.h"
-
+#include "DagMC.hpp"
 
 namespace openmc {
 
@@ -119,6 +119,8 @@ protected:
 
  class CADCell : public Cell
 {
+  moab::DagMC *dagmc_ptr;
+  
   explicit CADCell();
   
 };
