@@ -49,6 +49,7 @@ if(cad)
   if(NOT DAGMC_FOUND)
     message(FATAL_ERROR "Could not find DAGMC installation")
   endif()
+  add_definitions(-DCAD)
   include_directories(${DAGMC_INCLUDE_DIRS})
 endif()
 
@@ -300,7 +301,6 @@ add_library(libopenmc SHARED
   src/angleenergy_header.F90
   src/bank_header.F90
   src/api.F90
-  src/cad_header.F90
   src/cmfd_data.F90
   src/cmfd_execute.F90
   src/cmfd_header.F90
@@ -425,6 +425,14 @@ add_library(libopenmc SHARED
   src/surface.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
+
+# add cad sources if enabled
+if(cad)
+  list(APPEND LIBOPENMC_FORTRAN_SRC src/cad_header.F90)
+  list(APPEND LIBOPENMC_CXX_SRC src/cad.h src/cad.cpp)
+endif()
+
+add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
   PUBLIC_HEADER include/openmc.h
@@ -469,12 +477,11 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
-                      faddeeva)
+                      faddeeva ${DAGMC_LINK_LIBS})
 
 #===============================================================================
 # openmc executable
 #===============================================================================
-
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
 target_link_libraries(openmc ${ldflags} libopenmc ${DAGMC_LINK_LIBS})
