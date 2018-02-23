@@ -13,6 +13,7 @@ module input_xml
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: neighbor_lists
   use geometry_header
+  use cad_header
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use material_header
@@ -338,6 +339,17 @@ contains
       end if
     end if
 
+    ! Check for use of CAD geometry
+    if (check_for_node(root, "dagmc")) then
+#ifdef CAD
+       call get_node_value_bool(root, "dagmc", dagmc)
+#else
+       if (dagmc) then
+          call fatal_error("CAD mode unsupported for this build of OpenMC")
+       end if
+#endif
+    end if
+
     ! Check run mode if it hasn't been set from the command line
     if (run_mode == NONE) then
       if (check_for_node(root, "run_mode")) then
@@ -352,7 +364,7 @@ contains
         case ("particle restart")
           run_mode = MODE_PARTICLE
         case ("volume")
-          run_mode = MODE_VOLUME
+           run_mode = MODE_VOLUME
         case default
           call fatal_error("Unrecognized run mode: " // &
                trim(temp_str) // ".")
@@ -1022,6 +1034,12 @@ contains
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
+
+    if (dagmc) then
+       call write_message("Reading CAD geometry...", 5)
+       call load_cad_geometry()
+       return
+    end if
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
