@@ -62,6 +62,7 @@ public:
   std::string name;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);
+  explicit Surface();
   
   virtual ~Surface() {}
 
@@ -114,7 +115,7 @@ protected:
 class CADSurface : public Surface
 {
  public:
-  explicit CADSurface(pugi::xml_node surf_node);
+  explicit CADSurface();
   double evaluate(const double xyz[3]) const;
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
