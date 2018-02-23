@@ -196,6 +196,8 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
 // Cell implementation
 //==============================================================================
 
+Cell::Cell() {} // empty constructor
+  
 Cell::Cell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
@@ -427,9 +429,13 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 }
 
 //==============================================================================
-// Non-method functions
+// CAD Cell implementation
 //==============================================================================
 
+CADCell::CADCell() : Cell{} {};
+  
+//==============================================================================
+// Non-method functions
 extern "C" void
 read_cells(pugi::xml_node *node)
 {
