@@ -300,6 +300,7 @@ add_library(libopenmc SHARED
   src/angleenergy_header.F90
   src/bank_header.F90
   src/api.F90
+  src/cad_header.F90
   src/cmfd_data.F90
   src/cmfd_execute.F90
   src/cmfd_header.F90
