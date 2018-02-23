@@ -62,7 +62,7 @@ public:
   std::string name;          //!< User-defined name
 
   explicit Surface(pugi::xml_node surf_node);
-
+  
   virtual ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
@@ -107,6 +107,22 @@ protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
+//==============================================================================
+//! A `Surface` representing a CAD-based surface in DAGMC.
+//==============================================================================
+
+class CADSurface : public Surface
+{
+ public:
+  explicit CADSurface(pugi::xml_node surf_node);
+  double evaluate(const double xyz[3]) const;
+  double distance(const double xyz[3], const double uvw[3],
+                  bool coincident) const;
+  void normal(const double xyz[3], double uvw[3]) const;
+  //! Get the bounding box of this surface.
+  BoundingBox bounding_box() const;
+};
+ 
 //==============================================================================
 //! A `Surface` that supports periodic boundary conditions.
 //!
