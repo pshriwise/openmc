@@ -180,6 +180,13 @@ contains
     call write_attribute(geom_group, "n_universes", n_universes)
     call write_attribute(geom_group, "n_lattices", size(lattices))
 
+#ifdef CAD
+    if (dagmc) then
+       return
+    end if
+#endif
+    
+    
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
 
