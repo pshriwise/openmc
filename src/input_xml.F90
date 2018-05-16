@@ -169,7 +169,7 @@ contains
 
     ! Perform some final operations to set up the geometry
     call adjust_indices()
-    call count_instance(universes(root_universe))
+    call count_cell_instances(root_universe-1)
     
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -1070,7 +1070,7 @@ contains
 
        ! ==========================================================================
        ! SETUP UNIVERSES
-       
+
        ! Allocate universes, universe cell arrays, and assign base universe
        allocate(universes(n_universes))
        do i = 1, n_universes
@@ -1081,20 +1081,10 @@ contains
             n_cells_in_univ = cells_in_univ_dict % get(u % id)
             allocate(u % cells(n_cells_in_univ))
             u % cells(:) = 0
-            
-            ! Check whether universe is a fill universe
-            if (find(fill_univ_ids, u % id) == -1) then
-               if (root_universe > 0) then
-                  call fatal_error("Two or more universes are not used as fill &
-                       &universes, so it is not possible to distinguish which one &
-                       &is the root universe.")
-               else
-                  root_universe = i
-               end if
-            end if
           end associate
        end do
-       
+       root_universe = find_root_universe() + 1
+
        do i = 1, n_cells
           ! Get index in universes array
           j = universe_dict % get(cells(i) % universe())
