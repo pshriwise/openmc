@@ -439,14 +439,26 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 CADCell::CADCell() : Cell{} {};
 
 std::pair<double, int32_t> CADCell::distance(const double xyz[3], const double uvw[3], int32_t on_surface) const {
-  std::cout << "Cell Distance" << std::endl;
-  std::pair<double, int> result(1.0, 0);
+
+  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id);
+  moab::EntityHandle hit_surf;
+  double dist;
+  dagmc_ptr->ray_fire(vol, xyz, uvw, hit_surf, dist);
+
+  int surf_idx = dagmc_ptr->index_by_handle(hit_surf);
+  
+  std::pair<double, int> result(dist, surf_idx);
+  
   return result;
 }
   
 bool CADCell::contains(const double xyz[3], const double uvw[3], int32_t on_surface) const {
-  std::cout << "Cell Contains" << std::endl;
-  return true;
+  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id);
+
+  int result = 0;
+  dagmc_ptr->point_in_volume(vol, xyz, result, uvw);
+  
+  return bool(result);
 }
 
 void CADCell::to_hdf5(hid_t group_id) const { return; }
@@ -493,6 +505,23 @@ read_cells(pugi::xml_node *node)
 extern "C" {
   Cell* cell_pointer(int32_t cell_ind) {return global_cells[cell_ind];}
 
+#ifdef CAD
+  int32_t next_cell(CADCell* cur_cell, CADSurface *surf_xed ) {
+    moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id);
+    moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id);
+
+    moab::EntityHandle new_vol;
+    cur_cell->dagmc_ptr->next_vol(surf, vol, new_vol);
+
+    return cur_cell->dagmc_ptr->index_by_handle(new_vol);
+  }
+
+  bool is_implicit_complement(CADCell *c) {
+    moab::EntityHandle handle = c->dagmc_ptr->entity_by_id(3,c->id);
+    return c->dagmc_ptr->is_implicit_complement(handle);
+  }
+#endif
+  
   int32_t cell_id(Cell *c) {return c->id;}
 
   void cell_set_id(Cell *c, int32_t id) {c->id = id;}
