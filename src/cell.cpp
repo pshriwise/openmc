@@ -200,9 +200,9 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
 // Cell implementation
 //==============================================================================
 
-Cell::Cell() {} // empty constructor
+CSGCell::CSGCell() {} // empty constructor
   
-Cell::Cell(pugi::xml_node cell_node)
+CSGCell::CSGCell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
     id = stoi(get_node_value(cell_node, "id"));
@@ -285,7 +285,7 @@ Cell::Cell(pugi::xml_node cell_node)
 //==============================================================================
 
 bool
-Cell::contains(Position r, Direction u, int32_t on_surface) const
+CSGCell::contains(Position r, Direction u, int32_t on_surface) const
 {
   if (simple) {
     return contains_simple(r, u, on_surface);
@@ -297,7 +297,7 @@ Cell::contains(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 std::pair<double, int32_t>
-Cell::distance(Position r, Direction u, int32_t on_surface) const
+CSGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -326,7 +326,7 @@ Cell::distance(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 void
-Cell::to_hdf5(hid_t cell_group) const
+CSGCell::to_hdf5(hid_t cell_group) const
 {
   if (!name.empty()) {
     write_string(cell_group, "name", name, false);
@@ -360,7 +360,7 @@ Cell::to_hdf5(hid_t cell_group) const
 //==============================================================================
 
 bool
-Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
+CSGCell::contains_simple(Position r, Direction u, int32_t on_surface) const
 {
   for (int32_t token : rpn) {
     if (token < OP_UNION) {
@@ -384,7 +384,7 @@ Cell::contains_simple(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 
 bool
-Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
+CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
@@ -437,6 +437,19 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 #ifdef CAD
 CADCell::CADCell() : Cell{} {};
+
+std::pair<double, int32_t> CADCell::distance(const double xyz[3], const double uvw[3], int32_t on_surface) const {
+  std::cout << "Cell Distance" << std::endl;
+  std::pair<double, int> result(1.0, 0);
+  return result;
+}
+  
+bool CADCell::contains(const double xyz[3], const double uvw[3], int32_t on_surface) const {
+  std::cout << "Cell Contains" << std::endl;
+  return true;
+}
+
+void CADCell::to_hdf5(hid_t group_id) const { return; }
 #endif
 
 //==============================================================================
@@ -455,7 +468,7 @@ read_cells(pugi::xml_node *node)
 
   // Loop over XML cell elements and populate the array.
   for (pugi::xml_node cell_node: node->children("cell")) {
-    global_cells.push_back(new Cell(cell_node));
+    cells_c.push_back(new CSGCell(cell_node));
   }
 
   // Populate the Universe vector and map.
@@ -525,7 +538,7 @@ extern "C" {
   {
     global_cells.reserve(global_cells.size() + n);
     for (int32_t i = 0; i < n; i++) {
-      global_cells.push_back(new Cell());
+      cells_c.push_back(new CSGCell());
     }
     n_cells = global_cells.size();
   }
