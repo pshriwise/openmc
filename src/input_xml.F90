@@ -1049,7 +1049,6 @@ contains
           ! additional metadata spoofing
           allocate(c % material(1))
           c % material(1) = 40
-          c % fill = NONE
           allocate(c % sqrtKT(1))
           c % sqrtkT(1) = 293
           c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
@@ -1127,10 +1126,15 @@ contains
 
     call read_surfaces(root % ptr)
 
-    call allocate_surfaces()
     ! Allocate surfaces array
+    allocate(surfaces(n_surfaces))
     do i = 1, n_surfaces
-      if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
+       surfaces(i) % ptr = surface_pointer_c(i - 1);
+       
+       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
+
+       ! Add surface to dictionary
+       call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1146,7 +1150,7 @@ contains
 
     call read_cells(root % ptr)
 
-    call allocate_cells()
+!    call allocate_cells()
 
     ! Get pointer to list of XML <cell>
     call get_node_list(root, "cell", node_cell_list)
@@ -1159,6 +1163,8 @@ contains
       call fatal_error("No cells found in geometry.xml!")
     end if
 
+    ! Allocate cells array
+    allocate(cells(n_cells))
 
     if (check_overlaps) then
       allocate(overlap_check_cnt(n_cells))
@@ -1169,6 +1175,8 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
+      c % ptr = cell_pointer_c(i - 1)
+      
       ! Initialize distribcell instances and distribcell index
       c % distribcell_index = NONE
 
@@ -1345,6 +1353,8 @@ contains
         c % sqrtkT = -1.0
       end if
 
+      call cell_dict % set(c % id(), i)
+      
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
