@@ -34,7 +34,7 @@ module openmc_api
 #ifdef CAD
   use cad_header,      only: free_memory_cad
 #endif
-  
+
   implicit none
 
   private
@@ -346,7 +346,7 @@ contains
 #ifdef CAD
     call free_memory_cad()
 #endif
-    
+
     ! Deallocate CMFD
     call deallocate_cmfd(cmfd)
 

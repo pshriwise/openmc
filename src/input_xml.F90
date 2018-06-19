@@ -170,11 +170,11 @@ contains
     ! Perform some final operations to set up the geometry
     call adjust_indices()
     call count_cell_instances(root_universe-1)
-    
+
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
-    
+
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures(material_temps)
 
@@ -344,11 +344,11 @@ contains
     ! Check for use of CAD geometry
     if (check_for_node(root, "dagmc")) then
 #ifdef CAD
-       call get_node_value_bool(root, "dagmc", dagmc)
+      call get_node_value_bool(root, "dagmc", dagmc)
 #else
-       if (dagmc) then
-          call fatal_error("CAD mode unsupported for this build of OpenMC")
-       end if
+      if (dagmc) then
+        call fatal_error("CAD mode unsupported for this build of OpenMC")
+      end if
 #endif
     end if
 
@@ -366,7 +366,7 @@ contains
         case ("particle restart")
           run_mode = MODE_PARTICLE
         case ("volume")
-           run_mode = MODE_VOLUME
+          run_mode = MODE_VOLUME
         case default
           call fatal_error("Unrecognized run mode: " // &
                trim(temp_str) // ".")
@@ -1038,70 +1038,68 @@ contains
                                            ! universe contains
 #ifdef CAD
     if (dagmc) then
-       call write_message("Reading CAD geometry...", 5)
-       call load_cad_geometry()
-       call allocate_surfaces()
-       call allocate_cells()
+      call write_message("Reading CAD geometry...", 5)
+      call load_cad_geometry()
+      call allocate_surfaces()
+      call allocate_cells()
 
        ! setup universe data structs
-       do i = 1, n_cells
-          c => cells(i)
-          ! additional metadata spoofing
-          allocate(c % material(1))
-          c % material(1) = 40
-          allocate(c % sqrtKT(1))
-          c % sqrtkT(1) = 293
-          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
-          univ_id = c % universe()
-          if (.not. allocated(c%region)) allocate(c%region(0))
-          
-          if (.not. cells_in_univ_dict % has(univ_id)) then
-             n_universes = n_universes + 1
-             n_cells_in_univ = 1
-             call universe_dict % set(univ_id, n_universes)
-             call univ_ids % push_back(univ_id)
-          else
-             n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
-          end if
-          call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
-          
-       end do
+      do i = 1, n_cells
+        c => cells(i)
+        ! additional metadata spoofing
+        allocate(c % material(1))
+        c % material(1) = 40
+        allocate(c % sqrtKT(1))
+        c % sqrtkT(1) = 293
+        c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        univ_id = c % universe()
+        if (.not. allocated(c%region)) allocate(c%region(0))
+
+        if (.not. cells_in_univ_dict % has(univ_id)) then
+          n_universes = n_universes + 1
+          n_cells_in_univ = 1
+          call universe_dict % set(univ_id, n_universes)
+          call univ_ids % push_back(univ_id)
+        else
+          n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
+        end if
+        call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
+      end do
 
        ! ==========================================================================
        ! SETUP UNIVERSES
 
        ! Allocate universes, universe cell arrays, and assign base universe
-       allocate(universes(n_universes))
-       do i = 1, n_universes
-          associate (u => universes(i))
-            u % id = univ_ids % data(i)
+      allocate(universes(n_universes))
+      do i = 1, n_universes
+        associate (u => universes(i))
+          u % id = univ_ids % data(i)
+          ! Allocate cell list
+          n_cells_in_univ = cells_in_univ_dict % get(u % id)
+          allocate(u % cells(n_cells_in_univ))
+          u % cells(:) = 0
+        end associate
+      end do
 
-            ! Allocate cell list
-            n_cells_in_univ = cells_in_univ_dict % get(u % id)
-            allocate(u % cells(n_cells_in_univ))
-            u % cells(:) = 0
-          end associate
-       end do
-       root_universe = 0 + 1
+      root_universe = 0 + 1
 
-       do i = 1, n_cells
-          ! Get index in universes array
-          j = universe_dict % get(cells(i) % universe())
-          
-          ! Set the first zero entry in the universe cells array to the index in the
-          ! global cells array
-          associate (u => universes(j))
-            u % cells(find(u % cells, 0)) = i
-          end associate
-       end do
-       
-       ! Clear dictionary
-       call cells_in_univ_dict%clear()
-       
-       return
+      do i = 1, n_cells
+        ! Get index in universes array
+        j = universe_dict % get(cells(i) % universe())
+        ! Set the first zero entry in the universe cells array to the index in the
+        ! global cells array
+        associate (u => universes(j))
+          u % cells(find(u % cells, 0)) = i
+        end associate
+      end do
+
+      ! Clear dictionary
+      call cells_in_univ_dict%clear()
+
+      return
     end if
 #endif
-    
+
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
 
@@ -1129,12 +1127,10 @@ contains
     ! Allocate surfaces array
     allocate(surfaces(n_surfaces))
     do i = 1, n_surfaces
-       surfaces(i) % ptr = surface_pointer_c(i - 1);
-       
-       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
-
-       ! Add surface to dictionary
-       call surface_dict % set(surfaces(i) % id(), i)
+      surfaces(i) % ptr = surface_pointer_c(i - 1);
+      if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
+      ! Add surface to dictionary
+      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1176,7 +1172,7 @@ contains
       c => cells(i)
 
       c % ptr = cell_pointer_c(i - 1)
-      
+
       ! Initialize distribcell instances and distribcell index
       c % distribcell_index = NONE
 
@@ -1354,7 +1350,7 @@ contains
       end if
 
       call cell_dict % set(c % id(), i)
-      
+
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
@@ -1470,24 +1466,20 @@ contains
   subroutine allocate_cells()
     integer :: i
     type(Cell), pointer :: c
-    
+
     ! Allocate cells array
     allocate(cells(n_cells))
-    
+
     do i = 1, n_cells
-       c => cells(i)
-       
-       c % ptr = cell_pointer_c(i - 1)
-
-       ! Check to make sure 'id' hasn't been used
-       if (cell_dict % has(c % id())) then
-          call fatal_error("Two or more cells use the same unique ID: " &
+      c => cells(i)
+      c % ptr = cell_pointer_c(i - 1)
+      ! Check to make sure 'id' hasn't been used
+      if (cell_dict % has(c % id())) then
+        call fatal_error("Two or more cells use the same unique ID: " &
                // to_str(c % id()))
-       end if
-       
-       ! Add cell to dictionary
-       call cell_dict % set(c % id(), i)
-
+      end if
+      ! Add cell to dictionary
+      call cell_dict % set(c % id(), i)
     end do
   end subroutine allocate_cells
 

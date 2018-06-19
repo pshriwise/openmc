@@ -182,11 +182,11 @@ contains
 
 #ifdef CAD
     if (dagmc) then
-       return
+      return
     end if
 #endif
-    
-    
+
+
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
 

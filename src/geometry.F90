@@ -34,26 +34,26 @@ module geometry
     end function count_universe_instances
 
 #ifdef CAD
-    
+
     function next_cell_c(current_cell, surface_crossed) &
-      bind(C, name="next_cell") result(new_cell)
+         bind(C, name="next_cell") result(new_cell)
       import C_PTR, C_INT32_T
       type(C_PTR), intent(in), value :: current_cell
       type(C_PTR), intent(in), value :: surface_crossed
       integer(C_INT32_T)             :: new_cell
     end function next_cell_c
-    
+
     function is_implicit_complement_C(cell) &
          bind(C, name="is_implicit_complement") result(res)
       import C_PTR, C_BOOL
       type(C_PTR), intent(in), value :: cell
       logical(C_BOOL)                :: res
     end function is_implicit_complement_C
- 
+
 #endif
 
- end interface
- 
+  end interface
+
 contains
 
   function cell_contains(c, p) result(in_cell)
@@ -65,7 +65,7 @@ contains
   end function cell_contains
 
 #ifdef CAD
-  
+
   function next_cell(c, s) result(new_cell)
     type(Cell), intent(in) :: c
     type(Surface), intent(in) :: s
@@ -80,7 +80,7 @@ contains
   end function is_implicit_complement
 
 #endif
-  
+
 !===============================================================================
 ! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
 ! position using cell_contains and the LocalCoord's built up by find_cell
