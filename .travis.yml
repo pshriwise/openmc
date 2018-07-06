@@ -31,6 +31,7 @@ env:
     - OMP=y MPI=n PHDF5=n
     - OMP=n MPI=y PHDF5=n
     - OMP=n MPI=y PHDF5=y
+    - OMP=n MPI=y PHDF5=y CAD=y
 before_install:
   - sudo add-apt-repository ppa:nschloe/hdf5-backports -y
   - sudo apt-get update -q
