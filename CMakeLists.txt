@@ -296,12 +296,13 @@ set_target_properties(faddeeva PROPERTIES
 # libopenmc
 #===============================================================================
 
-set(LIBOPENMC_SRC SHARED
+add_library(libopenmc SHARED
   src/algorithm.F90
   src/angle_distribution.F90
   src/angleenergy_header.F90
   src/bank_header.F90
   src/api.F90
+  src/cad_header.F90
   src/cmfd_data.F90
   src/cmfd_execute.F90
   src/cmfd_header.F90
@@ -401,6 +402,8 @@ set(LIBOPENMC_SRC SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/cad.cpp
+  src/cad.h
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
@@ -424,14 +427,6 @@ set(LIBOPENMC_SRC SHARED
   src/surface.cpp
   src/xml_interface.cpp
   src/xsdata.cpp)
-
-# add cad sources if enabled
-if(cad)
-  list(APPEND LIBOPENMC_SRC src/cad_header.F90)
-  list(APPEND LIBOPENMC_SRC src/cad.h src/cad.cpp)
-endif()
-
-add_library(libopenmc SHARED ${LIBOPENMC_SRC})
 
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
