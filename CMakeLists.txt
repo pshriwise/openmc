@@ -296,7 +296,7 @@ set_target_properties(faddeeva PROPERTIES
 # libopenmc
 #===============================================================================
 
-add_library(libopenmc SHARED
+set(LIBOPENMC_SRC SHARED
   src/algorithm.F90
   src/angle_distribution.F90
   src/angleenergy_header.F90
@@ -401,8 +401,6 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
-  src/cad.h
-  src/cad.cpp
   src/cell.cpp
   src/initialize.cpp
   src/finalize.cpp
@@ -429,11 +427,12 @@ add_library(libopenmc SHARED
 
 # add cad sources if enabled
 if(cad)
-  list(APPEND LIBOPENMC_FORTRAN_SRC src/cad_header.F90)
-  list(APPEND LIBOPENMC_CXX_SRC src/cad.h src/cad.cpp)
+  list(APPEND LIBOPENMC_SRC src/cad_header.F90)
+  list(APPEND LIBOPENMC_SRC src/cad.h src/cad.cpp)
 endif()
 
-add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
+add_library(libopenmc SHARED ${LIBOPENMC_SRC})
+
 set_target_properties(libopenmc PROPERTIES
   OUTPUT_NAME openmc
   PUBLIC_HEADER include/openmc.h
@@ -477,7 +476,7 @@ endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
                       faddeeva ${DAGMC_LIBRARIES})
 
 #===============================================================================
