@@ -41,7 +41,7 @@ struct Position {
   }
 
   // Data members
-  union{ double xyz[3]; struct{ double x,y,z; }; };
+  union{ double xyz[3]; struct{ double x,y,z = 0.0; }; };
 };
 
 // Binary operators
