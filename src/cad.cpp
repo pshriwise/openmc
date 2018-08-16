@@ -5,6 +5,191 @@
 
 moab::DagMC* DAGMC;
 
+
+void create_bounding_surface(moab::DagMC *DAGMC) {
+  struct BBOX {
+    double lower[3] = { openmc::INFTY,  openmc::INFTY,  openmc::INFTY};
+    double upper[3] = {-openmc::INFTY, -openmc::INFTY, -openmc::INFTY};
+
+    bool valid() {
+      return ( lower[0] <= upper[0] &&
+	       lower[1] <= upper[1] &&
+	       lower[2] <= upper[2] );
+    }
+    
+    void update(double x, double y, double z) {
+      lower[0] = x < lower[0] ? x : lower[0];
+      lower[1] = y < lower[1] ? y : lower[1];
+      lower[2] = z < lower[2] ? z : lower[2];
+      
+      upper[0] = x > upper[0] ? x : upper[0];
+      upper[1] = y > upper[1] ? y : upper[1];
+      upper[2] = z > upper[2] ? z : upper[2];      
+    }
+
+    void update(double xyz[3]) {
+      update(xyz[0], xyz[1], xyz[2]);
+    }
+  };
+
+  int num_vols = DAGMC->num_entities(3);
+  double vmin[3], vmax[3];
+  BBOX box;
+  moab::ErrorCode rval;
+  for(int i = 0; i < num_vols; i++) {
+    moab::EntityHandle vol = DAGMC->entity_by_index(3, i+1);
+
+    rval = DAGMC->getobb(vol, vmin, vmax);
+    MB_CHK_ERR_CONT(rval);
+
+    box.update(vmin);
+    box.update(vmax);
+    
+  }
+
+  //create box elements in MOAB
+
+
+  //start with vertices
+  double vert_coords[3];
+  std::vector<moab::EntityHandle> box_verts;
+  moab::EntityHandle new_vert;
+  
+  moab::Interface* MBI = DAGMC->moab_instance();
+
+  // walk low-z face, starting with lower-left corner
+  vert_coords[0] = box.lower[0];
+  vert_coords[1] = box.lower[1];
+  vert_coords[2] = box.lower[2]; 
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+  
+  // update x
+  vert_coords[0] = box.upper[0];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+  
+  // update y
+  vert_coords[1] = box.upper[1];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+
+  // revert x
+  vert_coords[0] = box.lower[0];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+
+  // now walk the upper-z face, starting with upper-left corner
+  vert_coords[0] = box.lower[0];
+  vert_coords[1] = box.lower[1];
+  vert_coords[2] = box.upper[2];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+
+  // update x
+  vert_coords[0] = box.upper[0];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+  
+  // update y
+  vert_coords[1] = box.upper[1];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+
+  // revert x
+  vert_coords[0] = box.lower[0];
+  rval = MBI->create_vertex(box.lower, new_vert);
+  MB_CHK_ERR_CONT(rval);
+  box_verts.push_back(new_vert);
+
+  // now we have 8 vertices to create triangles with
+  moab::Range new_tris;
+  moab::EntityHandle new_tri;
+  moab::EntityHandle tri_conn[3];
+
+  // lower-z face triangles
+  tri_conn[0] = box_verts[1]; tri_conn[1] = box_verts[0]; tri_conn[2] = box_verts[2];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+  
+  tri_conn[0] = box_verts[3]; tri_conn[1] = box_verts[2]; tri_conn[2] = box_verts[0];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  // upper-z face triangles
+  tri_conn[0] = box_verts[5]; tri_conn[1] = box_verts[6]; tri_conn[2] = box_verts[4];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  tri_conn[0] = box_verts[7]; tri_conn[1] = box_verts[4]; tri_conn[2] = box_verts[6];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  // lower-x face triangles
+  tri_conn[0] = box_verts[0]; tri_conn[1] = box_verts[1]; tri_conn[2] = box_verts[4];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  tri_conn[0] = box_verts[3]; tri_conn[1] = box_verts[4]; tri_conn[2] = box_verts[1];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  // upper-x face triangles
+  tri_conn[0] = box_verts[2]; tri_conn[1] = box_verts[3]; tri_conn[2] = box_verts[6];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  tri_conn[0] = box_verts[7]; tri_conn[1] = box_verts[6]; tri_conn[2] = box_verts[3];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  // lower-y face triangles
+  tri_conn[0] = box_verts[0]; tri_conn[1] = box_verts[4]; tri_conn[2] = box_verts[3];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  tri_conn[0] = box_verts[7]; tri_conn[1] = box_verts[3]; tri_conn[2] = box_verts[4];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  // upper-y face triangles
+  tri_conn[0] = box_verts[1]; tri_conn[1] = box_verts[2]; tri_conn[2] = box_verts[3];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  tri_conn[0] = box_verts[6]; tri_conn[1] = box_verts[3]; tri_conn[2] = box_verts[2];
+  rval = MBI->create_element(moab::MBTRI, tri_conn, 3, new_tri);
+  MB_CHK_ERR_CONT(rval);
+  new_tris.insert(new_tri);
+
+  //create a new surface meshset
+  moab::EntityHandle bounding_surf;
+  rval = MBI->create_meshset(0, bounding_surf);
+  MB_CHK_ERR_CONT(rval);
+
+  moab::Tag geom_tag = DAGMC->geom_tag();
+  moab::Tag sense_tag = DAGMC->
+
+}
+
 void load_cad_geometry_c()
 {
   if(!DAGMC) {
