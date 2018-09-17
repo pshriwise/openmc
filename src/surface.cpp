@@ -5,10 +5,19 @@
 #include <sstream>
 #include <utility>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/xml_interface.h"
 
+#ifdef _OPENMP
+#define DAGMC(X) dagmc_ptr->get_dagmc_instance(X)
+#else
+#define DAGMC(X) dagmc_ptr->get_dagmc_instance(0)
+#endif
 
 namespace openmc {
 
@@ -256,25 +265,25 @@ double CADSurface::evaluate(Position r) const
 }
 
 double CADSurface::distance(Position p, Direction u, bool coincident) const {
-  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
+  moab::EntityHandle surf = dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(2, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  dagmc_ptr->ray_fire(surf, p.xyz, u.xyz, hit_surf, dist, NULL, 0, 0);
+  dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->ray_fire(surf, p.xyz, u.xyz, hit_surf, dist, NULL, 0, 0);
   if (dist < 0.0) dist = INFTY;
   return dist;
 }
 
 Direction CADSurface::normal(Position p) const {
   Direction u;
-  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
-  dagmc_ptr->get_angle(surf, p.xyz, u.xyz);
+  moab::EntityHandle surf = dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(2, id_);
+  dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->get_angle(surf, p.xyz, u.xyz);
   return u;
 }
 
 BoundingBox CADSurface::bounding_box() const {
-  moab::EntityHandle surf = dagmc_ptr->entity_by_id(2, id_);
+  moab::EntityHandle surf = dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(2, id_);
   double min[3], max[3];
-  dagmc_ptr->getobb(surf, min, max);
+  dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->getobb(surf, min, max);
   return BoundingBox(min[0], max[0], min[1], max[1], min[2], max[2]);
 }
 

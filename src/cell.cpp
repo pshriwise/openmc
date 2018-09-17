@@ -4,6 +4,10 @@
 #include <sstream>
 #include <string>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
@@ -17,6 +21,12 @@
 
 //TODO: remove this include
 #include <iostream>
+
+#ifdef _OPENMP
+#define DAGMC(X) dagmc_ptr->get_dagmc_instance(X)
+#else
+#define TID 1
+#endif
 
 //extern "C" {int32_t n_cells {0};}
 
@@ -598,15 +608,15 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 CADCell::CADCell() : Cell{} {};
 
 std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on_surface) const {
-
-  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
+  
+  moab::EntityHandle vol = dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
-  dagmc_ptr->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
+  dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->ray_fire(vol, p.xyz, u.xyz, hit_surf, dist);
 
   int surf_idx;
   if(hit_surf != 0) {
-    surf_idx = dagmc_ptr->index_by_handle(hit_surf);
+    surf_idx = dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->index_by_handle(hit_surf);
   }
   // indicate that particle is lost
   else {
@@ -619,11 +629,15 @@ std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on
 }
   
 bool CADCell::contains(Position p, Direction u, int32_t on_surface) const {
+  //  std::cout << "on thread: " << omp_get_thread_num() << std::endl;
+  //std::cout << "querying cell: " << id_ << std::endl;
 
-  moab::EntityHandle vol = dagmc_ptr->entity_by_id(3, id_);
+  int thread = omp_get_thread_num();
+  moab::DagMC * dag = dagmc_ptr->get_dagmc_instance(thread);
+  moab::EntityHandle vol = dag->entity_by_id(3, id_);
 
   int result = 0;
-  dagmc_ptr->point_in_volume(vol, p.xyz, result, u.xyz);
+  dag->point_in_volume(vol, p.xyz, result, u.xyz);
   
   return bool(result);
 }
@@ -774,13 +788,13 @@ extern "C" {
 #ifdef CAD
 
   int32_t next_cell(CADCell* cur_cell, CADSurface *surf_xed ) {
-    moab::EntityHandle surf = surf_xed->dagmc_ptr->entity_by_id(2,surf_xed->id_);
-    moab::EntityHandle vol = cur_cell->dagmc_ptr->entity_by_id(3,cur_cell->id_);
+    moab::EntityHandle surf = surf_xed->dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(2,surf_xed->id_);
+    moab::EntityHandle vol = cur_cell->dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(3,cur_cell->id_);
 
     moab::EntityHandle new_vol;
-    cur_cell->dagmc_ptr->next_vol(surf, vol, new_vol);
+    cur_cell->dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->next_vol(surf, vol, new_vol);
 
-    return cur_cell->dagmc_ptr->index_by_handle(new_vol);
+    return cur_cell->dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->index_by_handle(new_vol);
   }
 
 #endif

@@ -3,25 +3,35 @@
 
 #include "cad.h"
 #include "openmc/error.h"
+#include "openmc/settings.h"
 
 #include <string>
 #include <algorithm>
 
-moab::DagMC* DAGMC;
+DagThreadManager* DTM;
+
+#define DAGMC(X) DTM->get_dagmc_instance(X)
+#define HISTORY(X) DTM->get_dagmc_raystate(X)
+
 
 #define TOLOWER(S) std::transform(S.begin(), S.end(), S.begin(), ::tolower)
 
 void load_cad_geometry_c()
 {
-  if(!DAGMC) {
-    DAGMC = new moab::DagMC();
+  moab::ErrorCode rval;
+  
+  if(!DTM) {
+    moab::Interface* MBI = new moab::Core();
+
+    DTM = new DagThreadManager(openmc_n_threads, MBI);
   }
 
+  moab::DagMC* DAGMC = DTM->get_dagmc_instance(0);
+
+  DAGMC->load_file("dagmc.h5m");
+  
   int32_t cad_univ_id = 0; // universe is always 0 for CAD
   
-  moab::ErrorCode rval = DAGMC->load_file("dagmc.h5m");
-  MB_CHK_ERR_CONT(rval);
-
   rval = DAGMC->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
 
@@ -42,7 +52,7 @@ void load_cad_geometry_c()
       // set cell ids using global IDs
       openmc::CADCell* c = new openmc::CADCell();
       c->id_ = DAGMC->id_by_index(3, i+1);
-      c->dagmc_ptr = DAGMC;
+      c->dagmc_ptr = DTM;
       c->universe_ = cad_univ_id; // set to zero for now     
       c->fill_ = openmc::C_NONE; // no fill, single universe
 
@@ -97,7 +107,7 @@ void load_cad_geometry_c()
       // set cell ids using global IDs
       openmc::CADSurface* s = new openmc::CADSurface();
       s->id_ = DAGMC->id_by_index(2, i+1);
-      s->dagmc_ptr = DAGMC;
+      s->dagmc_ptr = DTM;
 
       if(DAGMC->has_prop(surf_handle, "boundary")) {
 	std::string bc_value;
@@ -134,12 +144,14 @@ void load_cad_geometry_c()
       openmc::surface_map[s->id_] = s->id_;
     }
 
+    DTM->initialise_child_threads();
+
   return;
 }
 
 void free_memory_cad_c()
 {
-  delete DAGMC;
+  delete DTM;
 }
 
 #endif

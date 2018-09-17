@@ -14,6 +14,7 @@
 
 #ifdef CAD
 #include "DagMC.hpp"
+#include "thread_manager.hpp"
 #endif
 
 namespace openmc {
@@ -139,7 +140,7 @@ class CSGSurface : public Surface
 class CADSurface : public Surface
 {
  public:
-  moab::DagMC* dagmc_ptr;
+  DagThreadManager* dagmc_ptr;
   explicit CADSurface();
   double evaluate(Position p) const;
   double distance(Position p, Direction u,

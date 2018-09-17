@@ -15,6 +15,7 @@
 
 #ifdef CAD
 #include "DagMC.hpp"
+#include "thread_manager.hpp"
 #endif
 
 namespace openmc {
@@ -171,7 +172,7 @@ protected:
 class CADCell : public Cell
 {
  public:
-  moab::DagMC *dagmc_ptr;
+  DagThreadManager *dagmc_ptr;
   explicit CADCell();
 
   std::pair<double, int32_t> distance(Position p, Direction u, int32_t on_surface) const;
