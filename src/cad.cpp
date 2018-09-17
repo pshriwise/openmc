@@ -22,7 +22,7 @@ void load_cad_geometry_c()
   
   if(!DTM) {
     moab::Interface* MBI = new moab::Core();
-
+    openmc_n_threads = 4;
     DTM = new DagThreadManager(openmc_n_threads, MBI);
   }
 
@@ -35,6 +35,8 @@ void load_cad_geometry_c()
   rval = DAGMC->init_OBBTree();
   MB_CHK_ERR_CONT(rval);
 
+  DTM->initialise_child_threads();
+  
   std::vector< std::string > prop_keywords;
   prop_keywords.push_back("mat");
   prop_keywords.push_back("boundary");
@@ -144,7 +146,7 @@ void load_cad_geometry_c()
       openmc::surface_map[s->id_] = s->id_;
     }
 
-    DTM->initialise_child_threads();
+  //    DTM->setup_child_threads();
 
   return;
 }

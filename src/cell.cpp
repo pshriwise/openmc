@@ -22,12 +22,6 @@
 //TODO: remove this include
 #include <iostream>
 
-#ifdef _OPENMP
-#define DAGMC(X) dagmc_ptr->get_dagmc_instance(X)
-#else
-#define TID 1
-#endif
-
 //extern "C" {int32_t n_cells {0};}
 
 namespace openmc {
@@ -608,7 +602,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 CADCell::CADCell() : Cell{} {};
 
 std::pair<double, int32_t> CADCell::distance(Position p, Direction u, int32_t on_surface) const {
-  
+
   moab::EntityHandle vol = dagmc_ptr->get_dagmc_instance(omp_get_thread_num())->entity_by_id(3, id_);
   moab::EntityHandle hit_surf;
   double dist;
