@@ -825,15 +825,20 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
 
     indices = list(np.broadcast(*np.ogrid[:shape[2], :shape[1], :shape[0]]))
     triso_locations = {idx: [] for idx in indices}
+    indices = set(indices)
     for t in trisos:
         for idx in t.classify(lattice):
-            if idx in sorted(triso_locations):
+            if idx in indices:
                 # Create copy of TRISO particle with materials preserved and
                 # different cell/surface IDs
-                t_copy = copy.deepcopy(t)
+                t_copy = copy.copy(t)
                 t_copy.id = None
                 t_copy.fill = t.fill
-                t_copy._surface.id = None
+                t_copy._surface = openmc.Sphere(R=t._surface.r,
+                                                x0=t._surface.x0,
+                                                y0=t._surface.y0,
+                                                z0=t._surface.z0,)
+                t_copy.region = -t_copy._surface
                 triso_locations[idx].append(t_copy)
             else:
                 warnings.warn('TRISO particle is partially or completely '
@@ -841,7 +846,7 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
 
     # Create universes
     universes = np.empty(shape[::-1], dtype=openmc.Universe)
-    for idx, triso_list in sorted(triso_locations.items()):
+    for idx, triso_list in triso_locations.items():
         if len(triso_list) > 0:
             outside_trisos = openmc.Intersection(~t.region for t in triso_list)
             background_cell = openmc.Cell(fill=background, region=outside_trisos)
