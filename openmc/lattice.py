@@ -13,8 +13,6 @@ import openmc
 from openmc._xml import get_text
 from openmc.mixin import IDManagerMixin
 
-from .geomtrack import ElementTracker
-
 class Lattice(IDManagerMixin, metaclass=ABCMeta):
     """A repeating structure wherein each element is a universe.
 
@@ -690,17 +688,16 @@ class RectLattice(Lattice):
                     0 <= idx[1] < self.shape[1] and
                     0 <= idx[2] < self.shape[2])
 
-    def create_xml_subelement(self, xml_element):
-        et = ElementTracker()
+    def create_xml_subelement(self, xml_element, memo=None):
         # Determine if XML element already contains subelement for this Lattice
         path = './lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
-        if self._id in et.lattices:
+        if memo and self._id in memo['lattices']:
             return
-        else:
-            et.add_lattice(self._id)
+        if memo:
+            memo['lattices'].add(self._id)
 
         lattice_subelement = ET.Element("lattice")
         lattice_subelement.set("id", str(self._id))
@@ -716,7 +713,7 @@ class RectLattice(Lattice):
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
             outer.text = '{0}'.format(self._outer._id)
-            self._outer.create_xml_subelement(xml_element)
+            self._outer.create_xml_subelement(xml_element, memo)
 
         # Export Lattice cell dimensions
         dimension = ET.SubElement(lattice_subelement, "dimension")
@@ -740,7 +737,7 @@ class RectLattice(Lattice):
                         universe_ids += '{0} '.format(universe._id)
 
                         # Create XML subelement for this Universe
-                        universe.create_xml_subelement(xml_element)
+                        universe.create_xml_subelement(xml_element, memo)
 
                     # Add newline character when we reach end of row of cells
                     universe_ids += '\n'
@@ -758,7 +755,7 @@ class RectLattice(Lattice):
                     universe_ids += '{0} '.format(universe._id)
 
                     # Create XML subelement for this Universe
-                    universe.create_xml_subelement(xml_element)
+                    universe.create_xml_subelement(xml_element, memo)
 
                 # Add newline character when we reach end of row of cells
                 universe_ids += '\n'
@@ -1170,17 +1167,16 @@ class HexLattice(Lattice):
         else:
             return g < self.num_rings and 0 <= idx[2] < self.num_axial
 
-    def create_xml_subelement(self, xml_element):
-        et = ElementTracker()
+    def create_xml_subelement(self, xml_element, memo=None):
         # Determine if XML element already contains subelement for this Lattice
         path = './hex_lattice[@id=\'{0}\']'.format(self._id)
         test = xml_element.find(path)
 
         # If the element does contain the Lattice subelement, then return
-        if self._id in et.lattices:
+        if memo and self._id in memo['lattices']:
             return
-        else:
-            et.add_lattice(self._id)
+        if memo:
+            memo['lattices'].add(self._id)
 
         lattice_subelement = ET.Element("hex_lattice")
         lattice_subelement.set("id", str(self._id))
@@ -1196,7 +1192,7 @@ class HexLattice(Lattice):
         if self._outer is not None:
             outer = ET.SubElement(lattice_subelement, "outer")
             outer.text = '{0}'.format(self._outer._id)
-            self._outer.create_xml_subelement(xml_element)
+            self._outer.create_xml_subelement(xml_element, memo)
 
         lattice_subelement.set("n_rings", str(self._num_rings))
 
@@ -1215,13 +1211,13 @@ class HexLattice(Lattice):
             for z in range(self._num_axial):
                 # Initialize the center universe.
                 universe = self._universes[z][-1][0]
-                universe.create_xml_subelement(xml_element)
+                universe.create_xml_subelement(xml_element, memo)
 
                 # Initialize the remaining universes.
                 for r in range(self._num_rings-1):
                     for theta in range(6*(self._num_rings - 1 - r)):
                         universe = self._universes[z][r][theta]
-                        universe.create_xml_subelement(xml_element)
+                        universe.create_xml_subelement(xml_element, memo)
 
                 # Get a string representation of the universe IDs.
                 slices.append(self._repr_axial_slice(self._universes[z]))
@@ -1233,13 +1229,13 @@ class HexLattice(Lattice):
         else:
             # Initialize the center universe.
             universe = self._universes[-1][0]
-            universe.create_xml_subelement(xml_element)
+            universe.create_xml_subelement(xml_element, memo)
 
             # Initialize the remaining universes.
             for r in range(self._num_rings - 1):
                 for theta in range(6*(self._num_rings - 1 - r)):
                     universe = self._universes[r][theta]
-                    universe.create_xml_subelement(xml_element)
+                    universe.create_xml_subelement(xml_element, memo)
 
             # Get a string representation of the universe IDs.
             universe_ids = self._repr_axial_slice(self._universes)
