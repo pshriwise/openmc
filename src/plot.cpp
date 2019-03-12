@@ -133,7 +133,6 @@ void create_ppm(Plot pl)
   size_t width = pl.pixels_[0];
   size_t height = pl.pixels_[1];
 
-
   ImageData data({width, height}, pl.not_found_);
 
   // generate ids for the plot
