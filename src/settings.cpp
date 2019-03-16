@@ -43,6 +43,8 @@ bool check_overlaps          {false};
 bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
 bool dagmc                   {false};
+bool dagmc_write_mat_xml     {false};
+bool dagmc_use_mat_xml       {false};
 bool entropy_on              {false};
 bool legendre_to_tabular     {true};
 bool output_summary          {true};
@@ -217,6 +219,19 @@ void read_settings_xml()
   // DAGMC geometry check
   if (check_for_node(root, "dagmc")) {
     dagmc = get_node_value_bool(root, "dagmc");
+
+    // get the dagmc node
+    pugi::xml_node dagmc_node = root.child("dagmc");
+
+    // check for write_xml option
+    if (check_for_node(dagmc_node, "write_xml")) {
+      dagmc_write_mat_xml = get_node_value_bool(dagmc_node, "write_xml");
+    }
+
+    // check for xml override options
+    if (check_for_node(dagmc_node, "use_xml")) {
+      dagmc_use_mat_xml = get_node_value_bool(dagmc_node, "use_xml");
+    }
   }
 
 #ifndef DAGMC

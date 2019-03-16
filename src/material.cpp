@@ -1078,12 +1078,33 @@ void read_materials_xml()
   bool using_dagmc_mats = false;
 #ifdef DAGMC
   if (settings::dagmc) {
-    using_dagmc_mats = read_uwuw_materials(doc);
+
+    if (settings::dagmc_write_mat_xml && settings::dagmc_use_mat_xml) {
+      std::stringstream err_msg;
+      err_msg << "Both read and write options are specified for the DAGMC"
+              << " simulation.";
+      fatal_error(err_msg);
+    }
+    // read materials
+    if (!settings::dagmc_use_mat_xml) {
+      using_dagmc_mats = read_uwuw_materials(doc);
+    }
+
+    if (settings::dagmc_write_mat_xml) {
+      if (using_dagmc_mats) {
+        write_uwuw_materials_xml();
+      } else {
+        std::stringstream wrn_msg;
+        wrn_msg << "A materials.xml file write was requested during"
+                << " initialization, but DAGMC UWUW materials are"
+                << " not being used. No materials.xml will be written.";
+        warning(wrn_msg);
+      }
+    }
   }
 #endif
 
-
-  if (!using_dagmc_mats) {
+  if (!using_dagmc_mats || settings::dagmc_use_mat_xml) {
     // Check if materials.xml exists
     std::string filename = settings::path_input + "materials.xml";
     if (!file_exists(filename)) {
