@@ -826,9 +826,15 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     indices = list(np.broadcast(*np.ogrid[:shape[2], :shape[1], :shape[0]]))
     triso_locations = {idx: [] for idx in indices}
     indices = set(indices)
+    diag = np.linalg.norm(np.asarray(pitch))/2.
     for t in trisos:
         for idx in t.classify(lattice):
             if idx in indices:
+                center = lattice.get_local_coordinates(t.center, idx[::-1])
+                # don't place in cell if not overlapping
+                if (t._surface.r + diag) < np.linalg.norm(np.asarray(center)):
+                    continue
+
                 # Create copy of TRISO particle with materials preserved and
                 # different cell/surface IDs
                 t_copy = copy.copy(t)
@@ -839,31 +845,28 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
                                                 y0=t._surface.y0,
                                                 z0=t._surface.z0,)
                 t_copy.region = -t_copy._surface
+                t_copy.center = center
                 triso_locations[idx].append(t_copy)
             else:
                 warnings.warn('TRISO particle is partially or completely '
                               'outside of the lattice.')
 
     # Create universes
-    universes = np.empty(shape[::-1], dtype=openmc.Universe)
+    bg_cell = openmc.Cell(fill=background)
+    background_universe = openmc.Universe(cells=[bg_cell,])
+    universes = np.full(shape[::-1], background_universe, dtype=openmc.Universe)
+
     for idx, triso_list in triso_locations.items():
-        if len(triso_list) > 0:
+        if triso_list:
             outside_trisos = openmc.Intersection(~t.region for t in triso_list)
             background_cell = openmc.Cell(fill=background, region=outside_trisos)
-        else:
-            background_cell = openmc.Cell(fill=background)
+            u = openmc.Universe(cells = triso_list + [background_cell])
 
-        u = openmc.Universe()
-        u.add_cell(background_cell)
-        for t in triso_list:
-            u.add_cell(t)
             iz, iy, ix = idx
-            t.center = lattice.get_local_coordinates(t.center, (ix, iy, iz))
-
-        if len(shape) == 2:
-            universes[-1 - idx[0], idx[1]] = u
-        else:
-            universes[idx[0], -1 - idx[1], idx[2]] = u
+            if lattice.ndim == 2:
+                universes[-1 - iz, iy] = u
+            else:
+                universes[iz, -1 - iy, ix] = u
     lattice.universes = universes
 
     # Set outer universe
