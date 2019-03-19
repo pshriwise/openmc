@@ -529,6 +529,12 @@ class Universe(IDManagerMixin):
         None
 
         """
+
+        if memo and self.id in memo['universes']:
+            return
+        if memo is not None:
+            memo['universes'].add(self.id)
+
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
 
