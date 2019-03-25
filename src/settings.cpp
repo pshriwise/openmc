@@ -351,6 +351,11 @@ void read_settings_xml()
     openmc_set_seed(seed);
   }
 
+  // Set to sample at collisions only if specified
+  if (check_for_node(root, "boundary_sampling")) {
+    settings::sample_at_boundary = get_node_value_bool(root, "boundary_sampling");
+  }
+
   // Check for electron treatment
   if (check_for_node(root, "electron_treatment")) {
     auto temp_str = get_node_value(root, "electron_treatment", true, true);

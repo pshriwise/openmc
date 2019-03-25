@@ -143,7 +143,7 @@ Particle::transport()
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty()) zero_flux_derivs();
 
-  double tau{};
+  double mean_free_paths{};
 
   while (true) {
     // Set the random number stream
@@ -214,8 +214,8 @@ Particle::transport()
     } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      if (tau <= 0.0) { tau = -std::log(prn()); }
-      d_collision = tau / macro_xs.total;
+      if (mean_free_paths <= 0.0) { mean_free_paths = -std::log(prn()); }
+      d_collision = mean_free_paths / macro_xs.total;
     }
 
     // Select smaller of the two distances
@@ -250,12 +250,12 @@ Particle::transport()
       surface_ = boundary.surface_index;
       n_coord_ = boundary.coord_level;
 
-      // reset sampled value if sampling at boundaries, otherwise
-      // decrement value by the optical path length to the boundary
+      // reset mean free paths to collision if sampling at boundaries, otherwise
+      // decrement value by the number of mean free paths to the cell boundary
       if (settings::sample_at_boundary) {
-        tau = 0.0;
+        mean_free_paths = 0.0;
       } else {
-        tau -= d_boundary * macro_xs.total;
+        mean_free_paths -= d_boundary * macro_xs.total;
       }
 
       // Saving previous cell data
@@ -284,7 +284,7 @@ Particle::transport()
       // PARTICLE HAS COLLISION
 
       // always reset sampled value after collision
-      tau = 0.0;
+      mean_free_paths = 0.0;
 
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
