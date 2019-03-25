@@ -38,6 +38,7 @@ extern "C" bool reduce_tallies;       //!< reduce tallies at end of batch?
 extern bool res_scat_on;              //!< use resonance upscattering method?
 extern bool restart_run;              //!< restart run?
 extern "C" bool run_CE;               //!< run with continuous-energy data?
+extern bool sample_at_boundary;       //!< sample distance to collision at boundary crossings?
 extern bool source_latest;            //!< write latest source at each batch?
 extern bool source_separate;          //!< write source to separate file?
 extern bool source_write;             //!< write source in HDF5 files?

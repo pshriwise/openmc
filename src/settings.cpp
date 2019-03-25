@@ -53,6 +53,7 @@ bool reduce_tallies          {true};
 bool res_scat_on             {false};
 bool restart_run             {false};
 bool run_CE                  {true};
+bool sample_at_boundary      {true};
 bool source_latest           {false};
 bool source_separate         {false};
 bool source_write            {true};

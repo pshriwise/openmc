@@ -143,6 +143,8 @@ Particle::transport()
   // Every particle starts with no accumulated flux derivative.
   if (!model::active_tallies.empty()) zero_flux_derivs();
 
+  double tau{};
+
   while (true) {
     // Set the random number stream
     if (type_ == Particle::Type::neutron) {
@@ -212,7 +214,8 @@ Particle::transport()
     } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn()) / macro_xs_.total;
+      if (tau <= 0.0) { tau = -std::log(prn()); }
+      d_collision = tau / macro_xs.total;
     }
 
     // Select smaller of the two distances
@@ -247,6 +250,14 @@ Particle::transport()
       surface_ = boundary.surface_index;
       n_coord_ = boundary.coord_level;
 
+      // reset sampled value if sampling at boundaries, otherwise
+      // decrement value by the optical path length to the boundary
+      if (settings::sample_at_boundary) {
+        tau = 0.0;
+      } else {
+        tau -= d_boundary * macro_xs.total;
+      }
+
       // Saving previous cell data
       for (int j = 0; j < n_coord_; ++j) {
         cell_last_[j] = coord_[j].cell;
@@ -271,6 +282,9 @@ Particle::transport()
     } else {
       // ====================================================================
       // PARTICLE HAS COLLISION
+
+      // always reset sampled value after collision
+      tau = 0.0;
 
       // Score collision estimate of keff
       if (settings::run_mode == RUN_MODE_EIGENVALUE &&
