@@ -215,7 +215,7 @@ Particle::transport()
       d_collision = INFINITY;
     } else {
       if (mean_free_paths <= 0.0) { mean_free_paths = -std::log(prn()); }
-      d_collision = mean_free_paths / macro_xs.total;
+      d_collision = mean_free_paths / macro_xs_.total;
     }
 
     // Select smaller of the two distances
@@ -255,7 +255,7 @@ Particle::transport()
       if (settings::sample_at_boundary) {
         mean_free_paths = 0.0;
       } else {
-        mean_free_paths -= d_boundary * macro_xs.total;
+        mean_free_paths -= boundary.distance * macro_xs_.total;
       }
 
       // Saving previous cell data
