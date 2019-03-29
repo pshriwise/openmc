@@ -276,8 +276,14 @@ class Geometry(object):
             Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
+
+        memo = {'cells' : set(),
+                'surfaces' : set(),
+                'lattices' : set(),
+                'universes' : set()}
+
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells()
+            return self.root_universe.get_all_cells(memo)
         else:
             return []
 

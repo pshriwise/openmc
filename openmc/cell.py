@@ -346,7 +346,7 @@ class Cell(IDManagerMixin):
 
         return nuclides
 
-    def get_all_cells(self):
+    def get_all_cells(self, memo = None):
         """Return all cells that are contained within this one if it is filled with a
         universe or lattice
 
@@ -360,8 +360,13 @@ class Cell(IDManagerMixin):
 
         cells = OrderedDict()
 
+        if memo and self.id in memo['cells']:
+            return cells
+        if memo is not None:
+            memo['cells'].add(self.id)
+
         if self.fill_type in ('universe', 'lattice'):
-            cells.update(self.fill.get_all_cells())
+            cells.update(self.fill.get_all_cells(memo))
 
         return cells
 

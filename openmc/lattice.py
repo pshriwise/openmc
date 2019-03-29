@@ -270,7 +270,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         return nuclides
 
-    def get_all_cells(self):
+    def get_all_cells(self, memo = None):
         """Return all cells that are contained within the lattice
 
         Returns
@@ -282,10 +282,16 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         """
 
         cells = OrderedDict()
+
+        if memo and self.id in memo['lattices']:
+            return cells
+        if memo is not None:
+            memo['lattices'].add(self.id)
+
         unique_universes = self.get_unique_universes()
 
         for universe_id, universe in unique_universes.items():
-            cells.update(universe.get_all_cells())
+            cells.update(universe.get_all_cells(memo))
 
         return cells
 
