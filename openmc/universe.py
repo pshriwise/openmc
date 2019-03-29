@@ -445,7 +445,7 @@ class Universe(IDManagerMixin):
 
         return cells
 
-    def get_all_materials(self):
+    def get_all_materials(self, cell_memo = None):
         """Return all materials that are contained within the universe
 
         Returns
@@ -459,9 +459,9 @@ class Universe(IDManagerMixin):
         materials = OrderedDict()
 
         # Append all Cells in each Cell in the Universe to the dictionary
-        cells = self.get_all_cells()
+        cells = self.get_all_cells(cell_memo)
         for cell in cells.values():
-            materials.update(cell.get_all_materials())
+            materials.update(cell.get_all_materials(cell_memo))
 
         return materials
 

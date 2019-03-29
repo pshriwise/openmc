@@ -312,7 +312,14 @@ class Geometry(object):
             instances
 
         """
-        return self.root_universe.get_all_materials()
+
+        # create a CELL memo to be passed around while getting materials
+        memo = {'cells' : set(),
+                'surfaces' : set(),
+                'lattices' : set(),
+                'universes' : set()}
+
+        return self.root_universe.get_all_materials(memo)
 
     def get_all_material_cells(self):
         """Return all cells filled by a material

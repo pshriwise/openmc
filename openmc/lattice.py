@@ -295,7 +295,7 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
 
         return cells
 
-    def get_all_materials(self):
+    def get_all_materials(self, cell_memo = None):
         """Return all materials that are contained within the lattice
 
         Returns
@@ -309,9 +309,9 @@ class Lattice(IDManagerMixin, metaclass=ABCMeta):
         materials = OrderedDict()
 
         # Append all Cells in each Cell in the Universe to the dictionary
-        cells = self.get_all_cells()
+        cells = self.get_all_cells(cell_memo)
         for cell_id, cell in cells.items():
-            materials.update(cell.get_all_materials())
+            materials.update(cell.get_all_materials(cell_memo))
 
         return materials
 
