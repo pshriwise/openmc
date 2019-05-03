@@ -1532,7 +1532,6 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   }
 
   build_tree(all_tets);
-
 }
 
 void
@@ -1718,6 +1717,7 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
 void read_meshes(pugi::xml_node root)
 {
   for (auto node : root.children("mesh")) {
+
     std::string mesh_type;
     if (check_for_node(node, "type")) {
       mesh_type = get_node_value(node, "type", true, true);
