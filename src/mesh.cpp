@@ -794,10 +794,12 @@ void RegularMesh::to_hdf5(hid_t group) const
 
 xt::xtensor<double, 1>
 RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
+                         //xt::xarray<double>
+                         //Mesh::count_sites(const std::vector<Particle::Bank>& bank,
   bool* outside) const
 {
   // Determine shape of array for counts
-  std::size_t m = xt::prod(shape_)();
+  std::size_t m = num_bins();
   std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
@@ -1407,7 +1409,6 @@ RegularMesh* get_regular_mesh(int32_t index) {
   return dynamic_cast<RegularMesh*>(model::meshes[index].get());
 }
 
-
 //! Extend the meshes array by n elements
 extern "C" int
 openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
@@ -1680,8 +1681,9 @@ void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>&
 }
 
 std::string UnstructuredMesh::get_label_for_bin(int bin) const {
-  std::string s;
-  return s;
+  std::stringstream out;
+  out << "MOAB EntityHandle: " << get_ent_handle_from_bin(bin);
+  return out.str();
 }
 
 int
@@ -1693,7 +1695,6 @@ UnstructuredMesh::get_bin(Position r) const {
     return get_bin_from_ent_handle(tet);
   }
 }
-
 
 void
 UnstructuredMesh::compute_barycentric_data(const moab::Range& all_tets) {
@@ -1754,7 +1755,6 @@ UnstructuredMesh::point_in_tet(const Position& r, moab::EntityHandle tet) const 
                  bary_coords[0] + bary_coords[1] + bary_coords[2] <= 1.);
 
   return in_tet;
-
 }
 
 int
@@ -1767,13 +1767,6 @@ moab::EntityHandle
 UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
   return ehs_[bin];
 }
-
-xt::xarray<double>
-UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
-  bool* outside) const {
-    xt::xarray<double> out;
-    return out;
-  }
 
 double UnstructuredMesh::get_volume_frac(int bin) const {
   return 0.0;
