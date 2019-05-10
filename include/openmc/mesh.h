@@ -37,6 +37,9 @@ extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
 
+//==============================================================================
+//! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
+//==============================================================================
 
 class Mesh
 {
@@ -187,7 +190,6 @@ public:
     bool* outside) const;
 
   // Data members
-
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
@@ -298,15 +300,13 @@ public:
   //! Add a score to the mesh instance
   void add_score(std::string score) const;
 
-  //! Set data for a score
-  void set_score_data(const std::string& score,
-                      std::vector<double> values,
-                      std::vector<double> std_dev) const;
-
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
 
   std::string filename_; //!< Path to unstructured mesh file
+
+  bool intersects(Position& r0, Position r1, int* ijk);
+
 
 private:
 

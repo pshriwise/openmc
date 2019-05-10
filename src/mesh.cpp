@@ -5,6 +5,7 @@
 #include <cmath>  // for ceil
 #include <memory> // for allocator
 #include <string>
+#include <sstream>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
@@ -866,6 +867,23 @@ RegularMesh::count_sites(const Particle::Bank* bank,
   xt::xarray<double> counts = arr;
 
   return counts;
+}
+
+std::string RegularMesh::get_label_for_bin(int bin) const {
+  int ijk[n_dimension_];
+  get_indices_from_bin(bin, ijk);
+
+  std::stringstream out;
+  out << "Mesh Index (" << ijk[0];
+  if (n_dimension_ > 1) out << ", " << ijk[1];
+  if (n_dimension_ > 2) out << ", " << ijk[2];
+  out << ")";
+
+  return out.str();
+}
+
+double RegularMesh::get_volume_frac(int bin) const {
+  return volume_frac_;
 }
 
 //==============================================================================
@@ -2065,6 +2083,17 @@ UnstructuredMesh::write(std::string base_filename) const {
     auto msg = fmt::format("Failed to write unstructured mesh {}", id_);
     warning(msg);
   }
+
+xt::xarray<double>
+UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
+  bool* outside) const {
+    xt::array<double> out;
+    return out;
+  }
+
+double UnstructuredMesh::get_volume_frac(int bin = -1) const {
+  return 0.0;
+
 }
 
 #endif
