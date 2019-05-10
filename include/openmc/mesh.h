@@ -37,6 +37,9 @@ extern std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
+//==============================================================================
+//! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
+//==============================================================================
 
 class Mesh
 {
@@ -211,7 +214,6 @@ public:
     bool* outside) const;
 
   // Data members
-
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 };
@@ -306,6 +308,9 @@ public:
   void write(std::string base_filename) const;
 
   std::string filename_; //!< Path to unstructured mesh file
+
+  bool intersects(Position& r0, Position r1, int* ijk);
+
 
 private:
 
