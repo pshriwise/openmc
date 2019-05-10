@@ -812,12 +812,11 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1>
-
 RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
                          bool* outside) const
 {
   // Determine shape of array for counts
-  std::size_t m = n_bins();
+  std::size_t m = num_bins();
   std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
@@ -2009,6 +2008,7 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
   return ehs_[bin];
 }
 
+<<<<<<< HEAD
 int UnstructuredMesh::n_bins() const {
   return ehs_.size();
 }
@@ -2167,6 +2167,9 @@ UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
   }
 
 double UnstructuredMesh::get_volume_frac(int bin = -1) const {
+=======
+double UnstructuredMesh::get_volume_frac(int bin) const {
+>>>>>>> Using a common count_sites implementation.
   return 0.0;
 
 }
