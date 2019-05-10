@@ -56,6 +56,7 @@ std::string
 MeshFilter::text_label(int bin) const
 {
   auto& mesh = *model::meshes[mesh_];
+
   int n_dim = mesh.n_dimension_;
 
   std::vector<int> ijk(n_dim);
@@ -68,6 +69,7 @@ MeshFilter::text_label(int bin) const
   out << ")";
 
   return out.str();
+  // return mesh.get_label_for_bin(bin);
 }
 
 void
