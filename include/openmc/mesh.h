@@ -37,6 +37,9 @@ extern std::unordered_map<int32_t, int32_t> mesh_map;
 
 } // namespace model
 
+//==============================================================================
+//! Tessellation of n-dimensional Euclidean space by congruent squares or cubes
+//==============================================================================
 
 class Mesh
 {
@@ -191,7 +194,6 @@ public:
   int num_bins() const;
 
   // Data members
-
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
@@ -270,9 +272,15 @@ public:
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const;
 
-
   bool intersects(Position& r0, Position r1, int* ijk);
 
+  //! Determine which surface bins were crossed by a particle
+  //
+  //! \param[in] p Particle to check
+  //! \param[out] bins Surface bins that were crossed
+  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
+
+  bool point_in_tet(const Position& r, moab::EntityHandle tet) const;
 
 private:
 
@@ -393,6 +401,13 @@ public:
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
   std::string filename_; //<! Path to unstructured mesh file
+
+  std::string get_label_for_bin(int bin) const;
+
+  xt::xarray<double>
+  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
+
+  double get_volume_frac(int bin = -1) const;
 
 private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
