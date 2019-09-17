@@ -386,10 +386,12 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Convert the infix region spec to RPN.
   rpn_ = generate_rpn(id_, region_);
 
+  remove_complement_ops(rpn_);
+
   // Check if this is a simple cell.
   simple_ = true;
   for (int32_t token : rpn_) {
-    if ((token == OP_COMPLEMENT) || (token == OP_UNION)) {
+    if (token == OP_UNION) {
       simple_ = false;
       break;
     }
@@ -660,8 +662,6 @@ void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
 }
 
 BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
-  // remove complements by adjusting surface signs and operators
-  remove_complement_ops(rpn);
 
   std::vector<BoundingBox> stack(rpn.size());
   int i_stack = -1;
@@ -729,8 +729,6 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
     } else if (token == OP_INTERSECTION) {
       stack[i_stack-1] = stack[i_stack-1] && stack[i_stack];
       i_stack --;
-    } else if (token == OP_COMPLEMENT) {
-      stack[i_stack] = !stack[i_stack];
     } else {
       // If the token is not an operator, evaluate the sense of particle with
       // respect to the surface and see if the token matches the sense. If the
