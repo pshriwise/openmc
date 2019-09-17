@@ -747,15 +747,8 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
     }
   }
 
-  if (i_stack == 0) {
-    // The one remaining bool on the stack indicates whether the particle is
-    // in the cell.
-    return stack[i_stack];
-  } else {
-    // This case occurs if there is no region specification since i_stack will
-    // still be -1.
-    return true;
-  }
+  Ensures(i_stack == 0);
+  return stack.front();
 }
 
 //==============================================================================
