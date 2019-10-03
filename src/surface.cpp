@@ -278,7 +278,7 @@ Direction DAGSurface::normal(Position r) const
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &simulation::history);
   MB_CHK_ERR_CONT(rval);
   return dir;
 }
