@@ -6,7 +6,6 @@
 #include <fmt/core.h> // for fmt
 #include <memory> // for allocator
 #include <string>
-#include <sstream>
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
@@ -16,7 +15,10 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
+<<<<<<< HEAD
 #include  "xtensor/xview.hpp"
+=======
+>>>>>>> Some cleanup and removal of commented sections after rebase.
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -866,6 +868,7 @@ RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
   return counts;
 }
 
+<<<<<<< HEAD
 std::string RegularMesh::get_label_for_bin(int bin) const {
   int ijk[n_dimension_];
   get_indices_from_bin(bin, ijk);
@@ -883,6 +886,8 @@ double RegularMesh::get_volume_frac(int bin) const {
   return volume_frac_;
 }
 
+=======
+>>>>>>> Some cleanup and removal of commented sections after rebase.
 //==============================================================================
 // RectilinearMesh implementation
 //==============================================================================
@@ -2009,6 +2014,9 @@ UnstructuredMesh::get_ent_handle_from_bin(int bin) const {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Some cleanup and removal of commented sections after rebase.
 int UnstructuredMesh::n_bins() const {
   return ehs_.size();
 }

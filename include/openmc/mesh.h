@@ -197,11 +197,6 @@ public:
   xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
     bool* outside) const;
 
-<<<<<<< HEAD
-=======
-  // Data members
-
-
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
@@ -213,7 +208,6 @@ public:
 
   //double get_volume_frac(int bin = -1) const;
 
->>>>>>> Using a common count_sites implementation.
   int num_bins() const;
 
   // Data members
@@ -304,6 +298,7 @@ public:
   void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
 
   bool point_in_tet(const Position& r, moab::EntityHandle tet) const;
+
 
 private:
 
