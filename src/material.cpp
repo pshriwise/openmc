@@ -37,6 +37,7 @@ namespace openmc {
 
 namespace model {
 
+double neutron_majorant;
 std::unordered_map<int32_t, int32_t> material_map;
 vector<unique_ptr<Material>> materials;
 
@@ -1291,6 +1292,34 @@ void free_memory_material()
 {
   model::materials.clear();
   model::material_map.clear();
+}
+
+void set_majorant_xs() {
+  model::neutron_majorant = -INFINITY;
+
+  int neutron = static_cast<int>(Particle::Type::neutron);
+
+  // dummy particle
+  Particle p {};
+
+  // set the majorant cross section for any energy/temperature
+  for (const auto& mat : model::materials) {
+    double max_total_xs = 0.0;
+    for (int i = 0; i < mat->nuclide_.size(); i++) {
+      int i_nuclide = mat->nuclide_[i];
+      const auto& nuclide = data::nuclides[i_nuclide];
+      double atom_density = mat->atom_density_(i);
+      double max_xs = -INFINITY;
+      for (const auto& xs : nuclide->xs_) {
+        auto temp_max = xt::amax(xs)();
+        max_xs = std::max(max_xs, temp_max);
+      }
+      max_total_xs += atom_density * max_xs;
+    }
+    model::neutron_majorant = std::max(max_total_xs, model::neutron_majorant);
+  }
+
+  std::cout << "Majorant value: " << model::neutron_majorant << std::endl;
 }
 
 //==============================================================================
