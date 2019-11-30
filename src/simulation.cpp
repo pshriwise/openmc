@@ -131,6 +131,8 @@ int openmc_simulation_init()
     }
   }
 
+  set_majorant_xs();
+
   // Set flag indicating initialization is done
   simulation::initialized = true;
   return 0;
