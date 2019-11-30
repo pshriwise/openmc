@@ -25,6 +25,7 @@ class Material;
 
 namespace model {
 
+extern double neutron_majorant;
 extern std::unordered_map<int32_t, int32_t> material_map;
 extern vector<unique_ptr<Material>> materials;
 
@@ -200,6 +201,20 @@ private:
   //! A negative value indicates no default temperature was specified.
   double temperature_ {-1};
 };
+
+class Majorant
+{
+  struct EnergyGrid {
+    std::vector<int> grid_index;
+    std::vector<double> energy;
+  };
+
+  std::vector<double> kTs_; //!< temperatures in eV (k*T)
+  std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
+  std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+};
+
+void set_majorant_xs();
 
 //==============================================================================
 // Non-member functions
