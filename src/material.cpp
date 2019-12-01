@@ -38,6 +38,8 @@ namespace openmc {
 namespace model {
 
 double neutron_majorant;
+Majorant n_majorant;
+
 std::unordered_map<int32_t, int32_t> material_map;
 std::vector<std::unique_ptr<Material>> materials;
 
@@ -1229,6 +1231,13 @@ void set_majorant_xs() {
 
   int neutron = static_cast<int>(Particle::Type::neutron);
 
+  for (const auto& n : data::nuclides) {
+    std::cout << "XS Size: "  << n->xs_.size() << std::endl;
+    for (const auto& e : n->xs_) {
+      std::cout << "\tE group size: " << e.size() << std::endl;
+    }
+  }
+
   // dummy particle
   Particle p {};
 
@@ -1249,7 +1258,7 @@ void set_majorant_xs() {
     model::neutron_majorant = std::max(max_total_xs, model::neutron_majorant);
   }
 
-  std::cout << "Majorant value: " << model::neutron_majorant << std::endl;
+  std::cout << "Neutron majorant: " << model::neutron_majorant << std::endl;
 }
 
 //==============================================================================

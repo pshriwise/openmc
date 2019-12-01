@@ -404,6 +404,287 @@ Particle::event_death()
 
 
 void
+Particle::delta_transport()
+{
+  // Display message if high verbosity or trace is on
+  if (settings::verbosity >= 9 || simulation::trace) {
+     write_message("Simulating Particle " + std::to_string(id_));
+  }
+
+  // Initialize number of events to zero
+  int n_event = 0;
+
+  // Add paricle's starting weight to count for normalizing tallies later
+  #pragma omp atomic
+  simulation::total_weight += wgt_;
+
+  // Force calculation of cross-sections by setting last energy to zero
+  if (settings::run_CE) {
+    for (auto& micro : neutron_xs_) micro.last_E = 0.0;
+  }
+
+  // Prepare to write out particle track.
+  if (write_track_) add_particle_track();
+
+  // Every particle starts with no accumulated flux derivative.
+  if (!model::active_tallies.empty()) zero_flux_derivs();
+
+  double dist = 0.0;
+
+  while (true) {
+    // Set the random number stream
+    if (type_ == Particle::Type::neutron) {
+      prn_set_stream(STREAM_TRACKING);
+    } else {
+      prn_set_stream(STREAM_PHOTON);
+    }
+
+    // Store pre-collision particle properties
+    wgt_last_ = wgt_;
+    E_last_ = E_;
+    u_last_ = this->u();
+    r_last_ = this->r();
+
+    // Reset event variables
+    event_ = EVENT_KILL;
+    event_nuclide_ = NUCLIDE_NONE;
+    event_mt_ = REACTION_NONE;
+
+    // If the cell hasn't been determined based on the particle's location,
+    // initiate a search for the current cell. This generally happens at the
+    // beginning of the history and again for any secondary particles
+    if (coord_[n_coord_ - 1].cell == C_NONE) {
+      if (!find_cell(this, false)) {
+        this->mark_as_lost("Could not find the cell containing particle "
+          + std::to_string(id_));
+        return;
+      }
+
+      // set birth cell attribute
+      if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
+    }
+
+    // Write particle track.
+    if (write_track_) write_particle_track(*this);
+
+    if (settings::check_overlaps) check_cell_overlap(this);
+
+    // Calculate microscopic and macroscopic cross sections
+    if (material_ != MATERIAL_VOID) {
+      if (settings::run_CE) {
+        if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
+          // If the material is the same as the last material and the
+          // temperature hasn't changed, we don't need to lookup cross
+          // sections again.
+          model::materials[material_]->calculate_xs(*this);
+        }
+      } else {
+        // Get the MG data; unlike the CE case above, we have to re-calculate
+        // cross sections for every collision since the cross sections may
+        // be angle-dependent
+        data::mg.macro_xs_[material_].calculate_xs(*this);
+
+        // Update the particle's group while we know we are multi-group
+        g_last_ = g_;
+      }
+    } else {
+      macro_xs_.total      = 0.0;
+      macro_xs_.absorption = 0.0;
+      macro_xs_.fission    = 0.0;
+      macro_xs_.nu_fission = 0.0;
+    }
+
+    // Sample a distance to collision
+    double distance;
+    if (type_ == Particle::Type::electron ||
+        type_ == Particle::Type::positron) {
+      distance = 0.0;
+    } else if (macro_xs_.total == 0.0) {
+      distance = INFINITY;
+    } else {
+      distance = -std::log(prn()) / model::neutron_majorant;
+    }
+
+    // std::cout << "Distance: " << distance << std::endl;
+    // dist += distance;
+    // std::cout << "Total distance: " << dist << std::endl;
+
+    // Advance particle according to the majorant cross section
+    for (int j = 0; j < n_coord_; j++) {
+      coord_[j].r += distance * coord_[j].u;
+    }
+
+    // find the cell for the particle's current position
+    if (!find_cell(this, false)) {
+
+      // this->mark_as_lost("Could not find the current cell containing particle "
+      //                     + std::to_string(id_));
+      alive_ = false;
+      // std::cout << "Location: " << "(" << r_local()[0] << ", " << r_local()[1] << ", " << r_local()[2] << ")" << std::endl;
+      return;
+    }
+
+    // Calculate microscopic and macroscopic cross sections
+    if (material_ != MATERIAL_VOID) {
+      if (settings::run_CE) {
+        if (material_ != material_last_ || sqrtkT_ != sqrtkT_last_) {
+          // If the material is the same as the last material and the
+          // temperature hasn't changed, we don't need to lookup cross
+          // sections again.
+          model::materials[material_]->calculate_xs(*this);
+        }
+      } else {
+        // Get the MG data; unlike the CE case above, we have to re-calculate
+        // cross sections for every collision since the cross sections may
+        // be angle-dependent
+        data::mg.macro_xs_[material_].calculate_xs(*this);
+
+        // Update the particle's group while we know we are multi-group
+        g_last_ = g_;
+      }
+    } else {
+      macro_xs_.total      = 0.0;
+      macro_xs_.absorption = 0.0;
+      macro_xs_.fission    = 0.0;
+      macro_xs_.nu_fission = 0.0;
+    }
+
+
+    // Score track-length tallies
+    if (!model::active_tracklength_tallies.empty()) {
+      score_tracklength_tally(this, distance);
+    }
+
+    // Score track-length estimate of k-eff
+    if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+        type_ == Particle::Type::neutron) {
+      global_tally_tracklength += wgt_ * distance * macro_xs_.nu_fission;
+    }
+
+    // Score flux derivative accumulators for differential tallies.
+    if (!model::active_tallies.empty()) {
+      score_track_derivative(this, distance);
+    }
+
+    // check for a virtual collision based on the
+    // material total cross section for the particle's current location
+    if (macro_xs_.total > model::neutron_majorant) {
+      warning("XS greater than majorant value");
+    }
+
+    // std::cout << "Macro XS Total: " << macro_xs_.total << std::endl;
+    // std::cout << "XS Ratio: " << macro_xs_.total / model::neutron_majorant << std::endl;
+    if (prn() < (macro_xs_.total / model::neutron_majorant) ) {
+
+      // ====================================================================
+      // PARTICLE HAS COLLISION
+      // std::cout << "Scatter" << std::endl;
+
+      // Score collision estimate of keff
+      if (settings::run_mode == RUN_MODE_EIGENVALUE &&
+          type_ == Particle::Type::neutron) {
+        global_tally_collision += wgt_ * macro_xs_.nu_fission
+          / model::neutron_majorant;
+      }
+
+      // Score surface current tallies -- this has to be done before the collision
+      // since the direction of the particle will change and we need to use the
+      // pre-collision direction to figure out what mesh surfaces were crossed
+      if (!model::active_meshsurf_tallies.empty())
+        score_surface_tally(this, model::active_meshsurf_tallies);
+
+      // Clear surface component
+      surface_ = 0;
+
+      if (settings::run_CE) {
+        collision(this);
+      } else {
+        collision_mg(this);
+      }
+
+      // Score collision estimator tallies -- this is done after a collision
+      // has occurred rather than before because we need information on the
+      // outgoing energy for any tallies with an outgoing energy filter
+      if (!model::active_collision_tallies.empty()) score_collision_tally(this);
+      if (!model::active_analog_tallies.empty()) {
+        if (settings::run_CE) {
+          score_analog_tally_ce(this);
+        } else {
+          score_analog_tally_mg(this);
+        }
+      }
+
+      // Reset banked weight during collision
+      n_bank_ = 0;
+      n_bank_second_ = 0;
+      wgt_bank_ = 0.0;
+      for (int& v : n_delayed_bank_) v = 0;
+
+      // Reset fission logical
+      fission_ = false;
+
+      // Save coordinates for tallying purposes
+      r_last_current_ = this->r();
+
+      // Set last material to none since cross sections will need to be
+      // re-evaluated
+      material_last_ = C_NONE;
+
+      // Set all directions to base level -- right now, after a collision, only
+      // the base level directions are changed
+      for (int j = 0; j < n_coord_ - 1; ++j) {
+        if (coord_[j + 1].rotated) {
+          // If next level is rotated, apply rotation matrix
+          const auto& m {model::cells[coord_[j].cell]->rotation_};
+          const auto& u {coord_[j].u};
+          coord_[j + 1].u = u.rotate(m);
+        } else {
+          // Otherwise, copy this level's direction
+          coord_[j+1].u = coord_[j].u;
+        }
+      }
+
+      // Score flux derivative accumulators for differential tallies.
+      if (!model::active_tallies.empty()) score_collision_derivative(this);
+    } else {
+      continue;
+    }
+
+    // If particle has too many events, display warning and kill it
+    ++n_event;
+    if (n_event == MAX_EVENTS) {
+      warning("Particle " + std::to_string(id_) +
+        " underwent maximum number of events.");
+      alive_ = false;
+    }
+
+    // Check for secondary particles if this particle is dead
+    if (!alive_) {
+      // If no secondary particles, break out of event loop
+      if (simulation::secondary_bank.empty()) break;
+
+      this->from_source(&simulation::secondary_bank.back());
+      simulation::secondary_bank.pop_back();
+      n_event = 0;
+
+      // Enter new particle in particle track file
+      if (write_track_) add_particle_track();
+    }
+  }
+
+  #ifdef DAGMC
+  if (settings::dagmc) simulation::history.reset();
+  #endif
+
+  // Finish particle track output.
+  if (write_track_) {
+    write_particle_track(*this);
+    finalize_particle_track(*this);
+  }
+}
+
+
+void
 Particle::cross_surface()
 {
   int i_surface = std::abs(surface_);
