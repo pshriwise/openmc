@@ -209,9 +209,7 @@ class Majorant
     std::vector<double> energy;
   };
 
-  std::vector<double> kTs_; //!< temperatures in eV (k*T)
-  std::vector<EnergyGrid> grid_; //!< Energy grid at each temperature
-  std::vector<xt::xtensor<double, 2>> xs_; //!< Cross sections at each temperature
+  std::vector<double> xs_;
 };
 
 void set_majorant_xs();

@@ -61,6 +61,8 @@ public:
   void event_revive_from_secondary();
   void event_death();
 
+  void delta_transport();
+
   //! Cross a surface and handle boundary conditions
   void cross_surface();
 
