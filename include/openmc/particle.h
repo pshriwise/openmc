@@ -72,6 +72,7 @@ public:
   //! pulse-height recording
   void pht_collision_energy();
   void pht_secondary_particles();
+  void delta_transport();
 
   //! Cross a surface and handle boundary conditions
   void cross_surface(const Surface& surf);
