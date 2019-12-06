@@ -22,6 +22,11 @@
 #include "moab/GeomUtil.hpp"
 #endif
 
+#ifdef LIBMESH
+#include "libmesh/libmesh.h"
+#include "libmesh/mesh.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -255,6 +260,12 @@ private:
   std::vector<std::vector<double>> grid_;
 };
 
+class UnstructuredMeshBase : public Mesh {
+public:
+  UnstructuredMeshBase(pugi::xml_node node);
+  std::string filename_;
+};
+
 #ifdef DAGMC
 
 class UnstructuredMesh : public Mesh {
@@ -416,6 +427,19 @@ private:
   std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
 };
 
+#endif
+
+#ifdef LIBMESH
+class LibMesh : public UnstructuredMeshBase {
+
+public:
+  // constructor
+  LibMesh(pugi::xml_node node);
+
+private:
+  std::unique_ptr<libMesh::Mesh> m_;
+  std::unique_ptr<libMesh::PointLocatorBase> point_locator_;
+};
 #endif
 
 //==============================================================================

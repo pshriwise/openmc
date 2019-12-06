@@ -24,6 +24,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+option(libmesh  "Enable support for libmesh unstructured mesh tallies" OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -47,6 +48,16 @@ if(dagmc)
     INTERFACE_INCLUDE_DIRECTORIES "${DAGMC_INCLUDE_DIRS}")
 else()
   set(DAGMC_FOUND false)
+endif()
+
+#===============================================================================
+# libmesh Unstructured Mesh Support
+#===============================================================================
+if(libmesh)
+  find_package(LIBMESH REQUIRED)
+  set(LIBMESH_LIBRARIES mesh_opt)
+  set(LIBMESH_INCLUDE_DIRS "${LIBMESH}/../include/")
+  link_directories(${LIBMESH})
 endif()
 
 #===============================================================================
@@ -372,6 +383,12 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-imported)
+endif()
+
+if(libmesh)
+  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_link_libraries(libopenmc ${LIBMESH_LIBRARIES})
+  target_include_directories(libopenmc PRIVATE ${LIBMESH_INCLUDE_DIRS})
 endif()
 
 #===============================================================================
