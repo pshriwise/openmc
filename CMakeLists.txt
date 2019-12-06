@@ -51,6 +51,16 @@ if(libmesh)
 endif()
 
 #===============================================================================
+# libmesh Unstructured Mesh Support
+#===============================================================================
+if(libmesh)
+  find_package(LIBMESH REQUIRED)
+  set(LIBMESH_LIBRARIES mesh_opt)
+  set(LIBMESH_INCLUDE_DIRS "${LIBMESH}/../include/")
+  link_directories(${LIBMESH})
+endif()
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 
@@ -380,6 +390,12 @@ endif()
 
 if(libmesh)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
+endif()
+
+if(libmesh)
+  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_link_libraries(libopenmc ${LIBMESH_LIBRARIES})
+  target_include_directories(libopenmc PRIVATE ${LIBMESH_INCLUDE_DIRS})
 endif()
 
 #===============================================================================
