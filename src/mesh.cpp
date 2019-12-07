@@ -2297,7 +2297,7 @@ LibMesh::bins_crossed(const Particle* p,
 
   for (const auto& hit : hits) {
     lengths.push_back(hit.first);
-    bins.push_back(get_bin_from_mesh_type(hit.second.get()));
+    bins.push_back(get_bin_from_mesh_type(hit.second));
   }
 }
 
@@ -2341,7 +2341,7 @@ bool LibMesh::intersects(Position& r0, Position r1, int* ijk) const {
   return false;
 }
 
-std::pair<double, libMesh::Elem*>
+std::pair<double, const libMesh::Elem*>
 LibMesh::locate_boundary_element(const Position& r0,
                                  const Position& r1) const {
   libMesh::Point a(r0.x, r0.y, r0.z);
@@ -2350,7 +2350,7 @@ LibMesh::locate_boundary_element(const Position& r0,
   return locate_boundary_element(a, b);
 }
 
-std::pair<double, libMesh::Elem*>
+std::pair<double, const libMesh::Elem*>
 LibMesh::locate_boundary_element(const libMesh::Point& start,
                                  const libMesh::Point& end) const
 {
@@ -2359,7 +2359,7 @@ LibMesh::locate_boundary_element(const libMesh::Point& start,
   double length = (end - start).norm();
 
   // locate potential elements
-  std::set<libMesh::Elem*> candidate_elements;
+  std::set<const libMesh::Elem*> candidate_elements;
   for (auto elem : boundary_elements_) {
     // being conservative about search parameter
     if (elem->close_to_point(start, length + elem->hmax())) {
@@ -2368,7 +2368,7 @@ LibMesh::locate_boundary_element(const libMesh::Point& start,
   }
 
   // find nearest hit along our direction
-  typedef std::pair<double, libMesh::Elem*> RayHit;
+  typedef std::pair<double, const libMesh::Elem*> RayHit;
   RayHit result = {INFTY, nullptr};
   for (auto elem : candidate_elements) {
     for (int i = 0; i < elem->n_sides(); i++) {
@@ -2413,6 +2413,8 @@ LibMesh::intersect_track(libMesh::Point start,
       // and set the element
       e = result.second;
       track_remaining -= result.first;
+      // advance position along track
+      start += dir * result.first;
     } else {
       // if there was no intersection, we're done
       return;
@@ -2420,7 +2422,7 @@ LibMesh::intersect_track(libMesh::Point start,
   }
 
   while (true) {
-    // find the triangle intersection
+    // find the positive distance triangle intersection
     double dist = 0.0;
     int side = -1;
     for (int i = 0; i < e->n_sides(); i++) {
@@ -2436,14 +2438,19 @@ LibMesh::intersect_track(libMesh::Point start,
 
     // make sure we found a hit for the tet we're in
     if (side == -1) {
-      warning("No hit found"); return;
+      start += dir * TINY_BIT; // nudge particle forward
+      e = (*point_locator_)(start);
+      continue;
     } else {
       // add hit to output
-      hits.push_back(std::pair<double, std::unique_ptr<const libMesh::Elem>>(std::min(track_len, dist), e));
+      hits.push_back(std::pair<double, const libMesh::Elem*>(std::min(track_remaining, dist), e));
       track_remaining -= dist; // subtract from
+      // advance position along track
+      start += dir * dist;
     }
 
-    if (track_remaining < 0.0) { break; }
+    // if we've reached the end of the track, break
+    if (track_remaining <= 0.0) { break; }
 
     // get tet on the other side
     auto next_e = e->neighbor_ptr(side);
@@ -2451,13 +2458,16 @@ LibMesh::intersect_track(libMesh::Point start,
     // if we exit the mesh, check for re-entry along
     // the track
     if (!next_e and e->on_boundary()) {
-      auto result = locate_boundary_element(start + dir * (track_len + TINY_BIT - track_remaining),
-                                            start + dir * track_len);
+      auto result = locate_boundary_element(start + dir * TINY_BIT,
+                                            start + dir * track_remaining);
       if (result.second) {
         e = result.second;
         track_remaining -= result.first;
+        // advance position along track
+        start += dir * result.first;
         continue;
       } else {
+        // if no next intersection with the mesh, we're done
         return;
       }
     }
