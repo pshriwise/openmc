@@ -967,8 +967,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction* rx, double E_in, Part
 
   // Determine total nu, delayed nu, and delayed neutron fraction
   const auto& nuc {data::nuclides[i_nuclide]};
-  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
-  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::prompt);
+  double nu_d = 0.0;
   double beta = nu_d / nu_t;
 
   if (prn() < beta) {
