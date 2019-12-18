@@ -842,6 +842,24 @@ void Tally::accumulate()
       }
     }
   }
+
+  for (auto filter_idx : filters_) {
+    auto& filter = model::tally_filters[filter_idx];
+    if (filter->type() == "mesh") {
+      auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+      auto& mesh = model::meshes[mesh_filter->mesh()];
+      auto umesh = dynamic_cast<LibMesh*>(mesh.get());
+      if (umesh) {
+        for (auto score : scores_) {
+          umesh->add_variable(std::to_string(score));
+        }
+        umesh->write();
+        for (int i = 0; i < results_.shape()[0]; i ++) {
+          umesh->set_variable("-1", i, results_(i, 0, RESULT_SUM));
+        }
+      }
+    }
+  }
 }
 
 //==============================================================================
