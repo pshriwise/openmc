@@ -853,7 +853,9 @@ void Tally::accumulate()
         for (auto score : scores_) {
           umesh->add_variable(std::to_string(score));
         }
-        umesh->write();
+        std::stringstream output_filename;
+        output_filename << "tally_" << id_ << ".exo";
+        umesh->write(output_filename.str());
         for (int i = 0; i < results_.shape()[0]; i ++) {
           umesh->set_variable("-1", i, results_(i, 0, RESULT_SUM));
         }
