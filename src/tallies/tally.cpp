@@ -843,6 +843,7 @@ void Tally::accumulate()
     }
   }
 
+#ifdef LIBMESH
   for (auto filter_idx : filters_) {
     auto& filter = model::tally_filters[filter_idx];
     if (filter->type() == "mesh") {
@@ -852,16 +853,17 @@ void Tally::accumulate()
       if (umesh) {
         for (auto score : scores_) {
           umesh->add_variable(std::to_string(score));
+          for (int i = 0; i < results_.shape()[0]; i ++) {
+            umesh->set_variable(std::to_string(score), i, results_(i, 0, RESULT_SUM));
+          }
         }
         std::stringstream output_filename;
         output_filename << "tally_" << id_ << ".exo";
         umesh->write(output_filename.str());
-        for (int i = 0; i < results_.shape()[0]; i ++) {
-          umesh->set_variable("-1", i, results_(i, 0, RESULT_SUM));
-        }
       }
     }
   }
+#endif
 }
 
 //==============================================================================
