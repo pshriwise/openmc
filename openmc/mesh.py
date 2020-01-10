@@ -598,6 +598,8 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
+    size : int
+        Number of elements in the unstructured mesh
 
     Attributes
     ----------
@@ -605,18 +607,22 @@ class UnstructuredMesh(MeshBase):
         Unique identifier for the mesh
     name : str
         Name of the mesh
-    mesh_file : str
+    filename : str
         Name of the file containing the unstructured mesh
+    mesh_lib : str
+        Library used for the unstructured mesh tally
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     total_volume : float
         Volume of the unstructured mesh in total
     """
 
-    def __init__(self, mesh_id=None, name='', filename=''):
+    def __init__(self, mesh_id=None, name='', filename='', size=None):
         super().__init__(mesh_id, name)
         self._filename = filename
         self._volumes = []
+        self._size = size
+        self._mesh_lib = 'moab'
 
     @property
     def filename(self):
@@ -630,6 +636,24 @@ class UnstructuredMesh(MeshBase):
             self._filename = filename
         else:
             self.filename = ''
+
+    @property
+    def mesh_lib(self):
+        return self._mesh_lib
+
+    @mesh_lib.setter
+    def mesh_lib(self, mesh_lib):
+        cv.check_value('mesh_lib', mesh_lib, ('moab', 'libmesh'))
+        self._mesh_lib = mesh_lib
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, size):
+        cv.check_type("Unstructured mesh size", size, Integral)
+        self._size = size
 
     @property
     def volumes(self):
@@ -647,6 +671,7 @@ class UnstructuredMesh(MeshBase):
     def __repr__(self):
         string = super().__repr__()
         string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self.filename)
+        string += '{0: <16}{1}{2}\n'.format('\tMesh Library', '=\t', self.mesh_lib)
         return string
 
     @classmethod
@@ -656,7 +681,9 @@ class UnstructuredMesh(MeshBase):
         mesh = cls(mesh_id)
         mesh.filename = group['filename'][()].decode()
         vol_data = group['volumes'][()]
+        mesh.mesh_lib = group['library'][()].decode()
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0], 1))
+        mesh.size = mesh.volumes.size
 
         return mesh
 
@@ -673,7 +700,7 @@ class UnstructuredMesh(MeshBase):
         element = ET.Element("mesh")
         element.set("id", str(self._id))
         element.set("type", "unstructured")
-
+        element.set("library", self._mesh_lib)
         subelement = ET.SubElement(element, "mesh_file")
         subelement.text = self.filename
 
