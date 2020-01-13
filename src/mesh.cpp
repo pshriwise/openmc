@@ -1401,6 +1401,27 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
   return 0;
 }
 
+//! Adds a new unstructured mesh to OpenMC
+extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
+                                            const char library[],
+                                            int* mesh_id)
+{
+  if (library == "moab") {
+    model::meshes.push_back(std::move(std::make_unique<UnstructuredMesh>(filename)));
+  } else if (library == "libmesh") {
+    model::meshes.push_back(std::move(std::make_unique<LibMesh>(filename)));
+  } else {
+    set_errmsg("Mesh library " + std::string(library) + \
+               "is not supported by this build of OpenMC");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  *mesh_id = model::meshes.back()->id_;
+
+  return 0;
+}
+
+
 //! Return the index in the meshes array of a mesh with a given ID
 extern "C" int
 openmc_get_mesh_index(int32_t id, int32_t* index)
@@ -1517,24 +1538,16 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 
 #ifdef DAGMC
 
-UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
-  // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
-      fatal_error("Invalid mesh type: " + temp);
-    }
-  }
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
+  initialize();
+}
 
-  // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "mesh_file")) {
-    filename_ = get_node_value(node, "mesh_file");
-  }
-  else {
-    fatal_error("No filename supplied for unstructured mesh with ID: " +
-                std::to_string(id_));
-  }
+UnstructuredMesh::UnstructuredMesh(const std::string& filename) {
+  filename_ = filename;
+  initialize();
+}
 
+void UnstructuredMesh::initialize() {
   // create MOAB instance
   mbi_ = std::shared_ptr<moab::Interface>(new moab::Core());
   // create meshset to load mesh into
@@ -1932,8 +1945,16 @@ UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
 
 #ifdef LIBMESH
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
+  initialize();
+}
 
-  // always 3 for unstructured meshes
+LibMesh::LibMesh(const std::string& filename) {
+  filename_ = filename;
+  initialize();
+}
+
+void LibMesh::initialize() {
+    // always 3 for unstructured meshes
   n_dimension_ = 3;
 
   m_ = std::unique_ptr<libMesh::Mesh>(new libMesh::Mesh(settings::LMI->comm(), 3));

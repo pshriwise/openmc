@@ -251,19 +251,25 @@ private:
 
 class UnstructuredMeshBase : public Mesh {
 public:
+  // constructors
+  UnstructuredMeshBase() {};
   UnstructuredMeshBase(pugi::xml_node node);
+  UnstructuredMeshBase(const std::string& filename);
+
   std::string filename_;
 };
 
 #ifdef DAGMC
 
-class UnstructuredMesh : public Mesh {
+class UnstructuredMesh : public UnstructuredMeshBase {
 
   typedef std::vector<std::pair<double, moab::EntityHandle>> UnstructuredMeshHits;
 
 public:
+  // Constructors
   UnstructuredMesh() { };
   UnstructuredMesh(pugi::xml_node node);
+  UnstructuredMesh(const std::string& filename);
 
   //! Determine which bins were crossed by a particle.
   //
@@ -279,17 +285,21 @@ public:
 
 private:
 
-//! Finds all intersections with faces of the mesh.
-//
-//! \param[in] start Staring location
-//! \param[in] dir Normalized particle direction
-//! \param[in] length of particle track
-//! \param[out] Mesh intersections
-void
-intersect_track(const moab::CartVect& start,
-                const moab::CartVect& dir,
-                double track_len,
-                UnstructuredMeshHits& hits) const;
+  //! Setup method for the mesh. Builds data structures,
+  //! element mapping, etc.
+  void initialize();
+
+  //! Finds all intersections with faces of the mesh.
+  //
+  //! \param[in] start Staring location
+  //! \param[in] dir Normalized particle direction
+  //! \param[in] length of particle track
+  //! \param[out] Mesh intersections
+  void
+  intersect_track(const moab::CartVect& start,
+                  const moab::CartVect& dir,
+                  double track_len,
+                  UnstructuredMeshHits& hits) const;
 
   //! Calculates the volume for a given tetrahedron handle.
   //
@@ -375,7 +385,7 @@ public:
 
   int n_surface_bins() const override;
 
-  std::string filename_; //<! Path to unstructured mesh file
+  //  std::string filename_; //<! Path to unstructured mesh file
 
 private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandles in the mesh
@@ -394,8 +404,9 @@ class LibMesh : public UnstructuredMeshBase {
   typedef std::vector<std::pair<double, const libMesh::Elem*>> UnstructuredMeshHits;
 
 public:
-  // Constructor
+  // Constructors
   LibMesh(pugi::xml_node node);
+  LibMesh(const std::string& filename);
 
   // Methods
 
@@ -435,6 +446,10 @@ public:
   void set_variable(const std::string& var_name, int bin, double value);
 
 private:
+
+  //! Setup method for the mesh. Builds data structures,
+  //! element mapping, etc.
+  void initialize();
 
   //! Translate a bin value to an element pointer
   const libMesh::Elem* get_element_from_bin(int bin) const;
