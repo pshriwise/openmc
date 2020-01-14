@@ -1404,19 +1404,33 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
 //! Adds a new unstructured mesh to OpenMC
 extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
                                             const char library[],
-                                            int* mesh_id)
+                                            int32_t* mesh_id)
 {
+  // NEED IFDEFs HERE
+  bool mesh_created = false;
+
+#ifdef DAGMC
   if (library == "moab") {
     model::meshes.push_back(std::move(std::make_unique<UnstructuredMesh>(filename)));
-  } else if (library == "libmesh") {
+    mesh_created = true;
+  }
+#endif
+
+#ifdef DAGMC
+  if (library == "libmesh") {
     model::meshes.push_back(std::move(std::make_unique<LibMesh>(filename)));
-  } else {
+    mesh_created = true;
+  }
+#endif
+
+  if (!mesh_created) {
     set_errmsg("Mesh library " + std::string(library) + \
                "is not supported by this build of OpenMC");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  int id = 0;
+  // set and return the newly-created mesh id
+  int32_t id = 0;
   for (const auto& m : model::meshes) { id = std::max(m->id_, id); }
 
   id += 1;
