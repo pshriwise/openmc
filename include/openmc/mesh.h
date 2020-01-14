@@ -66,7 +66,10 @@ public:
   //! \param[in] p Particle to check
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+  virtual void bins_crossed(const Position& last_r,
+                            const Position& r,
+                            const Direction& u,
+                            std::vector<int>& bins,
                             std::vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
@@ -143,8 +146,10 @@ public:
   RegularMesh(pugi::xml_node node);
 
   // Overriden methods
-
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(const Position& r,
+                    const Position& last_r,
+                    const Position& u,
+                    std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
   void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
@@ -209,7 +214,10 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(const Position& last_r,
+                    const Position& r,
+                    const Direction& u,
+                    std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
   void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
@@ -276,8 +284,11 @@ public:
   //! \param[in] p Particle to check
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
-                    std::vector<double>& lengths) const;
+  void bins_crossed(const Position& last_r,
+                    const Position& r,
+                    const Direction& u,
+                    std::vector<int>& bins,
+                    std::vector<double>& lengths) const override;
 
 
   bool intersects(Position& r0, Position r1, int* ijk);
@@ -411,9 +422,11 @@ public:
   // Methods
 
   // standard mesh functions
-  void bins_crossed(const Particle* p,
+  void bins_crossed(const Position& last_r,
+                    const Position& r,
+                    const Direction& u,
                     std::vector<int>& bins,
-                    std::vector<double>& lengths) const;
+                    std::vector<double>& lengths) const override;
 
   int get_bin(Position r) const;
 

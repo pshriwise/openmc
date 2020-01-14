@@ -492,16 +492,14 @@ bool RegularMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+void RegularMesh::bins_crossed(const Position& r,
+                               const Position& last_r,
+                               const Direction& u,
+                               std::vector<int>& bins,
                                std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p->r_last_};
-  Position r {p->r()};
-  Direction u {p->u()};
 
   // Compute the length of the entire track.
   double total_distance = (r - last_r).norm();
@@ -880,16 +878,14 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
-void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+void RectilinearMesh::bins_crossed(const Position& last_r,
+                                   const Position& r,
+                                   const Direction& u,
+                                   std::vector<int>& bins,
                                    std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p->r_last_};
-  Position r {p->r()};
-  Direction u {p->u()};
 
   // Compute the length of the entire track.
   double total_distance = (r - last_r).norm();
@@ -1401,30 +1397,32 @@ openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
   return 0;
 }
 
+extern "C" int openmc_capi_test() { return 1; }
+
 //! Adds a new unstructured mesh to OpenMC
-extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
-                                            const char library[],
-                                            int32_t* mesh_id)
+extern "C" int openmc_add_umesh(const char* filename,
+                                const char* library,
+                                int32_t* mesh_id)
 {
-  // NEED IFDEFs HERE
   bool mesh_created = false;
+  std::string lib(library);
 
 #ifdef DAGMC
-  if (library == "moab") {
+  if (lib == "moab") {
     model::meshes.push_back(std::move(std::make_unique<UnstructuredMesh>(filename)));
     mesh_created = true;
   }
 #endif
 
-#ifdef DAGMC
-  if (library == "libmesh") {
+#ifdef LIBMESH
+  if (lib == "libmesh") {
     model::meshes.push_back(std::move(std::make_unique<LibMesh>(filename)));
     mesh_created = true;
   }
 #endif
 
   if (!mesh_created) {
-    set_errmsg("Mesh library " + std::string(library) + \
+    set_errmsg("Mesh library " + lib + \
                "is not supported by this build of OpenMC");
     return OPENMC_E_INVALID_ARGUMENT;
   }
@@ -1435,11 +1433,12 @@ extern "C" int openmc_add_unstrucutred_mesh(const char filename[],
 
   id += 1;
   model::meshes.back()->id_ = id;
+  model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+
   *mesh_id = id;
 
   return 0;
 }
-
 
 //! Return the index in the meshes array of a mesh with a given ID
 extern "C" int
@@ -1674,14 +1673,13 @@ UnstructuredMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-UnstructuredMesh::bins_crossed(const Particle* p,
+UnstructuredMesh::bins_crossed(const Position& last_r,
+                               const Position& r,
+                               const Direction& u,
                                std::vector<int>& bins,
                                std::vector<double>& lengths) const {
   moab::ErrorCode rval;
-  Position last_r{p->r_last_};
-  Position r{p->r()};
-  Position u{p->u()};
-  u /= u.norm();
+  //  u /= u.norm();
   moab::CartVect r0(last_r.x, last_r.y, last_r.z);
   moab::CartVect r1(r.x, r.y, r.z);
   moab::CartVect dir(u.x, u.y, u.z);
@@ -2096,14 +2094,16 @@ void LibMesh::write(const std::string& filename) const {
 
 
 void
-LibMesh::bins_crossed(const Particle* p,
+LibMesh::bins_crossed(const Position& last_r,
+                      const Position& r,
+                      const Direction& u,
                       std::vector<int>& bins,
                       std::vector<double>& lengths) const
 {
   // get element containing previous position
-  libMesh::Point start(p->r_last_.x, p->r_last_.y, p->r_last_.z);
-  libMesh::Point end(p->r().x, p->r().y, p->r().z);
-  libMesh::Point dir(p->u().x, p->u().y, p->u().z);
+  libMesh::Point start(last_r.x, last_r.y, last_r.z);
+  libMesh::Point end(r.x, r.y, r.z);
+  libMesh::Point dir(u.x, u.y, u.z);
   dir /= dir.norm();
 
   double track_len = (end - start).norm();

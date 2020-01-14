@@ -34,21 +34,27 @@ void
 MeshFilter::get_all_bins(const Particle* p, int estimator, FilterMatch& match)
 const
 {
+  Position last_r = p->r_last_;
+  Position r = p->r();
+
+  // apply translation if present
+  if (translated_) {
+    last_r -= translation_;
+    r -= translation_;
+  }
+
   if (estimator != ESTIMATOR_TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p->r());
+    auto bin = model::meshes[mesh_]->get_bin(r);
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
     }
   } else {
-    model::meshes[mesh_]->bins_crossed(p, match.bins_, match.weights_);
+    Direction u = p->u();
+    model::meshes[mesh_]->bins_crossed(last_r, r, u, match.bins_, match.weights_);
   }
 
   double total = std::accumulate(match.weights_.begin(), match.weights_.end(), 0.0);
-  // if ( fabs(1.0 - total) > FP_PRECISION) {
-  //   std::cout << "Total weight for score < 1.0 (" << total << ")" << std::endl;
-  // }
-
 }
 
 void
