@@ -2190,6 +2190,7 @@ void LibMesh::initialize() {
     point_locators_[i] = m_->sub_point_locator();
     point_locators_[i]->set_contains_point_tol(FP_COINCIDENT);
     point_locators_[i]->enable_out_of_mesh_mode();
+    point_locators_[i]->set_close_to_point_tol(FP_COINCIDENT);
   }
 
   first_element_ = *m_->elements_begin();

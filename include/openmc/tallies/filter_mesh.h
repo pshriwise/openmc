@@ -43,12 +43,20 @@ public:
 
   virtual void set_mesh(int32_t mesh);
 
+  virtual void set_translation(const Position& translation);
+
+  virtual void set_translation(const double translation[3]);
+
+  virtual Position& translation() {return translation_;}
+
+  virtual bool& translated() {return translated_;}
+
 protected:
   //----------------------------------------------------------------------------
   // Data members
 
   int32_t mesh_;
-  bool translated_;
+  bool translated_ {false};
   Position translation_ {0.0, 0.0, 0.0};
 };
 
