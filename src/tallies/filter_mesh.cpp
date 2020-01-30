@@ -83,6 +83,18 @@ MeshFilter::set_mesh(int32_t mesh)
   n_bins_ = model::meshes[mesh_]->n_bins();
 }
 
+void MeshFilter::set_translation(const Position& translation)
+{
+  translated_ = true;
+  translation_ = translation;
+}
+
+void MeshFilter::set_translation(const double translation[3])
+{
+  translated_ = true;
+  translation_ = translation;
+}
+
 //==============================================================================
 // C-API functions
 //==============================================================================
@@ -132,6 +144,28 @@ openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 
   // Update the filter.
   filt->set_mesh(index_mesh);
+  return 0;
+}
+
+extern "C" int
+openmc_mesh_filter_set_translation(int32_t index, double translation[3])
+{
+  // Make sure this is a valid index to an allocated filter
+  if (int err = verify_filter(index)) return err;
+
+  // Get a pointer to the filter and downcast.
+  const auto& filt_base = model::tally_filters[index].get();
+  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
+
+  // Check the filter type
+  if (!filt) {
+    set_errmsg("Tried to set mesh on a non-mesh filter.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  // Set the translation
+  filt->set_translation(translation);
+
   return 0;
 }
 
