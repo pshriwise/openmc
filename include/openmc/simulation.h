@@ -97,6 +97,13 @@ void transport_history_based_single_particle(Particle& p);
 //! Simulate all particle histories using history-based parallelism
 void transport_history_based();
 
+//! Simulate a single particle history (and all generated secondary particles,
+//!  if enabled), from birth to death using delta tracking
+void transport_delta_tracking_single_particle(Particle& p);
+
+//! Simulate all particle histories using delta tracking
+void transport_delta_tracking();
+
 //! Simulate all particle histories using event-based parallelism
 void transport_event_based();
 
