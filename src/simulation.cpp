@@ -707,7 +707,16 @@ void transport_history_based()
 }
 
 void transport_delta_tracking_single_particle(Particle& p) {
-  p.delta_transport();
+  while (true) {
+    p.event_delta_advance();
+    p.event_calculate_xs();
+    if (prn(p.current_seed()) < p.macro_xs_.total / model::neutron_majorant) {
+      p.event_collide();
+    }
+    p.event_revive_from_secondary();
+    if (!p.alive_)
+      break;
+  }
 }
 
 void transport_delta_tracking() {

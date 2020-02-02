@@ -56,12 +56,11 @@ public:
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
+  void event_delta_advance();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
-
-  void delta_transport();
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();

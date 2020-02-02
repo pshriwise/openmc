@@ -186,7 +186,31 @@ void Particle::event_advance()
   }
 }
 
-void Particle::event_cross_surface()
+void
+Particle::event_delta_advance() {
+  double distance;
+  // sample distance to next position
+  if (type_ == Particle::Type::electron ||
+      type_ == Particle::Type::positron) {
+    distance = 0.0;
+  } else {
+    distance = -std::log(prn(this->current_seed())) / model::neutron_majorant;
+  }
+
+  // Advance particle
+  for (int j = 0; j < n_coord_; ++j) {
+    coord_[j].r += distance * coord_[j].u;
+  }
+
+  // Score track-length estimate of k-eff
+  if (settings::run_mode == RunMode::EIGENVALUE &&
+      type_ == Particle::Type::neutron) {
+    keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
+  }
+}
+
+void
+Particle::event_cross_surface()
 {
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface_index;
