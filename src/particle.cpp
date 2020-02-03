@@ -105,11 +105,14 @@ void Particle::event_calculate_xs()
   if (coord(n_coord() - 1).cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       if (!delta_tracking_) {
-      mark_as_lost(
-        "Could not find the cell containing particle " + std::to_string(id()));
+        alive() = false;
+        return;
+      } else {
+        mark_as_lost("Could not find the cell containing particle " + std::to_string(id()));
       }
-      return;
     }
+    return;
+  }
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
@@ -329,7 +332,7 @@ void Particle::event_revive_from_secondary()
   if (n_event() == MAX_EVENTS) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
-    if (!delta_tracking_) { alive() = false; }
+    alive() = false;
   }
 
   // Check for secondary particles if this particle is dead
