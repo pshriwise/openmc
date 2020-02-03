@@ -708,6 +708,7 @@ void transport_history_based()
 }
 
 void transport_delta_tracking_single_particle(Particle& p) {
+  p.delta_tracking_ = true;
   while (true) {
     p.event_delta_advance();
     p.event_calculate_xs();
@@ -718,6 +719,7 @@ void transport_delta_tracking_single_particle(Particle& p) {
     if (!p.alive_)
       break;
   }
+  p.event_death();
 }
 
 void transport_delta_tracking() {

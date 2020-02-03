@@ -104,8 +104,10 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (coord(n_coord() - 1).cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
+      if (!delta_tracking_) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
+      }
       return;
     }
 
@@ -206,6 +208,11 @@ Particle::event_delta_advance() {
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
+  }
+
+    // Score flux derivative accumulators for differential tallies.
+  if (!model::active_tallies.empty()) {
+    score_track_derivative(this, distance);
   }
 }
 
@@ -322,7 +329,7 @@ void Particle::event_revive_from_secondary()
   if (n_event() == MAX_EVENTS) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
-    alive() = false;
+    if (!delta_tracking_) { alive() = false; }
   }
 
   // Check for secondary particles if this particle is dead
