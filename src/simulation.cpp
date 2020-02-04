@@ -709,9 +709,12 @@ void transport_history_based()
 
 void transport_delta_tracking_single_particle(Particle& p) {
   p.delta_tracking_ = true;
+
   while (true) {
     p.event_delta_advance();
     p.event_calculate_xs();
+    if (!p.alive_)
+      break;
     if (prn(p.current_seed()) < p.macro_xs_.total / model::neutron_majorant) {
       p.event_collide();
     }
@@ -723,7 +726,7 @@ void transport_delta_tracking_single_particle(Particle& p) {
 }
 
 void transport_delta_tracking() {
-    #pragma omp parallel for schedule(runtime)
+  #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_history(&p, i_work);
