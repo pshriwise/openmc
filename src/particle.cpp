@@ -250,6 +250,8 @@ Particle::event_delta_advance() {
   if (type_ == Particle::Type::electron ||
       type_ == Particle::Type::positron) {
     distance = 0.0;
+  } else if (macro_xs_.total == 0.0) {
+    distance = INFINITY;
   } else {
     distance = -std::log(prn(this->current_seed())) / model::neutron_majorant;
   }
@@ -378,7 +380,7 @@ Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event_;
-  if (n_event_ == MAX_EVENTS) {
+  if (n_event_ == MAX_EVENTS && !delta_tracking_) {
     warning("Particle " + std::to_string(id_) +
       " underwent maximum number of events.");
     alive_ = false;
@@ -386,7 +388,6 @@ Particle::event_revive_from_secondary()
 
   // Check for secondary particles if this particle is dead
   if (!alive_) {
-    // If no secondary particles, break out of event loop
     if (secondary_bank_.empty()) return;
 
     this->from_source(&secondary_bank_.back());
