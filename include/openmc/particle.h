@@ -220,8 +220,6 @@ public:
   #endif
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
-  bool delta_tracking_{false}; // !< Flag to indicate whether or not delta tracking is active
->>>>>>> Addging delta tracking flag to particle class.
 };
 
 //============================================================================

@@ -214,7 +214,7 @@ int openmc_next_batch(int* status)
       transport_event_based();
     } else {
       transport_delta_tracking();
-      //      transport_history_based();
+      //transport_history_based();
     }
 
     // Accumulate time for transport
@@ -709,7 +709,6 @@ void transport_history_based()
 
 void transport_delta_tracking_single_particle(Particle& p) {
   p.delta_tracking_ = true;
-
   while (true) {
     p.event_delta_advance();
     p.event_calculate_xs();

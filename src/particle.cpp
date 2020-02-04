@@ -198,8 +198,6 @@ Particle::event_delta_advance() {
   if (type_ == Particle::Type::electron ||
       type_ == Particle::Type::positron) {
     distance = 0.0;
-  } else if (macro_xs_.total == 0.0) {
-    distance = INFINITY;
   } else {
     distance = -std::log(prn(this->current_seed())) / model::neutron_majorant;
   }
