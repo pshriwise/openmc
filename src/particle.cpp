@@ -280,6 +280,8 @@ Particle::event_delta_advance() {
   if (type_ == Particle::Type::electron ||
       type_ == Particle::Type::positron) {
     distance = 0.0;
+  } else if (macro_xs_.total == 0.0) {
+    distance = INFINITY;
   } else {
     distance = -std::log(prn(this->current_seed())) / model::neutron_majorant;
   }
@@ -431,7 +433,7 @@ void Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event();
-  if (n_event() == settings::max_particle_events) {
+  if (n_event() == settings::max_particle_events && !delta_tracking_) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     alive() = false;
