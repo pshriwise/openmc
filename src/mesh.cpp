@@ -1978,7 +1978,7 @@ void LibMesh::initialize() {
   point_locators_ = std::vector<std::unique_ptr<libMesh::PointLocatorBase>>(n_threads);
   for (int i = 0; i < n_threads; i++) {
     point_locators_[i] = m_->sub_point_locator();
-    point_locators_[i]->set_find_element_tol(FP_COINCIDENT);
+    point_locators_[i]->set_contains_point_tol(FP_COINCIDENT);
     point_locators_[i]->enable_out_of_mesh_mode();
   }
 
