@@ -96,12 +96,6 @@ public:
   //! \param[in] group HDF5 group
   virtual void to_hdf5(hid_t group) const = 0;
 
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  virtual xt::xarray<double>
-  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
-
   //! Find the mesh lines that intersect an axis-aligned slice plot
   //
   //! \param[in] plot_ll The lower-left coordinates of the slice plot.
@@ -205,9 +199,18 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
-    bool* outside) const;
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
+                                     int64_t length,
+                                     bool* outside) const;
 
+<<<<<<< HEAD
+=======
+  //! Write mesh data to an HDF5 group
+  //
+  //! \param[in] group HDF5 group
+  // void to_hdf5(hid_t group) const;
+
+>>>>>>> Removing call to set LibMesh threads and updating call for setting point containment tolerance.
   // Data members
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
@@ -274,6 +277,8 @@ public:
   UnstructuredMeshBase() {};
   UnstructuredMeshBase(pugi::xml_node node);
   UnstructuredMeshBase(const std::string& filename);
+
+  std::string bin_label(int bin) const override;
 
   std::string filename_;
 };
