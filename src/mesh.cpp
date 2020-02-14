@@ -107,6 +107,36 @@ StructuredMesh::bin_label(int bin) const {
 }
 
 //==============================================================================
+// Untructured Mesh implementation
+//==============================================================================
+
+UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
+  // check the mesh type
+  if (check_for_node(node, "type")) {
+    auto temp = get_node_value(node, "type", true, true);
+    if (temp != "unstructured") {
+      fatal_error("Invalid mesh type: " + temp);
+    }
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (check_for_node(node, "mesh_file")) {
+    filename_ = get_node_value(node, "mesh_file");
+  }
+  else {
+    fatal_error("No filename supplied for unstructured mesh with ID: " +
+                std::to_string(id_));
+  }
+}
+
+std::string
+UnstructuredMeshBase::bin_label(int bin) const {
+  std::stringstream out;
+  out << "Mesh Index (" << bin << ")";
+  return out.str();
+};
+
+//==============================================================================
 // RegularMesh implementation
 //==============================================================================
 
@@ -817,11 +847,12 @@ void RegularMesh::to_hdf5(hid_t group) const
 }
 
 xt::xtensor<double, 1>
-RegularMesh::count_sites(const Particle::Bank* bank, int64_t length,
+RegularMesh::count_sites(const Particle::Bank* bank,
+                         int64_t length,
                          bool* outside) const
 {
   // Determine shape of array for counts
-  std::size_t m = num_bins();
+  std::size_t m = n_bins();
   std::vector<std::size_t> shape = {m};
 
   // Create array of zeros
@@ -1839,12 +1870,6 @@ void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>&
   return;
 }
 
-std::string UnstructuredMesh::get_label_for_bin(int bin) const {
-  std::stringstream out;
-  out << "MOAB EntityHandle: " << get_ent_handle_from_bin(bin);
-  return out.str();
-}
-
 int
 UnstructuredMesh::get_bin(Position r) const {
   moab::EntityHandle tet = get_tet(r);
@@ -2030,13 +2055,6 @@ UnstructuredMesh::centroid(moab::EntityHandle tet) const {
   return {centroid[0], centroid[1], centroid[2]};
 }
 
-std::string
-UnstructuredMesh::bin_label(int bin) const {
-  std::stringstream out;
-  out << "Mesh Index (" << bin << ")";
-  return out.str();
-};
-
 std::pair<moab::Tag, moab::Tag>
 UnstructuredMesh::get_score_tags(std::string score) const {
   moab::ErrorCode rval;
@@ -2133,42 +2151,10 @@ UnstructuredMesh::write(std::string base_filename) const {
     msg << "Failed to write unstructured mesh " << id_;
     warning(msg);
   }
-
-xt::xarray<double>
-UnstructuredMesh::count_sites(const std::vector<Particle::Bank>& bank,
-  bool* outside) const {
-    xt::array<double> out;
-    return out;
-  }
-
-double UnstructuredMesh::get_volume_frac(int bin = -1) const {
-=======
-double UnstructuredMesh::get_volume_frac(int bin) const {
->>>>>>> Using a common count_sites implementation.
-  return 0.0;
-
 }
 
 #endif
 
-UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
-    // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != "unstructured") {
-      fatal_error("Invalid mesh type: " + temp);
-    }
-  }
-
-  // get the filename of the unstructured mesh to load
-  if (check_for_node(node, "mesh_file")) {
-    filename_ = get_node_value(node, "mesh_file");
-  }
-  else {
-    fatal_error("No filename supplied for unstructured mesh with ID: " +
-                std::to_string(id_));
-  }
-}
 
 #ifdef LIBMESH
 LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
@@ -2200,7 +2186,7 @@ void LibMesh::initialize() {
   point_locators_ = std::vector<std::unique_ptr<libMesh::PointLocatorBase>>(n_threads);
   for (int i = 0; i < n_threads; i++) {
     point_locators_[i] = m_->sub_point_locator();
-    point_locators_[i]->set_find_element_tol(FP_COINCIDENT);
+    point_locators_[i]->set_contains_point_tol(FP_COINCIDENT);
     point_locators_[i]->enable_out_of_mesh_mode();
   }
 

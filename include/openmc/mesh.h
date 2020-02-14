@@ -96,12 +96,6 @@ public:
   //! \param[in] group HDF5 group
   virtual void to_hdf5(hid_t group) const = 0;
 
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  virtual xt::xarray<double>
-  count_sites(const std::vector<Particle::Bank>& bank, bool* outside) const;
-
   //! Find the mesh lines that intersect an axis-aligned slice plot
   //
   //! \param[in] plot_ll The lower-left coordinates of the slice plot.
@@ -207,21 +201,14 @@ public:
   //! \param[in] bank Array of bank sites
   //! \param[out] Whether any bank sites are outside the mesh
   //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank, int64_t length,
-    bool* outside) const;
+  xt::xtensor<double, 1> count_sites(const Particle::Bank* bank,
+                                     int64_t length,
+                                     bool* outside) const;
 
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
   // void to_hdf5(hid_t group) const;
-
-  // std::string get_label_for_bin(int bin) const;
-
-  //std::string get_label_for_bin(int bin) const;
-
-  //double get_volume_frac(int bin = -1) const;
-
-  int num_bins() const;
 
   // Data members
   double volume_frac_; //!< Volume fraction of each mesh element
@@ -290,6 +277,8 @@ public:
   UnstructuredMeshBase(pugi::xml_node node);
   UnstructuredMeshBase(const std::string& filename);
 
+  std::string bin_label(int bin) const override;
+
   std::string filename_;
 };
 
@@ -316,14 +305,7 @@ public:
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
-  //! Determine which surface bins were crossed by a particle
-  //
-  //! \param[in] p Particle to check
-  //! \param[out] bins Surface bins that were crossed
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
-
   bool point_in_tet(const Position& r, moab::EntityHandle tet) const;
-
 
 private:
 
@@ -427,15 +409,11 @@ public:
   //! \return Mesh bin
   int get_bin(Position r) const;
 
-  std::string get_label_for_bin(int bin) const;
-
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
   Position centroid(moab::EntityHandle tet) const;
-
-  std::string bin_label(int bin) const override;
 
   //! Add a score to the mesh instance
   void add_score(std::string score) const;
@@ -448,10 +426,6 @@ public:
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
   std::string filename_; //<! Path to unstructured mesh file
-
-  std::string get_label_for_bin(int bin) const;
-
-  double get_volume_frac(int bin = -1) const;
 
 private:
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
