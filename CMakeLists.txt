@@ -35,7 +35,6 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED)
-  link_directories(${DAGMC_LIBRARY_DIRS})
 endif()
 
 #===============================================================================
@@ -330,8 +329,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc ${DAGMC_LIBRARIES})
-  target_include_directories(libopenmc PRIVATE ${DAGMC_INCLUDE_DIRS})
+  target_link_libraries(libopenmc dagmc-shared pyne_dagmc-shared uwuw-shared)
 endif()
 
 #===============================================================================
