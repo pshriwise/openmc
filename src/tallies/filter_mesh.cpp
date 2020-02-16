@@ -33,8 +33,16 @@ void
 MeshFilter::get_all_bins(const Particle* p, TallyEstimator estimator, FilterMatch& match)
 const
 {
+  Position last_r = p->r_last_;
+  Position r = p->r();
+
+  // apply translation if present
+  if (translated_) {
+    last_r -= translation_;
+    r -= translation_;
+  }
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(p->r());
+    auto bin = model::meshes[mesh_]->get_bin(r);
     if (bin >= 0) {
       match.bins_.push_back(bin);
       match.weights_.push_back(1.0);
