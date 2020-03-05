@@ -902,7 +902,7 @@ RegularMesh::count_sites(const Particle::Bank* bank,
   return counts;
 }
 
-std::string RegularMesh::get_label_for_bin(int bin) const {
+std::string RegularMesh::bin_label(int bin) const {
   int ijk[n_dimension_];
   get_indices_from_bin(bin, ijk);
 
@@ -913,10 +913,6 @@ std::string RegularMesh::get_label_for_bin(int bin) const {
   out << ")";
 
   return out.str();
-}
-
-double RegularMesh::get_volume_frac(int bin) const {
-  return volume_frac_;
 }
 
 //==============================================================================
@@ -1800,16 +1796,16 @@ UnstructuredMesh::bins_crossed(const Particle* p,
     auto tet = get_tet(segment_midpoint);
     if (tet) {
       bins.push_back(get_bin_from_ent_handle(tet));
-      lengths.push_back((hit.first - last_dist) / track_len);
+      lengths.push_back((hit->first - last_dist) / track_len);
     } else {
       // if in the loop, we should always find a tet
       warning("No tet found for location between trianle hits");
     }
-    last_dist = hit.first;
+    last_dist = hit->first;
 
     // find next tet
     moab::Range adj_tets;
-    rval = mbi_->get_adjacencies(&hit.second, 1, 3, false, adj_tets);
+    rval = mbi_->get_adjacencies(&hit->second, 1, 3, false, adj_tets);
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get triangle adjacencies from mesh " + filename_);
     }
@@ -2320,7 +2316,7 @@ LibMesh::bins_crossed(const Particle* p,
   lengths.clear();
 
   for (const auto& hit : hits) {
-    lengths.push_back(hit.first / track_len);
+    lengths.push_back(hit->first / track_len);
     bins.push_back(get_bin_from_element(hit.second));
   }
 }
