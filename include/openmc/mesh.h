@@ -177,6 +177,8 @@ public:
 
   int n_bins() const override;
 
+  std::string bin_label(int bin) const override;
+
   int n_surface_bins() const override;
 
   std::pair<std::vector<double>, std::vector<double>>
