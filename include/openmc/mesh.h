@@ -211,6 +211,10 @@ public:
 
   double negative_grid_boundary(int* ijk, int i) const override;
 
+  std::string bin_label(int bin) const override;
+
+  int n_surface_bins() const override;
+
   std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const override;
 
@@ -227,14 +231,6 @@ public:
                                      int64_t length,
                                      bool* outside) const;
 
-<<<<<<< HEAD
-=======
-  //! Write mesh data to an HDF5 group
-  //
-  //! \param[in] group HDF5 group
-  // void to_hdf5(hid_t group) const;
-
->>>>>>> Removing call to set LibMesh threads and updating call for setting point containment tolerance.
   // Data members
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
