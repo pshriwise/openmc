@@ -213,8 +213,8 @@ int openmc_next_batch(int* status)
     if (settings::event_based) {
       transport_event_based();
     } else {
-      transport_delta_tracking();
-      //transport_history_based();
+      //transport_delta_tracking();
+      transport_history_based();
     }
 
     // Accumulate time for transport
