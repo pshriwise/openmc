@@ -18,6 +18,7 @@
 #include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
