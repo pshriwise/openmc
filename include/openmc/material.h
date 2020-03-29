@@ -202,16 +202,6 @@ private:
   double temperature_ {-1};
 };
 
-class Majorant
-{
-  struct EnergyGrid {
-    std::vector<int> grid_index;
-    std::vector<double> energy;
-  };
-
-  std::vector<double> xs_;
-};
-
 void set_majorant_xs();
 
 //==============================================================================
