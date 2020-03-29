@@ -38,7 +38,6 @@ namespace openmc {
 namespace model {
 
 double neutron_majorant;
-Majorant n_majorant;
 
 std::unordered_map<int32_t, int32_t> material_map;
 std::vector<std::unique_ptr<Material>> materials;
