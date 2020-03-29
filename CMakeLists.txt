@@ -355,6 +355,7 @@ list(APPEND libopenmc_SOURCES
   src/hdf5_interface.cpp
   src/initialize.cpp
   src/lattice.cpp
+  src/majorant.cpp
   src/material.cpp
   src/math_functions.cpp
   src/mcpl_interface.cpp
