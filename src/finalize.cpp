@@ -141,7 +141,7 @@ int openmc_finalize()
 #endif
 
 #ifdef LIBMESH
-  delete settings::LMI;
+std::unique_ptr<libMesh::LibMeshInit> LMI;
 #endif
 
   return 0;

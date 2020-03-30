@@ -2178,8 +2178,7 @@ void LibMesh::initialize() {
 
   eq_system_name_ = "mesh_" + std::to_string(id_) + "_system";
 
-  equation_systems_ =
-    std::unique_ptr<libMesh::EquationSystems>(new libMesh::EquationSystems(*m_));
+  equation_systems_ = std::make_unique<libMesh::EquationSystems>(*m_);
   libMesh::ExplicitSystem& eq_sys =
     equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 
@@ -2289,7 +2288,6 @@ void LibMesh::write(const std::string& filename) const {
   std::set<std::string> systems_out = {eq_system_name_};
   exo.write_discontinuous_exodusII(filename, *equation_systems_, &systems_out);
 }
-
 
 void
 LibMesh::bins_crossed(const Particle* p,
