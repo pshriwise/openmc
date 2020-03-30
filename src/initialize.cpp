@@ -108,6 +108,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Read XML input files
   read_input_xml();
 
+  majorant_test();
+
   // Check for particle restart run
   if (settings::particle_restart_run)
     settings::run_mode = RunMode::PARTICLE;
