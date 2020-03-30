@@ -81,6 +81,7 @@ class Majorant {
                 std::pair<double, double> p2,
                 std::pair<double, double> p3);
 
+  void majorant_test();
 }
 
 #endif // OPENMC_MAJORANT_H
