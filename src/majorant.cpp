@@ -6,21 +6,33 @@
 #include "openmc/majorant.h"
 #include "openmc/nuclide.h"
 
+#include "xtensor/xview.hpp"
+
 namespace openmc {
 
   void majorant_test() {
-
-    std::vector<double> e1 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
-    std::vector<double> xs1 = {1.0, 1.0, 3.0, 3.0, 1.0, 3.0, 3.0};
-
-    std::vector<double> e2 = {1.25, 1.5, 1.75, 2.75, 2.9, 3.5, 4.0, 5.5, 6.5, 7.0};
-    std::vector<double> xs2 = {0.0, 0.0, 2.0, 2.0, 4.0, 4.0, 2.0, 2.0, 2.0, 3.0};
-
     // create a majorant XS
     Majorant majorant;
 
-    majorant.update(e1, xs1);
-    majorant.update(e2, xs2);
+    for (const auto& nuclide : data::nuclides) {
+      std::cout << "Temperatures: " << nuclide->kTs_.size() << std::endl;
+      for (int t = 0; t < nuclide->kTs_.size(); t++) {
+        auto total = xt::view(nuclide->xs_[t], xt::all(), 0);
+        std::vector<double> xs;
+        for (auto val : total) { xs.push_back(val); }
+        auto energies = nuclide->grid_[t].energy;
+        std::cout << energies.size() << std::endl;
+        std::cout << xs.size() << std::endl;
+        majorant.update(energies, xs);
+
+        // write nuclide to file
+        std::ofstream of(nuclide->name_ + ".txt");
+        for (int i = 0; i < energies.size(); i++) {
+          of << energies[i] << "\t" << xs[i] << "\n";
+        }
+        of.close();
+      }
+    }
 
     majorant.write_ascii();
   }
@@ -42,7 +54,7 @@ namespace openmc {
 
     double t = numerator / denominator;
 
-    if (t < 0.0 and t > 1.0) { return false; }
+    if (t < 0.0 || t > 1.0) { return false; }
 
     double x = p1.first + (p2.first - p1.first) * t;
     double m = (p2.second - p1.second) / (p2.first - p1.first);
@@ -113,7 +125,7 @@ namespace openmc {
       std::swap(current_xs, other_xs);
 
     // add the first point to the final cross section
-    e_out.push_back(current_xs.get_xs());
+    e_out.push_back(current_xs.get_e());
     xs_out.push_back(current_xs.get_xs());
     current_xs++;
 
@@ -171,7 +183,7 @@ namespace openmc {
         auto p4 = other_next;
 
         std::pair<double, double> intersection;
-        auto intersection_found= intersect_2D(p1, p2, p3, p4, intersection);
+        auto intersection_found = intersect_2D(p1, p2, p3, p4, intersection);
 
         if (intersection_found) {
           e_out.push_back(intersection.first);
@@ -182,7 +194,7 @@ namespace openmc {
           xs_out.push_back(current_next.second);
         }
       // Case 3
-      } else if (below and nearer){
+      } else if (below and nearer) {
         // compute the y value
         double slope = (current_next.second - last_pnt.second) /
                        (current_next.first - last_pnt.first);
@@ -203,8 +215,6 @@ namespace openmc {
 
     // one or both of the cross sections should be complete
     Expects(xs_a.complete() || xs_b.complete());
-
-
 
     // remove any superfluous points
     std::sort(mask.begin(), mask.end(), std::greater<double>());
