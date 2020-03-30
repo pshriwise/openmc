@@ -125,6 +125,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Write some initial output under the header if needed
   initial_output();
 
+  majorant_test();
+
   // Check for particle restart run
   if (settings::particle_restart_run)
     settings::run_mode = RunMode::PARTICLE;
