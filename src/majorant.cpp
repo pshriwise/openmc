@@ -1,11 +1,29 @@
 
 #include <fstream>
+#include <iomanip>
 
 #include "openmc/constants.h"
 #include "openmc/majorant.h"
 #include "openmc/nuclide.h"
 
 namespace openmc {
+
+  void majorant_test() {
+
+    std::vector<double> e1 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    std::vector<double> xs1 = {1.0, 1.0, 3.0, 3.0, 1.0, 3.0, 3.0};
+
+    std::vector<double> e2 = {1.25, 1.5, 1.75, 2.75, 2.9, 3.5, 4.0, 5.5, 6.5, 7.0};
+    std::vector<double> xs2 = {0.0, 0.0, 2.0, 2.0, 4.0, 4.0, 2.0, 2.0, 2.0, 3.0};
+
+    // create a majorant XS
+    Majorant majorant;
+
+    majorant.update(e1, xs1);
+    majorant.update(e2, xs2);
+
+    majorant.write_ascii();
+  }
 
   bool intersect_2D(std::pair<double, double> p1,
                     std::pair<double, double> p2,
@@ -54,7 +72,7 @@ namespace openmc {
     std::ofstream of("majorant.txt");
 
     for (int i = 0; i < xs_.size(); i++) {
-      of << e_[i] << "\t" << xs_[i];
+      of << std::setprecision(8) << e_[i] << "\t" << xs_[i] << "\n";
     }
 
     of.close();
@@ -65,6 +83,15 @@ namespace openmc {
 
     XS xs_a(e_, xs_);
     XS xs_b(energy_other, xs_other);
+
+    // early exit checks
+    if (xs_b.complete()) { return; }
+
+    if (xs_a.complete()) {
+      e_ = energy_other;
+      xs_ = xs_other;
+      return;
+    }
 
     // resulting output of this algorithm
     std::vector<double> e_out, xs_out;
@@ -87,7 +114,7 @@ namespace openmc {
 
     // add the first point to the final cross section
     e_out.push_back(current_xs.get_xs());
-    xs_out.push_back(other_xs.get_xs());
+    xs_out.push_back(current_xs.get_xs());
     current_xs++;
 
     // start looping over values
@@ -177,7 +204,10 @@ namespace openmc {
     // one or both of the cross sections should be complete
     Expects(xs_a.complete() || xs_b.complete());
 
+
+
     // remove any superfluous points
+    std::sort(mask.begin(), mask.end(), std::greater<double>());
     for (auto idx : mask) {
       e_out.erase(e_out.begin() + idx);
       xs_out.erase(xs_out.begin() + idx);
@@ -219,7 +249,7 @@ namespace openmc {
 
   void Majorant::XS::advance(double energy) {
     double e = energies_[idx_];
-    while (e <= energy && !this->complete()) { idx_++; }
+    while (e <= energy && !this->complete()) { e = energies_[++idx_]; }
   }
 
   bool Majorant::XS::complete() const { return idx_ >= energies_.size(); }
