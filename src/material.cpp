@@ -1300,13 +1300,6 @@ void set_majorant_xs() {
 
   int neutron = static_cast<int>(Particle::Type::neutron);
 
-  for (const auto& n : data::nuclides) {
-    std::cout << "XS Size: "  << n->xs_.size() << std::endl;
-    for (const auto& e : n->xs_) {
-      std::cout << "\tE group size: " << e.size() << std::endl;
-    }
-  }
-
   // dummy particle
   Particle p {};
 
