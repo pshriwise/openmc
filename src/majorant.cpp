@@ -1,6 +1,5 @@
 
 #include <fstream>
-#include <iomanip>
 
 #include "openmc/constants.h"
 #include "openmc/majorant.h"
@@ -10,23 +9,21 @@
 
 namespace openmc {
 
-  void majorant_test() {
+  void create_majorant() {
     // create a majorant XS
     Majorant majorant;
 
     for (const auto& nuclide : data::nuclides) {
-      std::cout << "Temperatures: " << nuclide->kTs_.size() << std::endl;
       for (int t = 0; t < nuclide->kTs_.size(); t++) {
         auto total = xt::view(nuclide->xs_[t], xt::all(), 0);
         std::vector<double> xs;
         for (auto val : total) { xs.push_back(val); }
         auto energies = nuclide->grid_[t].energy;
-        std::cout << energies.size() << std::endl;
-        std::cout << xs.size() << std::endl;
         majorant.update(energies, xs);
 
         // write nuclide to file
-        std::ofstream of(nuclide->name_ + ".txt");
+        auto T = nuclide->kTs_[t];
+        std::ofstream of(nuclide->name_ + "_" + std::to_string(T/K_BOLTZMANN) + ".txt");
         for (int i = 0; i < energies.size(); i++) {
           of << energies[i] << "\t" << xs[i] << "\n";
         }
@@ -34,6 +31,7 @@ namespace openmc {
       }
     }
 
+    majorant.init_grid();
     majorant.write_ascii();
   }
 
@@ -84,23 +82,55 @@ namespace openmc {
     std::ofstream of("majorant.txt");
 
     for (int i = 0; i < xs_.size(); i++) {
-      of << std::setprecision(8) << e_[i] << "\t" << xs_[i] << "\n";
+      of << grid_.energy[i] << "\t" << xs_[i] << "\n";
     }
 
     of.close();
   }
 
+void Majorant::init_grid() {
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  double E_min = data::energy_min[neutron];
+  double E_max = data::energy_max[neutron];
+  int M = settings::n_log_bins;
+
+  // Determine equal-logarithmic energy spacing
+  double spacing = std::log(E_max/E_min)/M;
+
+  // Create equally log-spaced energy grid
+  auto umesh = xt::linspace(0.0, M*spacing, M+1);
+
+  // Resize array for storing grid indices
+  grid_.grid_index.resize(M + 1);
+
+  // Determine corresponding indices in nuclide grid to energies on
+  // equal-logarithmic grid
+  int j = 0;
+  for (int k = 0; k <= M; ++k) {
+    while (std::log(grid_.energy[j + 1]/E_min) <= umesh(k)) {
+      // Ensure that for isotopes where maxval(grid.energy) << E_max that
+      // there are no out-of-bounds issues.
+      if (j + 2 == grid_.energy.size()) break;
+      ++j;
+    }
+    grid_.grid_index[k] = j;
+  }
+}
+
   void Majorant::update(std::vector<double> energy_other,
                         std::vector<double> xs_other) {
 
-    XS xs_a(e_, xs_);
+    // remove the additional 5 percent from the current xs values
+    // std::transform(xs_.begin(), xs_.end(), xs_.begin(),[](double xs_val) { return xs_val / Majorant::safety_factor; });
+
+    XS xs_a(grid_.energy, xs_);
     XS xs_b(energy_other, xs_other);
 
     // early exit checks
     if (xs_b.complete()) { return; }
 
     if (xs_a.complete()) {
-      e_ = energy_other;
+      grid_.energy = energy_other;
       xs_ = xs_other;
       return;
     }
@@ -236,9 +266,13 @@ namespace openmc {
       xs_b++;
     }
 
+    // increase all xs values in the majorant by 5 percent
+    // std::transform(xs_out.begin(), xs_out.end(), xs_out.begin(), [](double xs_val) { return xs_val * safety_factor; });
+
     // update the values of the majorant
-    e_ = std::move(e_out);
+    grid_.energy = std::move(e_out);
     xs_ = std::move(xs_out);
+
   }
 
   // Majorant XS definitions
