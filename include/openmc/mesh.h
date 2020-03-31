@@ -67,18 +67,28 @@ public:
 
   //! Determine which bins were crossed by a particle
   //
-  //! \param[in] p Particle to check
+  //! \param[in] last_r Previous position of the particle
+  //! \param[in]  r Current position of the particle
+  //! \param[in]  u Particle direction
   //! \param[out] bins Bins that were crossed
   //! \param[out] lengths Fraction of tracklength in each bin
-  virtual void bins_crossed(const Particle* p, std::vector<int>& bins,
+  virtual void bins_crossed(Position last_r,
+                            Position r,
+                            const Direction& u,
+                            std::vector<int>& bins,
                             std::vector<double>& lengths) const = 0;
 
   //! Determine which surface bins were crossed by a particle
   //
-  //! \param[in] p Particle to check
+  //! \param[in] r0 Previous position of the particle
+  //! \param[in] r1 Current position of the particle
+  //! \param[in] u Particle direction
   //! \param[out] bins Surface bins that were crossed
   virtual void
-  surface_bins_crossed(const Particle* p, std::vector<int>& bins) const = 0;
+  surface_bins_crossed(Position r0,
+                       Position r1,
+                       const Direction& u,
+                       std::vector<int>& bins) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -164,11 +174,16 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(Position last_r,
+                    Position r,
+                    const Direction& u,
+                    std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
-  const override;
+  void surface_bins_crossed(Position r0,
+                            Position r1,
+                            const Direction& u,
+                            std::vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 
@@ -226,11 +241,16 @@ public:
 
   // Overriden methods
 
-  void bins_crossed(const Particle* p, std::vector<int>& bins,
+  void bins_crossed(Position last_r,
+                    Position r,
+                    const Direction& u,
+                    std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins)
-  const override;
+  void surface_bins_crossed(Position r0,
+                            Position r1,
+                            const Direction& u,
+                            std::vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 
@@ -332,12 +352,6 @@ public:
   MOABUnstructuredMesh(const std::string& filename);
   ~MOABUnstructuredMesh() = default;
 
-  void bins_crossed(const Particle* p,
-                    std::vector<int>& bins,
-                    std::vector<double>& lengths) const override;
-
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const;
-
   int get_bin(Position r) const;
 
   int n_bins() const override;
@@ -351,6 +365,17 @@ public:
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score);
+
+  void surface_bins_crossed(Position r0,
+                            Position r1,
+                            const Direction& u,
+                            std::vector<int>& bins) const override;
+
+  void bins_crossed(Position last_r,
+                    Position r,
+                    const Direction& u,
+                    std::vector<int>& bins,
+                    std::vector<double>& lengths) const;
 
   //! Set the value of a bin for a variable on the libmesh mesh instance
   void set_score_data(const std::string& var_name,
@@ -479,11 +504,18 @@ public:
   LibMesh(const std::string& filename);
 
   // Methods
-  void bins_crossed(const Particle* p,
+
+  // standard mesh functions
+  void bins_crossed(Position last_r,
+                    Position r,
+                    const Direction& u,
                     std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
-  void surface_bins_crossed(const Particle* p, std::vector<int>& bins) const override;
+  void surface_bins_crossed(Position r0,
+                            Position r1,
+                            const Direction& u,
+                            std::vector<int>& bins) const override;
 
   int get_bin(Position r) const override;
 
