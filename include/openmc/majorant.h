@@ -7,9 +7,16 @@
 #include<gsl/gsl>
 #include <vector>
 
+#include "openmc/settings.h"
+
 namespace openmc {
 
 class Majorant {
+
+  struct EnergyGrid {
+    std::vector<int> grid_index;
+    std::vector<double> energy;
+  };
 
   struct XS {
     XS(std::vector<double> energies,
@@ -60,6 +67,9 @@ class Majorant {
  public:
   void write_ascii() const;
 
+  //! \brief Initialize the energy grid mapping for the majorant xs
+  void init_grid();
+
   //! \brief Update the majorant using values from another cross section
   void update(std::vector<double> energies_other,
               std::vector<double> xs_other);
@@ -67,8 +77,9 @@ class Majorant {
     // data members
  public:
   std::vector<int> nuclides; // index of nuclides applied
-  std::vector<double> e_; // energy points
   std::vector<double> xs_; // cross section values
+  EnergyGrid grid_;
+  constexpr static double safety_factor {1.01};
 }; // class Majorant
 
   bool intersect_2D(std::pair<double, double> p1,
@@ -81,7 +92,7 @@ class Majorant {
                 std::pair<double, double> p2,
                 std::pair<double, double> p3);
 
-  void majorant_test();
+  void create_majorant();
 }
 
 #endif // OPENMC_MAJORANT_H
