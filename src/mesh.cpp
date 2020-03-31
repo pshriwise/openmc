@@ -582,16 +582,14 @@ bool RegularMesh::intersects_3d(Position& r0, Position r1, int* ijk) const
   return min_dist < INFTY;
 }
 
-void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+void RegularMesh::bins_crossed(Position last_r,
+                               Position r,
+                               const Direction& u,
+                               std::vector<int>& bins,
                                std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p->r_last_};
-  Position r {p->r()};
-  Direction u {p->u()};
 
   // Compute the length of the entire track.
   double total_distance = (r - last_r).norm();
@@ -688,16 +686,13 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
 }
 
-void RegularMesh::surface_bins_crossed(const Particle* p,
+void RegularMesh::surface_bins_crossed(Position r0,
+                                       Position r1,
+                                       const Direction& u,
                                        std::vector<int>& bins) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position r0 {p->r_last_current_};
-  Position r1 {p->r()};
-  Direction u {p->u()};
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
@@ -973,16 +968,14 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 }
 
-void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
+void RectilinearMesh::bins_crossed(Position last_r,
+                                   Position r,
+                                   const Direction& u,
+                                   std::vector<int>& bins,
                                    std::vector<double>& lengths) const
 {
   // ========================================================================
   // Determine where the track intersects the mesh and if it intersects at all.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position last_r {p->r_last_};
-  Position r {p->r()};
-  Direction u {p->u()};
 
   // Compute the length of the entire track.
   double total_distance = (r - last_r).norm();
@@ -1078,16 +1071,13 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
   }
 }
 
-void RectilinearMesh::surface_bins_crossed(const Particle* p,
+void RectilinearMesh::surface_bins_crossed(Position r0,
+                                           Position r1,
+                                           const Direction& u,
                                            std::vector<int>& bins) const
 {
   // ========================================================================
   // Determine if the track intersects the tally mesh.
-
-  // Copy the starting and ending coordinates of the particle.
-  Position r0 {p->r_last_current_};
-  Position r1 {p->r()};
-  Direction u {p->u()};
 
   // Determine indices for starting and ending location.
   int ijk0[3], ijk1[3];
@@ -1751,16 +1741,14 @@ MOABUnstructuredMesh::intersect_track(const moab::CartVect& start,
 }
 
 void
-MOABUnstructuredMesh::bins_crossed(const Particle* p,
+MOABUnstructuredMesh::bins_crossed(Position last_r,
+                               Position r,
+                               const Direction& u,
                                std::vector<int>& bins,
                                std::vector<double>& lengths) const
 {
 
   moab::ErrorCode rval;
-  Position last_r{p->r_last_};
-  Position r{p->r()};
-  Direction u{p->u()};
-  u /= u.norm();
   moab::CartVect r0(last_r.x, last_r.y, last_r.z);
   moab::CartVect r1(r.x, r.y, r.z);
   moab::CartVect dir(u.x, u.y, u.z);
@@ -1879,7 +1867,15 @@ double MOABUnstructuredMesh::tet_volume(moab::EntityHandle tet) const {
  return 1.0 / 6.0 * (((p[1] - p[0]) * (p[2] - p[0])) % (p[3] - p[0]));
 }
 
-void MOABUnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>& bins) const {
+//! Determine which surface bins were crossed by a particle
+//
+//! \param[in] p Particle to check
+//! \param[out] bins Surface bins that were crossed
+void MOABUnstructuredMesh::surface_bins_crossed(Position r0,
+                                            Position r1,
+                                            const Direction& u,
+                                            std::vector<int>& bins) const
+{
   // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
@@ -2210,12 +2206,18 @@ int LibMesh::n_surface_bins() const {
 }
 
 void
-LibMesh::surface_bins_crossed(const Particle* p,
-                               std::vector<int>& bins) const
+LibMesh::surface_bins_crossed(Position r0,
+                              Position r1,
+                              const Direction& u,
+                              std::vector<int>& bins) const
 {
-  // TODO: Implement triangle crossings here
+    // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
+
+std::pair<std::vector<double>, std::vector<double>>
+LibMesh::plot(Position plot_ll,
+              Position plot_ur) const { return {}; }
 
 void
 LibMesh::add_score(const std::string& var_name) {
@@ -2281,7 +2283,9 @@ void LibMesh::write(std::string filename) const {
 }
 
 void
-LibMesh::bins_crossed(const Particle* p,
+LibMesh::bins_crossed(Position last_r,
+                      Position r,
+                      const Direction& u,
                       std::vector<int>& bins,
                       std::vector<double>& lengths) const
 {
