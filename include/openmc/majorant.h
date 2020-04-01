@@ -8,15 +8,11 @@
 #include <vector>
 
 #include "openmc/settings.h"
+#include "openmc/nuclide.h"
 
 namespace openmc {
 
 class Majorant {
-
-  struct EnergyGrid {
-    std::vector<int> grid_index;
-    std::vector<double> energy;
-  };
 
   struct XS {
     XS(std::vector<double> energies,
@@ -64,6 +60,18 @@ class Majorant {
     size_t idx_;
   };
 
+  //! \brief Determine the intersection of two line segments (p1, p2) and (p3, p4)
+  static bool intersect_2D(std::pair<double, double> p1,
+                           std::pair<double, double> p2,
+                           std::pair<double, double> p3,
+                           std::pair<double, double> p4,
+                           std::pair<double, double>& out);
+
+  //! \brief Determine if point p3 is above or below the line segment (p1, p2)
+  static bool is_above(std::pair<double, double> p1,
+                       std::pair<double, double> p2,
+                       std::pair<double, double> p3);
+
  public:
   void write_ascii() const;
 
@@ -78,19 +86,9 @@ class Majorant {
  public:
   std::vector<int> nuclides; // index of nuclides applied
   std::vector<double> xs_; // cross section values
-  EnergyGrid grid_;
+  Nuclide::EnergyGrid grid_;
   constexpr static double safety_factor {1.01};
 }; // class Majorant
-
-  bool intersect_2D(std::pair<double, double> p1,
-                    std::pair<double, double> p2,
-                    std::pair<double, double> p3,
-                    std::pair<double, double> p4,
-                    std::pair<double, double>& out);
-
-  bool is_above(std::pair<double, double> p1,
-                std::pair<double, double> p2,
-                std::pair<double, double> p3);
 
   void create_majorant();
 }

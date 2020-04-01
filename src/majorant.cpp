@@ -35,11 +35,11 @@ namespace openmc {
     majorant.write_ascii();
   }
 
-  bool intersect_2D(std::pair<double, double> p1,
-                    std::pair<double, double> p2,
-                    std::pair<double, double> p3,
-                    std::pair<double, double> p4,
-                    std::pair<double, double>& out) {
+  bool Majorant::intersect_2D(std::pair<double, double> p1,
+                              std::pair<double, double> p2,
+                              std::pair<double, double> p3,
+                              std::pair<double, double> p4,
+                              std::pair<double, double>& out) {
 
     double denominator = (p4.first - p3.first) * (p1.second - p2.second) -
                          (p1.first - p2.first) * (p4.second - p3.second);
@@ -61,9 +61,9 @@ namespace openmc {
     return true;
   }
 
-  bool is_above(std::pair<double, double> p1,
-                std::pair<double, double> p2,
-                std::pair<double, double> p3) {
+  bool Majorant::is_above(std::pair<double, double> p1,
+                          std::pair<double, double> p2,
+                          std::pair<double, double> p3) {
     // if the line is vertical, use
     // comparison of x values
     if (fabs(p2.first - p1.first) < FP_COINCIDENT) {
