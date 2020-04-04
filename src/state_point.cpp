@@ -165,7 +165,7 @@ openmc_statepoint_write(const char* filename, bool* write_source)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
 
-#ifdef DAGMC
+#ifdef LIBMESH
         write_unstructured_mesh_results();
 #endif
 
@@ -678,15 +678,16 @@ void read_source_bank(hid_t group_id)
   H5Tclose(banktype);
 }
 
-#ifdef DAGMC
+#ifdef LIBMESH
 void write_unstructured_mesh_results() {
+  std::cout << "Checking for unstructured meshes to write..." << std::endl;
   for (auto& tally : model::tallies) {
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
       if (filter->type() == "mesh") {
         auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
         auto& mesh = model::meshes[mesh_filter->mesh()];
-        auto umesh = dynamic_cast<UnstructuredMesh*>(mesh.get());
+        auto umesh = dynamic_cast<UnstructuredMeshBase*>(mesh.get());
         if (umesh) {
           for (int i = 0; i < tally->scores_.size(); i++) {
             // get values for this score and create vectors for marking
@@ -712,6 +713,7 @@ void write_unstructured_mesh_results() {
                                                    simulation::current_batch,
                                                    w);
 
+          std::cout << "Writing unstructured mesh..." << std::endl;
           umesh->write(umesh_filename);
         }
       }
