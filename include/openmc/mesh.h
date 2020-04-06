@@ -205,14 +205,11 @@ public:
                                      int64_t length,
                                      bool* outside) const;
 
-<<<<<<< HEAD
-=======
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
   // void to_hdf5(hid_t group) const;
 
->>>>>>> Removing call to set LibMesh threads and updating call for setting point containment tolerance.
   // Data members
   double volume_frac_; //!< Volume fraction of each mesh element
   xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
@@ -288,7 +285,7 @@ public:
   //! Set the value of a bin for a variable on the libmesh mesh instance
   virtual void set_score_data(const std::string& var_name,
                               std::vector<double> values,
-                              std::vector<double> std_dev) const = 0;
+                              std::vector<double> std_dev) = 0;
 
   virtual void write(std::string filename) const = 0;
 
@@ -346,7 +343,12 @@ public:
   std::string bin_label(int bin) const override;
 
   //! Add a score to the mesh instance
-  void add_score(std::string score) const;
+  void add_score(const std::string& score);
+
+  //! Set the value of a bin for a variable on the libmesh mesh instance
+  void set_score_data(const std::string& var_name,
+                      std::vector<double> values,
+                      std::vector<double> std_dev) override;
 
   //! Write the mesh with any current tally data
   void write(std::string base_filename) const;
@@ -355,9 +357,9 @@ public:
 
   bool intersects(Position& r0, Position r1, int* ijk);
 
-
-
 private:
+
+  void initialize();
 
   //! Find all intersections with faces of the mesh.
   //
@@ -507,7 +509,7 @@ public:
   //! Set the value of a bin for a variable on the libmesh mesh instance
   void set_score_data(const std::string& var_name,
                       std::vector<double> values,
-                      std::vector<double> std_dev) const override;
+                      std::vector<double> std_dev) override;
 
 private:
 
