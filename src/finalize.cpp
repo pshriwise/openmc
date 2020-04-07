@@ -140,10 +140,6 @@ int openmc_finalize()
   if (mpi::bank != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::bank);
 #endif
 
-#ifdef LIBMESH
-  settings::LMI.release();
-#endif
-
   return 0;
 }
 
@@ -182,4 +178,5 @@ int openmc_hard_reset()
   // Reset the random number generator state
   openmc::openmc_set_seed(DEFAULT_SEED);
   return 0;
+
 }
