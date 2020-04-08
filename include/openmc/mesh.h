@@ -271,13 +271,13 @@ private:
   std::vector<std::vector<double>> grid_;
 };
 
-class UnstructuredMeshBase : public Mesh {
+class UnstructuredMesh : public Mesh {
 
 public:
   // constructors
-  UnstructuredMeshBase() {};
-  UnstructuredMeshBase(pugi::xml_node node);
-  UnstructuredMeshBase(const std::string& filename);
+  UnstructuredMesh() {};
+  UnstructuredMesh(pugi::xml_node node);
+  UnstructuredMesh(const std::string& filename);
 
   std::string bin_label(int bin) const override;
 
@@ -308,7 +308,7 @@ public:
 
 #ifdef DAGMC
 
-class MOABUnstructuredMesh : public UnstructuredMeshBase {
+class MOABUnstructuredMesh : public UnstructuredMesh {
 
 public:
 
@@ -469,7 +469,7 @@ private:
 #endif
 
 #ifdef LIBMESH
-class LibMesh : public UnstructuredMeshBase {
+class LibMesh : public UnstructuredMesh {
 
   typedef std::vector<std::pair<double, const libMesh::Elem*>> UnstructuredMeshHits;
 

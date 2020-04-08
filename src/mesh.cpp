@@ -112,7 +112,7 @@ StructuredMesh::bin_label(int bin) const {
 // Untructured Mesh implementation
 //==============================================================================
 
-UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
+UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node) {
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
@@ -132,12 +132,12 @@ UnstructuredMeshBase::UnstructuredMeshBase(pugi::xml_node node) : Mesh(node) {
 }
 
 std::string
-UnstructuredMeshBase::bin_label(int bin) const {
+UnstructuredMesh::bin_label(int bin) const {
   return fmt::format("Mesh Index ({})", bin);
 };
 
 void
-UnstructuredMeshBase::to_hdf5(hid_t group) const
+UnstructuredMesh::to_hdf5(hid_t group) const
 {
     hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
 
@@ -1622,7 +1622,7 @@ openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
 
 #ifdef DAGMC
 
-MOABUnstructuredMesh::MOABUnstructuredMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
+MOABUnstructuredMesh::MOABUnstructuredMesh(pugi::xml_node node) : UnstructuredMesh(node) {
   initialize();
 }
 
@@ -2134,7 +2134,7 @@ MOABUnstructuredMesh::write(std::string base_filename) const {
 #endif
 
 #ifdef LIBMESH
-LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMeshBase(node) {
+LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node) {
   initialize();
 }
 
