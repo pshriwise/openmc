@@ -39,6 +39,13 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
+#ifdef LIBMESH
+const bool libmesh_enabled = true;
+#else
+const bool libmesh_enabled = false;
+#endif
+
+
 namespace model {
 
 std::vector<std::unique_ptr<Mesh>> meshes;
@@ -2177,25 +2184,10 @@ void LibMesh::initialize() {
     point_locators_[i]->enable_out_of_mesh_mode();
   }
 
-  // will need mesh neighbors to walk the mesh
-  m_->find_neighbors();
-
   first_element_ = *m_->elements_begin();
 
   // bounding box for the mesh
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
-  bsphere_ = libMesh::MeshTools::bounding_sphere(*m_);
-
-  // determine boundary elements and create bounding box
-  for (int i = 0; i < m_->n_elem(); i++) {
-    auto e = m_->elem_ptr(i);
-
-    for (int k = 0; k < e->n_neighbors(); k++) {
-      if (!e->neighbor_ptr(k)) {
-        boundary_elements_.insert(e);
-      }
-    }
-  }
 }
 
 int LibMesh::n_bins() const {
@@ -2213,15 +2205,6 @@ LibMesh::surface_bins_crossed(const Particle* p,
 {
   // TODO: Implement triangle crossings here
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
-}
-
-std::pair<std::vector<double>, std::vector<double>>
-LibMesh::plot(Position plot_ll,
-              Position plot_ur) const { return {}; }
-
-const libMesh::Elem*
-LibMesh::get_element_from_bin(int bin) const {
-  return m_->elem_ptr(bin);
 }
 
 void
@@ -2281,7 +2264,7 @@ LibMesh::set_score_data(const std::string& var_name,
 void LibMesh::write(std::string filename) const {
   libMesh::ExodusII_IO exo(*m_);
   std::set<std::string> systems_out = {eq_system_name_};
-  exo.write_discontinuous_exodusII(filename, *equation_systems_, &systems_out);
+  exo.write_discontinuous_exodusII(filename + ".e", *equation_systems_, &systems_out);
 }
 
 void
@@ -2300,11 +2283,10 @@ LibMesh::get_bin(Position r) const
   libMesh::Point p(r.x, r.y, r.z);
 
   // quick rejection check
-  //  if (bsphere_.above_surface(p) || !bbox_.contains_point(p)) { return -1; }
   if (!bbox_.contains_point(p)) { return -1; }
-  int thread = omp_get_thread_num();
-  auto e = (*point_locators_[thread])(p);
 
+  int thread = omp_get_thread_num();
+  auto e = (*point_locators_[thread])(p, false);
   if (!e) {
     return -1;
   } else {
@@ -2315,29 +2297,19 @@ LibMesh::get_bin(Position r) const
 int
 LibMesh::get_bin_from_element(const libMesh::Elem* elem) const {
   int bin =  elem->id() - first_element_->id();
-  if (bin >= n_bins()) {
-    std::stringstream s;
-    s << "Invalid bin: " << bin;
-    fatal_error(s);
+  if (bin >= n_bins() || bin < 0) {
+    fatal_error(fmt::format("Invalid bin: {}", bin));
   }
   return bin;
 }
 
-bool
-LibMesh::inside_tet(const libMesh::Point& r,
-                    const libMesh::Point& u,
-                    std::unique_ptr<libMesh::Elem> e) const
-{
-  return inside_tet(r, u, e.get());
-}
+std::pair<std::vector<double>, std::vector<double>>
+LibMesh::plot(Position plot_ll,
+              Position plot_ur) const { return {}; }
 
-
-bool
-LibMesh::inside_tet(const libMesh::Point& r,
-                    const libMesh::Point& u,
-                    const libMesh::Elem* e) const
-{
-  return e->contains_point(r, FP_COINCIDENT);
+const libMesh::Elem*
+LibMesh::get_element_from_bin(int bin) const {
+  return m_->elem_ptr(bin);
 }
 
 double LibMesh::volume(int bin) const { return m_->elem_ref(bin).volume(); }

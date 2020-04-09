@@ -42,6 +42,9 @@ else:
 def _dagmc_enabled():
     return c_bool.in_dll(_dll, "dagmc_enabled").value
 
+def _libmesh_enabled():
+    return c_bool.in_dll(_dll, "libmesh_enabled").value
+
 from .error import *
 from .core import *
 from .nuclide import *
