@@ -24,15 +24,14 @@
 
 #ifdef LIBMESH
 #include "libmesh/bounding_box.h"
-#include "libmesh/libmesh.h"
+#include "libmesh/dof_map.h"
 #include "libmesh/elem.h"
 #include "libmesh/equation_systems.h"
 #include "libmesh/exodusII_io.h"
 #include "libmesh/explicit_system.h"
-#include "libmesh/dof_map.h"
+#include "libmesh/libmesh.h"
 #include "libmesh/mesh.h"
 #include "libmesh/point.h"
-#include "libmesh/sphere.h"
 #endif
 
 namespace openmc {
@@ -109,7 +108,6 @@ public:
   virtual std::pair<std::vector<double>, std::vector<double>>
   plot(Position plot_ll, Position plot_ur) const = 0;
 
-  //! Get a label for the mesh bin
   //! Return a string representation of the mesh bin
   //
   //! \param[in] bin Mesh bin to generate a label for
@@ -275,6 +273,13 @@ public:
   UnstructuredMesh(const std::string& filename);
 
   // Methods
+private:
+
+  //! Setup method for the mesh. Builds data structures,
+  //! element mapping, etc.
+  virtual void initialize() = 0;
+
+public:
 
   //! Add a variable to the mesh instance
   virtual void add_score(const std::string& var_name) = 0;
@@ -373,7 +378,7 @@ public:
 
 private:
 
-  void initialize();
+  void initialize() override;
 
   //! Find all intersections with faces of the mesh.
   //
@@ -518,9 +523,7 @@ public:
 
 private:
 
-  //! Setup method for the mesh. Builds data structures,
-  //! element mapping, etc.
-  void initialize();
+  void initialize() override;
 
   //! Translate a bin value to an element pointer
   const libMesh::Elem* get_element_from_bin(int bin) const;
