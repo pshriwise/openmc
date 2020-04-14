@@ -28,6 +28,7 @@ public:
 
   // Methods
   double calculate_xs(double e) const;
+  void write_ascii(const std::string& filename) const;
 
   // Data members
 private:

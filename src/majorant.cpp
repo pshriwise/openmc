@@ -53,13 +53,26 @@ void create_majorant() {
     for (auto& mat : model::materials) {
       // compute the cross section value of this material
       // at the given energy
-      // mat->calculate_xs(p);
-      // xs_val = std::max(xs_val, p.macro_xs_.total);
+      mat->calculate_xs(p);
+      xs_val = std::max(xs_val, p.macro_xs_.total);
     }
     xs_vals.push_back(xs_val);
   }
 
   data::neutron_majorant = std::make_unique<MacroscopicMajorant>(majorant_e_grid, xs_vals);
+  data::neutron_majorant->write_ascii("macro_majorant.txt");
+
+  Particle p;
+  for (auto& mat : model::materials) {
+    std::ofstream of("mat_" + std::to_string(mat->id_) + "_total.txt");
+
+    for (auto e_val : majorant_e_grid) {
+      p.E_ = e_val;
+      mat->calculate_xs(p);
+      of << e_val << "\t" << p.macro_xs_.total << "\n";
+    }
+    of.close();
+  }
 }
 
 std::vector<double>
@@ -134,6 +147,16 @@ MacroscopicMajorant::calculate_xs(double energy) const
   double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid];
 
   return xs;
+}
+
+void MacroscopicMajorant::write_ascii(const std::string& filename) const
+{
+  std::ofstream of(filename);
+  for (int i = 0; i < xs_.size(); i++) {
+    of << grid_.energy[i] << "\t" << xs_[i] << "\n";
+  }
+
+  of.close();
 }
 
 bool Majorant::intersect_2D(std::pair<double, double> p1,
