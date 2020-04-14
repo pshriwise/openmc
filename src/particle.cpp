@@ -13,6 +13,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -201,7 +202,9 @@ Particle::event_delta_advance() {
   } else if (macro_xs_.total == 0.0) {
     distance = INFINITY;
   } else {
-    distance = -std::log(prn(this->current_seed())) / model::neutron_majorant;
+    // calculate majorant value for this energy
+    majorant_ = data::neutron_majorant->calculate_xs(E_);
+    distance = -std::log(prn(this->current_seed())) / majorant_;
   }
 
   // Advance particle

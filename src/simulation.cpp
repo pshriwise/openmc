@@ -213,8 +213,8 @@ int openmc_next_batch(int* status)
     if (settings::event_based) {
       transport_event_based();
     } else {
-      //transport_delta_tracking();
-      transport_history_based();
+      transport_delta_tracking();
+      //transport_history_based();
     }
 
     // Accumulate time for transport
@@ -716,7 +716,7 @@ void transport_delta_tracking_single_particle(Particle& p) {
     p.event_calculate_xs();
     if (!p.alive_)
       break;
-    if (prn(p.current_seed()) < p.macro_xs_.total / model::neutron_majorant) {
+    if (prn(p.current_seed()) < p.macro_xs_.total / p.majorant_) {
       p.event_collide();
     }
     p.event_revive_from_secondary();

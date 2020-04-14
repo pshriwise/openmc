@@ -311,6 +311,7 @@ private:
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
 
   bool delta_tracking_{false}; // !< Flag to indicate whether or not delta tracking is active
+  double majorant_ {0.0}; // !< most recent value for the majorant cross section
 
 public:
   //==========================================================================
