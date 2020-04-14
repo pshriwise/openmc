@@ -73,7 +73,7 @@ class Majorant {
                        std::pair<double, double> p3);
 
  public:
-  void write_ascii() const;
+  void write_ascii(const std::string& filename) const;
 
   //! \brief Initialize the energy grid mapping for the majorant xs
   void init_grid();
