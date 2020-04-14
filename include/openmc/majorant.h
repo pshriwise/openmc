@@ -13,10 +13,27 @@
 namespace openmc {
 
 class Majorant;
+class MacroscopicMajorant;
 
 namespace data {
   extern std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
+  extern std::unique_ptr<MacroscopicMajorant> neutron_majorant;
 }
+
+class MacroscopicMajorant {
+public:
+  // Constructors
+  MacroscopicMajorant(const std::vector<double>& energy,
+                      const std::vector<double>& xs);
+
+  // Methods
+  double calculate_xs(double e) const;
+
+  // Data members
+private:
+  Nuclide::EnergyGrid grid_;
+  std::vector<double> xs_;
+};
 
 class Majorant {
 
