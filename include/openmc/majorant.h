@@ -12,6 +12,12 @@
 
 namespace openmc {
 
+class Majorant;
+
+namespace data {
+  extern std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
+}
+
 class Majorant {
 
   struct XS {
@@ -91,6 +97,7 @@ class Majorant {
 }; // class Majorant
 
   void create_majorant();
+  std::vector<double> compute_majorant_energy_grid();
 }
 
 #endif // OPENMC_MAJORANT_H
