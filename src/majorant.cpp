@@ -3,6 +3,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/majorant.h"
+#include "openmc/material.h"
 #include "openmc/nuclide.h"
 
 #include "xtensor/xview.hpp"
@@ -38,6 +39,55 @@ void create_majorant() {
     majorant->write_ascii(nuclide->name_ + "_majorant.txt");
   }
 
+  // set a max point
+  auto majorant_e_grid = compute_majorant_energy_grid();
+  std::vector<double> xs_vals;
+
+  for (auto e_val : majorant_e_grid) {
+    double xs_val = -INFTY;
+    Particle p;
+    p.E_ = e_val;
+    for (auto& mat : model::materials) {
+      // compute the cross section value of this material
+      // at the given energy
+      // mat->calculate_xs(p);
+      // xs_val = std::max(xs_val, p.macro_xs_.total);
+    }
+    xs_vals.push_back(xs_val);
+  }
+
+
+}
+
+std::vector<double>
+compute_majorant_energy_grid() {
+
+  std::vector<double> common_e_grid;
+  for (auto& nuc_maj : data::nuclide_majorants) {
+    auto& e_grid = nuc_maj->grid_.energy;
+    // append new points to the current group of points
+    common_e_grid.insert(common_e_grid.end(), e_grid.begin(), e_grid.end());
+    // remove duplicates
+    std::unique(common_e_grid.begin(), common_e_grid.end());
+  }
+  std::sort(common_e_grid.begin(), common_e_grid.end());
+
+  // remove all values below the minimum neutron energy
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  auto min_it = common_e_grid.begin();
+  while (*min_it < data::energy_min[neutron]) { min_it++; }
+  common_e_grid.erase(common_e_grid.begin(), min_it + 1);
+  // insert the minimum neutron energy at the beginning
+  common_e_grid.insert(common_e_grid.begin(), data::energy_min[neutron]);
+
+  // remove all values above the maximum neutron energy
+  auto max_it = --common_e_grid.end();
+  while (*max_it > data::energy_max[neutron]) { max_it--; }
+  common_e_grid.erase(max_it - 1, common_e_grid.end());
+  // insert the maximum neutron energy at the end
+  common_e_grid.insert(common_e_grid.end(), data::energy_max[neutron]);
+
+  return common_e_grid;
 }
 
 bool Majorant::intersect_2D(std::pair<double, double> p1,
