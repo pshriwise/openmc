@@ -5,6 +5,8 @@
 #include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
+#include "openmc/search.h"
+#include "openmc/simulation.h"
 
 #include "xtensor/xview.hpp"
 
@@ -12,6 +14,7 @@ namespace openmc {
 
 namespace data {
 std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
+std::unique_ptr<MacroscopicMajorant> neutron_majorant;
 }
 
 void create_majorant() {
@@ -56,7 +59,7 @@ void create_majorant() {
     xs_vals.push_back(xs_val);
   }
 
-
+  data::neutron_majorant = std::make_unique<MacroscopicMajorant>(majorant_e_grid, xs_vals);
 }
 
 std::vector<double>
@@ -88,6 +91,49 @@ compute_majorant_energy_grid() {
   common_e_grid.insert(common_e_grid.end(), data::energy_max[neutron]);
 
   return common_e_grid;
+}
+
+
+MacroscopicMajorant::MacroscopicMajorant(const std::vector<double>& energy,
+                                         const std::vector<double>& xs) : xs_(xs)
+{
+  grid_.energy = energy;
+  grid_.init();
+}
+
+
+double
+MacroscopicMajorant::calculate_xs(double energy) const
+{
+  // Find energy index on energy grid
+  int neutron = static_cast<int>(Particle::Type::neutron);
+  int i_log_union = std::log(energy/data::energy_min[neutron])/simulation::log_spacing;
+
+  int i_grid;
+  if (energy < grid_.energy.front()) {
+    i_grid = 0;
+  } else if (energy > grid_.energy.back()) {
+    i_grid = grid_.energy.size() - 2;
+  } else {
+    // Determine bounding indices based on which equal log-spaced
+    // interval the energy is in
+    int i_low  = grid_.grid_index[i_log_union];
+    int i_high = grid_.grid_index[i_log_union + 1] + 1;
+
+    // Perform binary search over reduced range
+    i_grid = i_low + lower_bound_index(&grid_.energy[i_low], &grid_.energy[i_high], energy);
+  }
+
+  // check for rare case where two energy points are the same
+  if (grid_.energy[i_grid] == grid_.energy[i_grid + 1]) ++i_grid;
+
+  // calculate interpolation factor
+  double f = (energy - grid_.energy[i_grid]) /
+      (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
+
+  double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid];
+
+  return xs;
 }
 
 bool Majorant::intersect_2D(std::pair<double, double> p1,
