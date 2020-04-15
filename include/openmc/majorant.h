@@ -13,28 +13,11 @@
 namespace openmc {
 
 class Majorant;
-class MacroscopicMajorant;
 
 namespace data {
   extern std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
-  extern std::unique_ptr<MacroscopicMajorant> neutron_majorant;
+  extern std::unique_ptr<Majorant> n_majorant;
 }
-
-class MacroscopicMajorant {
-public:
-  // Constructors
-  MacroscopicMajorant(const std::vector<double>& energy,
-                      const std::vector<double>& xs);
-
-  // Methods
-  double calculate_xs(double e) const;
-  void write_ascii(const std::string& filename) const;
-
-  // Data members
-private:
-  Nuclide::EnergyGrid grid_;
-  std::vector<double> xs_;
-};
 
 class Majorant {
 
@@ -99,14 +82,14 @@ class Majorant {
  public:
   void write_ascii(const std::string& filename) const;
 
-  //! \brief Initialize the energy grid mapping for the majorant xs
-  void init_grid();
-
   //! \brief Update the majorant using values from another cross section
   void update(std::vector<double> energies_other,
               std::vector<double> xs_other);
 
-    // data members
+  //! \brief Calculate the microscopic cross section at a given energy
+  double calculate_xs(double energy) const;
+
+  // data members
  public:
   std::vector<int> nuclides; // index of nuclides applied
   std::vector<double> xs_; // cross section values
