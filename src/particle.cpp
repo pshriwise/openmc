@@ -100,6 +100,8 @@ void Particle::event_calculate_xs()
   event_nuclide() = NUCLIDE_NONE;
   event_mt() = REACTION_NONE;
 
+  majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_, true);
+
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
@@ -203,7 +205,6 @@ Particle::event_delta_advance() {
     distance = INFINITY;
   } else {
     // calculate majorant value for this energy
-    majorant_ = data::neutron_majorant->calculate_xs(E_);
     distance = -std::log(prn(this->current_seed())) / majorant_;
   }
 

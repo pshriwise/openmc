@@ -14,7 +14,7 @@ namespace openmc {
 
 namespace data {
 std::vector<std::unique_ptr<Majorant>> nuclide_majorants;
-std::unique_ptr<MacroscopicMajorant> neutron_majorant;
+std::unique_ptr<Majorant> n_majorant;
 }
 
 void create_majorant() {
@@ -38,41 +38,85 @@ void create_majorant() {
       }
       of.close();
     }
-    majorant->init_grid();
+    majorant->grid_.init();
     majorant->write_ascii(nuclide->name_ + "_majorant.txt");
   }
 
-  // set a max point
+
   auto majorant_e_grid = compute_majorant_energy_grid();
   std::vector<double> xs_vals;
 
-  for (auto e_val : majorant_e_grid) {
-    double xs_val = -INFTY;
-    Particle p;
-    p.E_ = e_val;
-    for (auto& mat : model::materials) {
-      // compute the cross section value of this material
-      // at the given energy
-      mat->calculate_xs(p);
-      xs_val = std::max(xs_val, p.macro_xs_.total);
-    }
-    xs_vals.push_back(xs_val);
-  }
+  std::vector<Majorant> macro_majorants;
 
-  data::neutron_majorant = std::make_unique<MacroscopicMajorant>(majorant_e_grid, xs_vals);
-  data::neutron_majorant->write_ascii("macro_majorant.txt");
-
-  Particle p;
-  for (auto& mat : model::materials) {
-    std::ofstream of("mat_" + std::to_string(mat->id_) + "_total.txt");
-
+  // compute a majorant for every material
+  for (auto& material : model::materials) {
+    std::vector<double> material_xs;
     for (auto e_val : majorant_e_grid) {
-      p.E_ = e_val;
-      mat->calculate_xs(p);
-      of << e_val << "\t" << p.macro_xs_.total << "\n";
+      double xs_val = 0.0;
+      for (int i = 0; i < material->nuclide_.size(); i++) {
+        int i_nuc = material->nuclide_[i];
+        xs_val += material->atom_density_(i) * data::nuclide_majorants[i_nuc]->calculate_xs(e_val);
+      }
+      material_xs.push_back(xs_val);
     }
-    of.close();
+    macro_majorants.emplace_back(Majorant());
+    macro_majorants.back().update(majorant_e_grid, material_xs);
   }
+
+  data::n_majorant = std::make_unique<Majorant>();
+
+  for (auto& macro_majorant : macro_majorants) {
+    data::n_majorant->update(macro_majorant.grid_.energy, macro_majorant.xs_);
+  }
+
+  data::n_majorant->grid_.init();
+  data::n_majorant->write_ascii("macro_majorant.txt");
+
+  // // compute the majorant value for each energy point in the grid
+  // for (auto e_val : majorant_e_grid) {
+  //   double majorant_value = -INFTY;
+  //   for (auto& material : model::materials) {
+  //     double xs_val = 0.0;
+  //     for (int i = 0; i < material->nuclide_.size(); i++) {
+  //       int i_nuc = material->nuclide_[i];
+  //       xs_val += material->atom_density_(i) * data::nuclide_majorants[i_nuc]->calculate_xs(e_val);
+  //     }
+  //     majorant_value = std::max(majorant_value, xs_val);
+  //   }
+  //   xs_vals.push_back(1.0 * majorant_value);
+  // }
+
+  // for (auto e_val : majorant_e_grid) {
+  //   double xs_val = -INFTY;
+  //   for (auto& material : model::materials) {
+  //     Particle p;
+  //     p.E_ = e_val;
+  //     material->calculate_xs(p);
+  //     xs_val = std::max(xs_val, 1.2 * p.macro_xs_.total);
+  //   }
+  //   xs_vals.push_back(xs_val);
+  // }
+
+  // data::neutron_majorant = std::make_unique<MacroscopicMajorant>(majorant_e_grid, xs_vals);
+  // data::neutron_majorant->write_ascii("macro_majorant.txt");
+
+  // Particle p;
+  // for (auto& mat : model::materials) {
+  //   std::string mat_filename;
+  //   if (mat->name_ != "") {
+  //     mat_filename = mat->name_ + "_total_xs.txt";
+  //   } else {
+  //     mat_filename = "mat_" + std::to_string(mat->id_) + "_total_xs.txt";
+  //   }
+  //   std::ofstream of(mat_filename);
+
+  //   for (auto e_val : majorant_e_grid) {
+  //     p.E_ = e_val;
+  //     mat->calculate_xs(p);
+  //     of << e_val << "\t" << p.macro_xs_.total << "\n";
+  //   }
+  //   of.close();
+  // }
 }
 
 std::vector<double>
@@ -114,9 +158,8 @@ MacroscopicMajorant::MacroscopicMajorant(const std::vector<double>& energy,
   grid_.init();
 }
 
-
 double
-MacroscopicMajorant::calculate_xs(double energy) const
+Majorant::calculate_xs(double energy) const
 {
   // Find energy index on energy grid
   int neutron = static_cast<int>(Particle::Type::neutron);
@@ -125,7 +168,7 @@ MacroscopicMajorant::calculate_xs(double energy) const
   int i_grid;
   if (energy < grid_.energy.front()) {
     i_grid = 0;
-  } else if (energy > grid_.energy.back()) {
+  } else if (energy >= grid_.energy.back()) {
     i_grid = grid_.energy.size() - 2;
   } else {
     // Determine bounding indices based on which equal log-spaced
@@ -144,19 +187,10 @@ MacroscopicMajorant::calculate_xs(double energy) const
   double f = (energy - grid_.energy[i_grid]) /
       (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
 
-  double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid];
+  Expects(f <= 1.0);
+  double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
 
   return xs;
-}
-
-void MacroscopicMajorant::write_ascii(const std::string& filename) const
-{
-  std::ofstream of(filename);
-  for (int i = 0; i < xs_.size(); i++) {
-    of << grid_.energy[i] << "\t" << xs_[i] << "\n";
-  }
-
-  of.close();
 }
 
 bool Majorant::intersect_2D(std::pair<double, double> p1,
@@ -210,35 +244,6 @@ void Majorant::write_ascii(const std::string& filename) const {
   }
 
   of.close();
-}
-
-void Majorant::init_grid() {
-int neutron = static_cast<int>(Particle::Type::neutron);
-double E_min = data::energy_min[neutron];
-double E_max = data::energy_max[neutron];
-int M = settings::n_log_bins;
-
-// Determine equal-logarithmic energy spacing
-double spacing = std::log(E_max/E_min)/M;
-
-// Create equally log-spaced energy grid
-auto umesh = xt::linspace(0.0, M*spacing, M+1);
-
-// Resize array for storing grid indices
-grid_.grid_index.resize(M + 1);
-
-// Determine corresponding indices in nuclide grid to energies on
-// equal-logarithmic grid
-int j = 0;
-for (int k = 0; k <= M; ++k) {
-  while (std::log(grid_.energy[j + 1]/E_min) <= umesh(k)) {
-    // Ensure that for isotopes where maxval(grid.energy) << E_max that
-    // there are no out-of-bounds issues.
-    if (j + 2 == grid_.energy.size()) break;
-    ++j;
-  }
-  grid_.grid_index[k] = j;
-}
 }
 
 void Majorant::update(std::vector<double> energy_other,
