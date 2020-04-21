@@ -614,9 +614,9 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     const auto& xs {xs_[i_temp]};
 
     int i_grid;
-    if (p.E_ < grid.energy.front()) {
+    if (i_log_union < 0) {
       i_grid = 0;
-    } else if (p.E_ > grid.energy.back()) {
+    } else if (i_log_union > grid.grid_index.size() - 2) {
       i_grid = grid.energy.size() - 2;
     } else {
       // Determine bounding indices based on which equal log-spaced
