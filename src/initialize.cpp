@@ -108,7 +108,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // Read XML input files
   read_input_xml();
 
-  create_majorant();
+  if (settings::delta_tracking) create_majorant();
 
   // Check for particle restart run
   if (settings::particle_restart_run)

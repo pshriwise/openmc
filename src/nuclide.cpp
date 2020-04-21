@@ -775,7 +775,7 @@ void Nuclide::calculate_xs(
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
-  if (settings::urr_ptables_on && urr_present_ && !use_mp) {
+  if (!p.delta_tracking_ && settings::urr_ptables_on && urr_present_ && !use_mp) {
     if (urr_data_[micro.index_temp].energy_in_bounds(p.E()))
       this->calculate_urr_xs(micro.index_temp, p);
   }

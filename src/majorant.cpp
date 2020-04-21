@@ -39,7 +39,7 @@ void create_majorant() {
       of.close();
     }
     majorant->grid_.init();
-    majorant->write_ascii(nuclide->name_ + "_majorant.txt");
+    // majorant->write_ascii(nuclide->name_ + "_majorant.txt");
   }
 
 
@@ -70,7 +70,7 @@ void create_majorant() {
   }
 
   data::n_majorant->grid_.init();
-  data::n_majorant->write_ascii("macro_majorant.txt");
+  // data::n_majorant->write_ascii("macro_majorant.txt");
 
   // // compute the majorant value for each energy point in the grid
   // for (auto e_val : majorant_e_grid) {
