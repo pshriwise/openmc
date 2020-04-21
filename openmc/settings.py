@@ -368,7 +368,7 @@ class Settings:
         self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
-
+        self._delta_tracking = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._max_particle_events = None
@@ -951,10 +951,30 @@ class Settings:
     def material_cell_offsets(self) -> bool:
         return self._material_cell_offsets
 
+    @delta_tracking.setter
+    def delta_tracking(self, value):
+        cv.check_type('event_based', value, bool)
+        self._delta_tracking = value
+
+    @event_based.setter
+    def event_based(self, value):
+        cv.check_type('event based', value, bool)
+        self._event_based = value
+
+    @max_particles_in_flight.setter
+    def max_particles_in_flight(self, value):
+        cv.check_type('max particles in flight', value, Integral)
+        cv.check_greater_than('max particles in flight', value, 0)
+        self._max_particles_in_flight = value
+
     @material_cell_offsets.setter
     def material_cell_offsets(self, value: bool):
         cv.check_type('material cell offsets', value, bool)
         self._material_cell_offsets = value
+
+    @property
+    def delta_tracking(self):
+        return self._delta_tracking
 
     @property
     def log_grid_bins(self) -> int:
@@ -1535,6 +1555,11 @@ class Settings:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
 
+    def _create_delta_tracking_subelement(self, root):
+        if self._delta_tracking:
+            elem = ET.SubElement(root, "delta_tracking")
+            elem.text = str(self._delta_tracking).lower()
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1969,6 +1994,8 @@ class Settings:
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element)
+        self._create_delta_tracking_subelement(element)
+
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
