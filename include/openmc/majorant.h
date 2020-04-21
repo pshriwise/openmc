@@ -21,6 +21,10 @@ namespace data {
 
 class Majorant {
 
+public:
+  Majorant() = default;
+  Majorant(const std::vector<double>& energy, const std::vector<double>& xs);
+
   struct XS {
     XS(std::vector<double> energies,
        std::vector<double> total_xs)
