@@ -151,8 +151,8 @@ compute_majorant_energy_grid() {
 }
 
 
-MacroscopicMajorant::MacroscopicMajorant(const std::vector<double>& energy,
-                                         const std::vector<double>& xs) : xs_(xs)
+Majorant::Majorant(const std::vector<double>& energy,
+                   const std::vector<double>& xs) : xs_(xs)
 {
   grid_.energy = energy;
   grid_.init();
@@ -166,9 +166,9 @@ Majorant::calculate_xs(double energy) const
   int i_log_union = std::log(energy/data::energy_min[neutron])/simulation::log_spacing;
 
   int i_grid;
-  if (energy < grid_.energy.front()) {
+  if (i_log_union < 0) {
     i_grid = 0;
-  } else if (energy >= grid_.energy.back()) {
+  } else if (i_log_union >= (grid_.grid_index.size() - 2)) {
     i_grid = grid_.energy.size() - 2;
   } else {
     // Determine bounding indices based on which equal log-spaced
