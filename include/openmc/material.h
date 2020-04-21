@@ -25,7 +25,6 @@ class Material;
 
 namespace model {
 
-extern double neutron_majorant;
 extern std::unordered_map<int32_t, int32_t> material_map;
 extern vector<unique_ptr<Material>> materials;
 
