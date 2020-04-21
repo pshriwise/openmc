@@ -1,4 +1,5 @@
-
+import glob
+import os
 
 import openmc
 import pytest
@@ -43,3 +44,8 @@ def test_delta_tracking(nuclide):
     harness = PyAPITestHarness('statepoint.10.h5',model=model)
     harness._build_inputs()
     harness._run_openmc()
+    harness._cleanup()
+    output = glob.glob("*.txt")
+    for f in output:
+        if os.path.exists(f):
+            os.remove(f)
