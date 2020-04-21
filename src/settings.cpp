@@ -45,6 +45,7 @@ bool confidence_intervals    {false};
 bool create_fission_neutrons {true};
 bool dagmc                   {false};
 bool delayed_photon_scaling  {true};
+bool delta_tracking          {false};
 bool entropy_on              {false};
 bool event_based             {false};
 bool legendre_to_tabular     {true};
@@ -813,6 +814,11 @@ void read_settings_xml()
   // Check whether to use event-based parallelism
   if (check_for_node(root, "event_based")) {
     event_based = get_node_value_bool(root, "event_based");
+  }
+
+  // Check whether or not to use delta tracking
+  if (check_for_node(root, "delta_tracking")) {
+    delta_tracking = get_node_value_bool(root, "delta_tracking");
   }
 
   // Check whether material cell offsets should be generated
