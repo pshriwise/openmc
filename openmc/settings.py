@@ -297,7 +297,7 @@ class Settings:
         self._delayed_photon_scaling = None
         self._material_cell_offsets = None
         self._log_grid_bins = None
-
+        self._delta_tracking = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._write_initial_source = None
@@ -468,6 +468,10 @@ class Settings:
     @property
     def log_grid_bins(self) -> int:
         return self._log_grid_bins
+
+    @property
+    def delta_tracking(self):
+        return self._delta_tracking
 
     @property
     def event_based(self) -> bool:
@@ -864,6 +868,11 @@ class Settings:
         cv.check_type('delayed photon scaling', value, bool)
         self._delayed_photon_scaling = value
 
+    @delta_tracking.setter
+    def delta_tracking(self, value):
+        cv.check_type('event_based', value, bool)
+        self._delta_tracking = value
+
     @event_based.setter
     def event_based(self, value: bool):
         cv.check_type('event based', value, bool)
@@ -1230,6 +1239,10 @@ class Settings:
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
+    def _create_delta_tracking_subelement(self, root):
+        if self._delta_tracking:
+            elem = ET.SubElement(root, "delta_tracking")
+            elem.text = str(self._delta_tracking).lower()
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1596,6 +1609,7 @@ class Settings:
         self._create_weight_windows_subelement(root_element)
         self._create_max_splits_subelement(root_element)
         self._create_max_tracks_subelement(root_element)
+        self._create_delta_tracking_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
