@@ -100,7 +100,7 @@ void Particle::event_calculate_xs()
   event_nuclide() = NUCLIDE_NONE;
   event_mt() = REACTION_NONE;
 
-  majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_, true);
+  this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
 
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
