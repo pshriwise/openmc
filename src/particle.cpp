@@ -154,7 +154,7 @@ Particle::event_calculate_xs()
   event_mt_ = REACTION_NONE;
 
   if (this->delta_tracking_) {
-  this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
+    this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
   }
 
   // If the cell hasn't been determined based on the particle's location,
@@ -386,7 +386,7 @@ Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event_;
-  if (n_event_ == MAX_EVENTS && !delta_tracking_) {
+  if (n_event_ == MAX_EVENTS && !this->delta_tracking_) {
     warning("Particle " + std::to_string(id_) +
       " underwent maximum number of events.");
     alive_ = false;
