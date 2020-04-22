@@ -101,7 +101,7 @@ void Particle::event_calculate_xs()
   event_mt() = REACTION_NONE;
 
   if (this->delta_tracking_) {
-  this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
+    this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
   }
 
   // If the cell hasn't been determined based on the particle's location,

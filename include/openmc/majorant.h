@@ -76,7 +76,7 @@ public:
                            std::pair<double, double> p2,
                            std::pair<double, double> p3,
                            std::pair<double, double> p4,
-                           std::pair<double, double>& out);
+                           std::pair<double, double>& intersection);
 
   //! \brief Determine if point p3 is above or below the line segment (p1, p2)
   static bool is_above(std::pair<double, double> p1,
