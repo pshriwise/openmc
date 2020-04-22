@@ -29,19 +29,11 @@ void create_majorant() {
       for (auto val : total) { xs.push_back(val); }
       auto energies = nuclide->grid_[t].energy;
       majorant->update(energies, xs);
-
-      // write nuclide to file
-      auto T = nuclide->kTs_[t];
-      std::ofstream of(nuclide->name_ + "_" + std::to_string(T/K_BOLTZMANN) + ".txt");
-      for (int i = 0; i < energies.size(); i++) {
-        of << energies[i] << "\t" << xs[i] << "\n";
-      }
-      of.close();
     }
+    // initialize the energy grid for this nuclide
     majorant->grid_.init();
     // majorant->write_ascii(nuclide->name_ + "_majorant.txt");
   }
-
 
   auto majorant_e_grid = compute_majorant_energy_grid();
   std::vector<double> xs_vals;
@@ -71,59 +63,13 @@ void create_majorant() {
 
   data::n_majorant->grid_.init();
   // data::n_majorant->write_ascii("macro_majorant.txt");
-
-  // // compute the majorant value for each energy point in the grid
-  // for (auto e_val : majorant_e_grid) {
-  //   double majorant_value = -INFTY;
-  //   for (auto& material : model::materials) {
-  //     double xs_val = 0.0;
-  //     for (int i = 0; i < material->nuclide_.size(); i++) {
-  //       int i_nuc = material->nuclide_[i];
-  //       xs_val += material->atom_density_(i) * data::nuclide_majorants[i_nuc]->calculate_xs(e_val);
-  //     }
-  //     majorant_value = std::max(majorant_value, xs_val);
-  //   }
-  //   xs_vals.push_back(1.0 * majorant_value);
-  // }
-
-  // for (auto e_val : majorant_e_grid) {
-  //   double xs_val = -INFTY;
-  //   for (auto& material : model::materials) {
-  //     Particle p;
-  //     p.E_ = e_val;
-  //     material->calculate_xs(p);
-  //     xs_val = std::max(xs_val, 1.2 * p.macro_xs_.total);
-  //   }
-  //   xs_vals.push_back(xs_val);
-  // }
-
-  // data::neutron_majorant = std::make_unique<MacroscopicMajorant>(majorant_e_grid, xs_vals);
-  // data::neutron_majorant->write_ascii("macro_majorant.txt");
-
-  // Particle p;
-  // for (auto& mat : model::materials) {
-  //   std::string mat_filename;
-  //   if (mat->name_ != "") {
-  //     mat_filename = mat->name_ + "_total_xs.txt";
-  //   } else {
-  //     mat_filename = "mat_" + std::to_string(mat->id_) + "_total_xs.txt";
-  //   }
-  //   std::ofstream of(mat_filename);
-
-  //   for (auto e_val : majorant_e_grid) {
-  //     p.E_ = e_val;
-  //     mat->calculate_xs(p);
-  //     of << e_val << "\t" << p.macro_xs_.total << "\n";
-  //   }
-  //   of.close();
-  // }
 }
 
 std::vector<double>
 compute_majorant_energy_grid() {
 
   std::vector<double> common_e_grid;
-  for (auto& nuc_maj : data::nuclide_majorants) {
+  for (const auto& nuc_maj : data::nuclide_majorants) {
     auto& e_grid = nuc_maj->grid_.energy;
     // append new points to the current group of points
     common_e_grid.insert(common_e_grid.end(), e_grid.begin(), e_grid.end());
@@ -185,7 +131,7 @@ Majorant::calculate_xs(double energy) const
 
   // calculate interpolation factor
   double f = (energy - grid_.energy[i_grid]) /
-      (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
+              (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
 
   Expects(f <= 1.0);
   double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
@@ -197,25 +143,26 @@ bool Majorant::intersect_2D(std::pair<double, double> p1,
                             std::pair<double, double> p2,
                             std::pair<double, double> p3,
                             std::pair<double, double> p4,
-                            std::pair<double, double>& out) {
+                            std::pair<double, double>& intersection) {
 
   double denominator = (p4.first - p3.first) * (p1.second - p2.second) -
                         (p1.first - p2.first) * (p4.second - p3.second);
 
   // if the lines are parallel, return no intersection
-  if (denominator == 0.0) { return false; }
+  if (fabs(denominator) <= FP_PRECISION) { return false; }
 
   double numerator = (p3.second - p4.second) * (p1.first - p3.first) +
-                      (p4.first - p3.first) * (p1.second - p3.second);
+                     (p4.first - p3.first) * (p1.second - p3.second);
 
   double t = numerator / denominator;
 
   if (t < 0.0 || t > 1.0) { return false; }
 
+  // compute intersection location
   double x = p1.first + (p2.first - p1.first) * t;
-  double m = (p2.second - p1.second) / (p2.first - p1.first);
-  double y = p1.second + (x - p1.first) * m;
-  out = {x, y};
+  double slope = (p2.second - p1.second) / (p2.first - p1.first);
+  double y = p1.second + (x - p1.first) * slope;
+  intersection = {x, y};
   return true;
 }
 
@@ -224,7 +171,7 @@ bool Majorant::is_above(std::pair<double, double> p1,
                         std::pair<double, double> p3) {
   // if the line is vertical, use
   // comparison of x values
-  if (fabs(p2.first - p1.first) < FP_COINCIDENT) {
+  if (fabs(p2.first - p1.first) < FP_PRECISION) {
     return p3.first < p2.first;
   } else {
     double slope = (p2.second - p1.second) / (p2.first - p1.first);
@@ -234,7 +181,6 @@ bool Majorant::is_above(std::pair<double, double> p1,
 
 }
 
-// Majorant method definitions
 void Majorant::write_ascii(const std::string& filename) const {
 
   std::ofstream of(filename);
@@ -248,9 +194,6 @@ void Majorant::write_ascii(const std::string& filename) const {
 
 void Majorant::update(std::vector<double> energy_other,
                       std::vector<double> xs_other) {
-
-  // remove the additional 5 percent from the current xs values
-  // std::transform(xs_.begin(), xs_.end(), xs_.begin(),[](double xs_val) { return xs_val / Majorant::safety_factor; });
 
   XS xs_a(grid_.energy, xs_);
   XS xs_b(energy_other, xs_other);
@@ -269,24 +212,53 @@ void Majorant::update(std::vector<double> energy_other,
   std::vector<size_t> mask;
 
   // references we'll use to keep track of which
-  // is the higher-value cross section
+  // is currently considered the larger cross section
   XS& current_xs = xs_a;
   XS& other_xs = xs_b;
 
-  // if the other cross section starts at a lower energy, it's
+  // if the other cross section starts at a lower energy, its
   // value is considered to be higher
-  if (other_xs.get_e() < current_xs.get_e())
-    std::swap(current_xs, other_xs);
+  if (other_xs.get_e() < current_xs.get_e()) std::swap(current_xs, other_xs);
 
   // if the two cross sections start at the same energy
   // pick the one with the higher xs value
-  if (other_xs.get_e() == current_xs.get_e() && other_xs.get_xs() > current_xs.get_xs())
+  if (other_xs.get_e() == current_xs.get_e() && other_xs.get_xs() > current_xs.get_xs()) {
     std::swap(current_xs, other_xs);
+  }
 
   // add the first point to the final cross section
   e_out.push_back(current_xs.get_e());
   xs_out.push_back(current_xs.get_xs());
   current_xs++;
+
+  // the next point added to the cross section is selected based 4 different cases
+  //
+  // above: the other cross section point above the line between the last point added and the current xs's next point
+  // below: ther other cross section point is below the line betwee the last point added and the current xs's next point
+  // nearer: the other cross section point is closer in energy to the last point added
+  // farther: the other cross section point is farther in energy from the last point added
+  //
+  // Case 1: other xs value is above and nearer
+  //
+  //         Check for an intersection with the line segment between last_pnt and current_next.
+  //         If an intersection exists, insert a point in the majorant at that location and
+  //         swap the current and other cross sections.
+  //
+  // Case 2: other xs value is above and farther
+  //
+  //         Check for an intersection with the line segment between last_pnt and current_next.
+  //         Apply the same treatment as Case 1.
+  //
+  // Case 3: other xs value is below and nearer
+  //
+  //         Insert a point at the energy of the other xs value on the line segment between
+  //         last_pnt and current_next. This point is superfluous and purely for the algorithm
+  //         robustness, so the index of this point is added to the mask of indices to be removed
+  //         later.
+  //
+  // Case 4: other xs value is below and farther
+  //
+  //         Insert the location of current_next to the output cross section and continue
 
   // start looping over values
   while (true) {
@@ -296,35 +268,6 @@ void Majorant::update(std::vector<double> energy_other,
     auto current_next = current_xs.get();
     auto other_next = other_xs.get();
     std::pair<double, double> last_pnt = {e_out.back(), xs_out.back()};
-
-    // the next point added to the cross section is selected based 4 different cases
-    //
-    // above: the other cross section point above the line between the last point added and the current xs's next point
-    // below: ther other cross section point is below the line betwee the last point added and the current xs's next point
-    // nearer: the other cross section point is closer in energy to the last point added
-    // farther: the other cross section point is farther in energy from the last point added
-    //
-    // Case 1: other xs value is above and nearer
-    //
-    //         Check for an intersection with the line segment between last_pnt and current_next.
-    //         If an intersection exists, insert a point in the majorant at that location and
-    //         swap the current and other cross sections.
-    //
-    // Case 2: other xs value is above and farther
-    //
-    //         Check for an intersection with the line segment between last_pnt and current_next.
-    //         Apply the same treatment as Case 1.
-    //
-    // Case 3: other xs value is below and nearer
-    //
-    //         Insert a point at the energy of the other xs value on the line segment between
-    //         last_pnt and current_next. This point is superfluous and purely for the algorithm
-    //         robustness, so the index of this point is added to the mask of indices to be removed
-    //         later.
-    //
-    // Case 4: other xs value is below and farther
-    //
-    //         Insert the location of current_next to the output cross section and continue
 
     bool above = is_above(last_pnt, current_next, other_next);
     bool nearer = other_next.first < current_next.first;
@@ -426,7 +369,5 @@ void Majorant::XS::advance(double energy) {
 }
 
 bool Majorant::XS::complete() const { return idx_ >= energies_.size(); }
-
-
 
 }
