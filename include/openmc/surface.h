@@ -74,6 +74,68 @@ struct BoundingBox
     return *this;
   }
 
+  // extend box to include location
+  inline void extend(const Position& p) {
+    xmin = std::min(xmin, p.x);
+    xmax = std::max(xmax, p.x);
+    ymin = std::min(ymin, p.y);
+    ymax = std::max(ymax, p.y);
+    zmin = std::min(zmin, p.z);
+    zmax = std::max(zmax, p.z);
+  }
+
+  // point containment check
+  inline bool contains(const Position& p) const {
+    return p.x >= xmin && p.x <= xmax &&
+           p.y >= ymin && p.y <= ymax &&
+           p.z >= zmin && p.z <= zmax;
+  }
+
+
+  // check for track intersection
+  // Uses the "slabs" method developed
+  // by Kay and Kayjia (1986)
+  // https://doi.org/10.1145/15886.15916
+  inline bool track_intersects(const Position& start,
+                               const Direction& dir,
+                               double length) const {
+
+    Direction dir_inv = 1 / dir;
+
+    double tmax = INFTY;
+    double tmin = -INFTY;
+
+    double tx_min = (xmin - start.x) * dir_inv.x;
+    double tx_max = (xmax - start.x) * dir_inv.x;
+
+    tmin = std::max(tmin, std::min(tx_min, tx_max));
+    tmax = std::min(tmax, std::max(tx_min, tx_max));
+
+    double ty_min = (ymin - start.y) * dir_inv.y;
+    double ty_max = (ymax - start.y) * dir_inv.y;
+
+    tmin = std::max(tmin, std::min(ty_min, ty_max));
+    tmax = std::min(tmax, std::max(ty_min, ty_max));
+
+    double tz_min = (zmin - start.z) * dir_inv.z;
+    double tz_max = (zmax - start.z) * dir_inv.z;
+
+    tmin = std::max(tmin, std::min(tz_min, tz_max));
+    tmax = std::min(tmax, std::max(tz_min, tz_max));
+
+    return tmin <= tmax && (tmax >= 0.0 || tmin <= 1.0);
+  }
+
+  // track intersection check overload
+  inline bool track_intersects(const Position& start,
+                               const Position& end) {
+    Direction dir = end - start;
+    double length = dir.norm();
+    dir /= length;
+
+    return track_intersects(start, dir, length);
+  }
+
 };
 
 //==============================================================================

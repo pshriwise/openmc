@@ -1666,6 +1666,9 @@ UnstructuredMesh::bins_crossed(const Particle* p,
 
   double track_len = (r1 - r0).length();
 
+  // early exit if track doesn't intersect the bounding box
+  if (!bbox_.track_intersects(r, u, track_len)) return;
+
   r0 -= TINY_BIT * dir;
   r1 += TINY_BIT * dir;
 
@@ -1779,6 +1782,9 @@ void UnstructuredMesh::surface_bins_crossed(const Particle* p, std::vector<int>&
 
 int
 UnstructuredMesh::get_bin(Position r) const {
+
+  if (!bbox_.contains(r)) return -1;
+
   moab::EntityHandle tet = get_tet(r);
   if (tet == 0) {
     return -1;
@@ -1808,6 +1814,8 @@ UnstructuredMesh::compute_barycentric_data(const moab::Range& tets) {
     if (rval != moab::MB_SUCCESS) {
       fatal_error("Failed to get coordinates of a tet in umesh: " + filename_);
     }
+
+    for (int i = 0; i < 4; i++) { bbox_.extend({p[i][0], p[i][1], p[i][2]}); }
 
     moab::Matrix3 a(p[1] - p[0], p[2] - p[0], p[3] - p[0], true);
 

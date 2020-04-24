@@ -14,6 +14,7 @@
 
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/surface.h"
 
 #ifdef DAGMC
 #include "moab/Core.hpp"
@@ -407,6 +408,7 @@ private:
   std::unique_ptr<moab::Interface> mbi_; //!< MOAB instance
   std::unique_ptr<moab::AdaptiveKDTree> kdtree_; //!< MOAB KDTree instance
   std::vector<moab::Matrix3> baryc_data_; //!< Barycentric data for tetrahedra
+  BoundingBox bbox_ {0, 0, 0, 0, 0, 0};
 };
 
 #endif
