@@ -2071,6 +2071,7 @@ void LibMesh::initialize() {
 
   // bounding box for the mesh
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+
 }
 
 int LibMesh::n_bins() const {
