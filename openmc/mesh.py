@@ -618,6 +618,9 @@ class UnstructuredMesh(MeshBase):
         Name of the file containing the unstructured mesh
     library : str
         Mesh library used for the unstructured mesh tally
+    output : bool
+        Indicates whether or not automatic tally output should
+        be generated for this mesh
     volumes : Iterable of float
         Volumes of the unstructured mesh elements
     total_volume : float
@@ -631,8 +634,9 @@ class UnstructuredMesh(MeshBase):
         super().__init__(mesh_id, name)
         self.filename = filename
         self.library = library
-        self._volumes = []
         self._centroids = []
+        self._output = True
+        self._volumes = []
 
     @property
     def filename(self):
@@ -660,6 +664,15 @@ class UnstructuredMesh(MeshBase):
     def size(self, size):
         cv.check_type("Unstructured mesh size", size, Integral)
         self._size = size
+
+    @property
+    def output(self):
+        return self._output
+
+    @output.setter
+    def output(self, val):
+        cv.check_type("Unstructured mesh output value", val, bool)
+        self._output = val
 
     @property
     def volumes(self):
