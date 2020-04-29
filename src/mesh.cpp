@@ -2215,10 +2215,6 @@ LibMesh::surface_bins_crossed(Position r0,
   throw std::runtime_error{"Unstructured mesh surface tallies are not implemented."};
 }
 
-std::pair<std::vector<double>, std::vector<double>>
-LibMesh::plot(Position plot_ll,
-              Position plot_ur) const { return {}; }
-
 void
 LibMesh::add_score(const std::string& var_name) {
   // check if this is a new varaible
