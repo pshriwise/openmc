@@ -351,10 +351,10 @@ if (HDF5_IS_PARALLEL)
   target_compile_definitions(libopenmc PRIVATE -DPHDF5)
 endif()
 if (MPI_ENABLED)
-  target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
+  target_compile_definitions(libopenmc PRIVATE -DOPENMC_MPI)
 endif()
 if (libmesh)
-  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_compile_definitions(libopenmc PUBLIC LIBMESH)
 endif()
 
 # Set git SHA1 hash as a compile definition
