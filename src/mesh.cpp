@@ -1490,15 +1490,16 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
                                             int* id)
 {
   bool valid_lib = false;
+  std::string lib_str(library);
 #ifdef DAGMC
-  if (library == "moab") {
+  if (lib_str == "moab") {
     model::meshes.push_back(std::move(std::make_unique<MOABUnstructuredMesh>(filename)));
     valid_lib = true;
   }
 #endif
 
 #ifdef LIBMESH
-  if (library == "libmesh") {
+  if (lib_str == "libmesh") {
     model::meshes.push_back(std::move(std::make_unique<LibMesh>(filename)));
     valid_lib = true;
   }
@@ -1515,6 +1516,7 @@ extern "C" int openmc_add_unstructured_mesh(const char filename[],
 
   mesh_id += 1;
   model::meshes.back()->id_ = mesh_id;
+  model::mesh_map[mesh_id] = model::meshes.size() - 1;
   *id = mesh_id;
 
   return 0;
