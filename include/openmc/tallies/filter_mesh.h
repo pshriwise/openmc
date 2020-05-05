@@ -47,6 +47,10 @@ public:
 
   virtual void set_translation(const double translation[3]);
 
+  virtual const Position& translation() const {return translation_;}
+
+  virtual const bool& translated() const {return translated_;}
+
   virtual Position& translation() {return translation_;}
 
   virtual bool& translated() {return translated_;}
