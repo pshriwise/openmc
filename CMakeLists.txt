@@ -39,7 +39,7 @@ endif()
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
 if(dagmc)
-  find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  find_package(DAGMC REQUIRED HINTS ${DAGMC_DIR} PATH_SUFFIXES lib/cmake)
 endif()
 
 #===============================================================================
