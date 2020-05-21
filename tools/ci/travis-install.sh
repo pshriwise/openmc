@@ -12,6 +12,10 @@ fi
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then
     ./tools/ci/travis-install-vectfit.sh
+
+# Install DAGMC if needed
+if [[ $LIBMESH = 'y' ]]; then
+    ./tools/ci/travis-install-libmesh.sh
 fi
 
 # Upgrade pip, pytest, numpy before doing anything else
