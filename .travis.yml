@@ -9,6 +9,7 @@ addons:
       - libmpich-dev
       - libhdf5-serial-dev
       - libhdf5-mpich-dev
+      - libnetcdf-dev
       - libblas-dev
       - liblapack-dev
     config:
@@ -45,7 +46,9 @@ matrix:
     - python: "3.7"
       env: OMP=n MPI=y PHDF5=y
     - python: "3.7"
-      env: OMP=y MPI=y PHDF5=y DAGMC=y
+      env: OMP=y PHDF5=y DAGMC=y
+    - python: "3.7"
+      env: OMP=y PHDF5=y LIBMESH=y
     - python: "3.7"
       env: OMP=y MPI=n PHDF5=n EVENT=y
 notifications:

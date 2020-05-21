@@ -9,6 +9,11 @@ if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/travis-install-dagmc.sh
 fi
 
+# Install DAGMC if needed
+if [[ $LIBMESH = 'y' ]]; then
+    ./tools/ci/travis-install-libmesh.sh
+fi
+
 # Upgrade pip, pytest, numpy before doing anything else
 pip install --upgrade pip
 pip install --upgrade pytest
