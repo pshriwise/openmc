@@ -223,7 +223,7 @@ Particle::event_delta_advance() {
 
     // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
-    score_track_derivative(this, distance);
+    score_track_derivative(*this, distance);
   }
 }
 
