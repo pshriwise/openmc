@@ -412,7 +412,7 @@ void initialize_generation()
 
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
-      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+      GlobalTally::K_COLLISION, TallyResult::VALUE);
   }
 }
 
