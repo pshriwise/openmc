@@ -238,7 +238,7 @@ Particle::event_advance()
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
-      type_ == Particle::Type::neutron) {
+      type_ == Particle::Type::neutron && !delta_tracking_) {
     keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
   }
 
@@ -423,8 +423,12 @@ Particle::event_death()
   global_tally_absorption += keff_tally_absorption_;
   #pragma omp atomic
   global_tally_collision += keff_tally_collision_;
+
+  if (!delta_tracking_) {
   #pragma omp atomic
   global_tally_tracklength += keff_tally_tracklength_;
+  }
+
   #pragma omp atomic
   global_tally_leakage += keff_tally_leakage_;
 
