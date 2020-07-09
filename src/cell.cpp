@@ -1012,6 +1012,11 @@ void read_cells(pugi::xml_node node)
     }
   }
 
+#ifdef DAGMC
+  // read any DAGMC universes
+  read_dagmc_universes(node);
+#endif
+
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
     int32_t uid = model::cells[i]->universe_;
@@ -1031,6 +1036,17 @@ void read_cells(pugi::xml_node node)
   if (settings::check_overlaps) {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
+}
+
+void read_dagmc_universes(pugi::xml_node node) {
+
+  // determine the max cell id
+  int32_t next_cell_id = 0;
+  for (const auto& c : model::cells) {
+    if (c->id_ > next_cell_id) next_cell_id = c->id_;
+  }
+  next_cell_id++;
+
 }
 
 //==============================================================================
