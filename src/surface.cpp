@@ -1117,9 +1117,6 @@ void read_surfaces(pugi::xml_node node)
   // Count the number of surfaces.
   int n_surfaces = 0;
   for (pugi::xml_node surf_node : node.children("surface")) {n_surfaces++;}
-  if (n_surfaces == 0) {
-    fatal_error("No surfaces found in geometry.xml!");
-  }
 
   // Loop over XML surface elements and populate the array.
   model::surfaces.reserve(n_surfaces);
@@ -1297,6 +1294,10 @@ void read_surfaces(pugi::xml_node node)
   }
   if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
+  }
+
+  if (model::surfaces.size() == 0) {
+    fatal_error("No surfaces found in geometry.xml!");
   }
 }
 
