@@ -9,8 +9,9 @@ extern "C" const bool dagmc_enabled;
 #ifdef DAGMC
 
 #include "DagMC.hpp"
-#include "openmc/xml_interface.h"
+
 #include "openmc/position.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
