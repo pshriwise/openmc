@@ -338,6 +338,8 @@ Particle::event_collide()
 
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
+
+  history_.reset();
 }
 
 void
@@ -369,7 +371,7 @@ void
 Particle::event_death()
 {
   #ifdef DAGMC
-  if (settings::dagmc) history_.reset();
+  history_.reset();
   #endif
 
   // Finish particle track output.
@@ -484,13 +486,18 @@ Particle::cross_surface()
     coord_[0].cell = cell_last_[n_coord_last_ - 1];
     surface_ = -surface_;
 
+    // if this is not a DAGMC surface, reset the particle history
+    auto dag_surf = dynamic_cast<DAGSurface*>(surf);
+    if (!dag_surf) { history_.reset(); }
+
     // If a reflective surface is coincident with a lattice or universe
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
     // (unless we're using a dagmc model, which has exactly one universe)
-    if (!settings::dagmc) {
+    if (!dag_surf) {
       n_coord_ = 1;
-      if (!find_cell(*this, true)) {
+      if (!find_cell(*this, false)) {
+        find_cell(*this, false);
         this->mark_as_lost("Couldn't find particle after reflecting from surface "
                            + std::to_string(surf->id_) + ".");
         return;
@@ -565,23 +572,25 @@ Particle::cross_surface()
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
 
-// #ifdef DAGMC
-//   if (settings::dagmc) {
-//     auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[0]].get());
-//     // TODO: off-by-one
-//     auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
-//     int32_t i_cell = next_cell(cellp, surfp) - 1;
-//     // save material and temp
-//     material_last_ = material_;
-//     sqrtkT_last_ = sqrtkT_;
-//     // set new cell value
-//     coord_[0].cell = i_cell;
-//     cell_instance_ = 0;
-//     material_ = model::cells[i_cell]->material_[0];
-//     sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
-//     return;
-//   }
-// #endif
+#ifdef DAGMC
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(surface_) - 1].get());
+  if (surfp) {
+    auto cellp = dynamic_cast<DAGCell*>(model::cells[cell_last_[n_coord_ - 1]].get());
+    // TODO: off-by-one
+    auto univp = static_cast<DAGUniverse*>(model::universes[coord_[n_coord_ - 1].universe].get());
+
+    int32_t i_cell = next_cell(univp, cellp, surfp) - 1;
+    // save material and temp
+    material_last_ = material_;
+    sqrtkT_last_ = sqrtkT_;
+    // set new cell value
+    coord_[n_coord_ - 1].cell = i_cell;
+    cell_instance_ = 0;
+    material_ = model::cells[i_cell]->material_[0];
+    sqrtkT_ = model::cells[i_cell]->sqrtkT_[0];
+    return;
+  }
+#endif
 
   if (find_cell(*this, true)) return;
 
