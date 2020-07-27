@@ -214,16 +214,15 @@ Particle::event_delta_advance() {
     coord_[j].r += distance * coord_[j].u;
   }
 
-  // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      type_ == Particle::Type::neutron) {
-    keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
-  }
-
     // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) {
     score_track_derivative(*this, distance);
   }
+
+  if (!find_cell(*this, false)) {
+    if (delta_tracking_) alive_ = false;
+  }
+
 }
 
 void
