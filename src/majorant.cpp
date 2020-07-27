@@ -18,6 +18,7 @@ std::unique_ptr<Majorant> n_majorant;
 }
 
 void create_majorant() {
+  write_message("Creating majorant cross section...");
   // create a majorant XS for each nuclide
   for (const auto& nuclide : data::nuclides) {
     data::nuclide_majorants.push_back(std::make_unique<Majorant>());
@@ -25,10 +26,41 @@ void create_majorant() {
 
     for (int t = 0; t < nuclide->kTs_.size(); t++) {
       auto total = xt::view(nuclide->xs_[t], xt::all(), 0);
-      std::vector<double> xs;
-      for (auto val : total) { xs.push_back(val); }
+      std::vector<double> xs(total.begin(), total.end());
       auto energies = nuclide->grid_[t].energy;
       majorant->update(energies, xs);
+
+      // include unresolved resonance region data
+      // in the majorant if present
+      if (nuclide->urr_present_) {
+        const auto& urr_data = nuclide->urr_data_[t];
+        std::vector<double> energies(urr_data.energy_.begin(), urr_data.energy_.end());
+
+        auto band_totals = xt::view(urr_data.prob_, xt::all(), URRTableParam::TOTAL, xt::all());
+        auto max_band_vals = xt::amax(band_totals, 2);
+
+        if(urr_data.interp_ == Interpolation::log_log) {
+          std::cout << "Log-log interpolation" << std::endl;
+        }
+
+        if (urr_data.multiply_smooth_) {
+          std::cout << "Multiplied URR: " << nuclide->name_ << std::endl;
+          majorant->grid_.init();
+          std::vector<double> xs_vals;
+          for (int i = 0; i < energies.size(); i++) {
+            xs_vals.push_back(majorant->calculate_xs(energies[i]) * max_band_vals(i));
+//            std::cout << xs_vals.back() << " " << std::endl;
+          }
+          majorant->update(energies, xs_vals);
+        } else {
+          std::vector<double> xs_vals(max_band_vals.begin(), max_band_vals.end());
+          for (const auto& val : xs_vals) {
+            // std::cout << val << " " << std::endl;
+          }
+          majorant->update(energies, xs_vals);
+        }
+        // majorant->update_urr(energies, xs, urr_data.interp_);
+      }
     }
     // initialize the energy grid for this nuclide
     majorant->grid_.init();
@@ -73,6 +105,7 @@ compute_majorant_energy_grid() {
     auto& e_grid = nuc_maj->grid_.energy;
     // append new points to the current group of points
     common_e_grid.insert(common_e_grid.end(), e_grid.begin(), e_grid.end());
+
     // remove duplicates
     std::unique(common_e_grid.begin(), common_e_grid.end());
   }
@@ -218,7 +251,9 @@ void Majorant::update(std::vector<double> energy_other,
 
   // if the other cross section starts at a lower energy, its
   // value is considered to be higher
-  if (other_xs.get_e() < current_xs.get_e()) std::swap(current_xs, other_xs);
+  if (other_xs.get_e() < current_xs.get_e()) {
+    std::swap(current_xs, other_xs);
+  }
 
   // if the two cross sections start at the same energy
   // pick the one with the higher xs value
@@ -230,6 +265,34 @@ void Majorant::update(std::vector<double> energy_other,
   e_out.push_back(current_xs.get_e());
   xs_out.push_back(current_xs.get_xs());
   current_xs++;
+
+  // continue adding points until the other xs min
+  // energy is lower than the output minimum energy
+  while(current_xs.get_e() < other_xs.get_e() && !current_xs.complete()) {
+    e_out.push_back(current_xs.get_e());
+    xs_out.push_back(current_xs.get_xs());
+    current_xs++;
+  }
+
+  // Corner case: first point of the other xs is higher and nearer
+  // There is no intersection to find b/c there is no previous point to
+  // use for interpolation. Here, we'll insert a point at that energy
+  // in the current cross section, insert the point of the other cross
+  // section, and swap the two.
+  // NOTE: possible problem with computing intersections with vertical slopes here
+  if (current_xs.get_e() <= other_xs.get_e() && is_above({e_out.back(), xs_out.back()}, current_xs.get(), other_xs.get())) {
+    // insert point on current xs segment
+    double slope = (current_xs.get_xs() - xs_out.back()) /
+                    (current_xs.get_e() - e_out.back());
+    double xs_val = xs_out.back() + slope * (other_xs.get_e() - e_out.back());
+    // insert point from other cross section
+    e_out.push_back(other_xs.get_e());
+    xs_out.push_back(other_xs.get_xs());
+    // swap the cross sections and advance
+    std::swap(current_xs, other_xs);
+    current_xs.advance(e_out.back());
+    other_xs.advance(e_out.back());
+  }
 
   // the next point added to the cross section is selected based 4 different cases
   //
