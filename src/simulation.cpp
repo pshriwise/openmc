@@ -711,7 +711,12 @@ void transport_delta_tracking_single_particle(Particle& p) {
 
   while (true) {
     p.event_calculate_xs();
+    if (!p.alive_)
+      break;
     p.event_delta_advance();
+    if (!p.alive_)
+      break;
+    p.event_calculate_xs();
     if (!p.alive_)
       break;
     Expects(p.macro_xs_.total <= p.majorant_);

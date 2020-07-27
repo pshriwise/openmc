@@ -100,10 +100,6 @@ void Particle::event_calculate_xs()
   event_nuclide() = NUCLIDE_NONE;
   event_mt() = REACTION_NONE;
 
-  if (this->delta_tracking_) {
-    this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
-  }
-
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
@@ -199,12 +195,15 @@ void Particle::event_advance()
 void
 Particle::event_delta_advance() {
   double distance;
+
+  this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
+
   // sample distance to next position
   if (type_ == Particle::Type::electron ||
       type_ == Particle::Type::positron) {
     distance = 0.0;
-  } else if (macro_xs_.total == 0.0) {
-    distance = INFINITY;
+  // } else if (macro_xs_.total == 0.0) {
+  //   distance = INFINITY;
   } else {
     // calculate majorant value for this energy
     distance = -std::log(prn(this->current_seed())) / majorant_;

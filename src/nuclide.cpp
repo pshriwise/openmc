@@ -849,6 +849,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double elastic = 0.;
   double fission = 0.;
   double capture = 0.;
+  double total = 0.;
   double f;
   if (urr.interp_ == Interpolation::lin_lin) {
     // Determine the interpolation factor on the table
