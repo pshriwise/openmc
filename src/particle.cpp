@@ -192,6 +192,45 @@ void Particle::event_advance()
   }
 }
 
+std::vector<int32_t>
+Particle::trace_out() {
+  std::vector<int32_t> surfs_out;
+
+  Particle clone = *this;
+
+  double track_len = (r() - r_last_).norm();
+
+  // move particle to previous location and find cell
+  for (auto& coord : clone.coord_) {
+    coord.r -= track_len * coord.u;
+    coord.reset();
+  }
+
+  find_cell(clone, false);
+
+  double distance_traveled = 0;
+  while (distance_traveled < track_len) {
+    int32_t surf;
+    double dist = INFTY;
+
+    auto boundary = distance_to_boundary(clone);
+
+    // update distance
+    distance_traveled += boundary.distance;
+    surfs_out.push_back(boundary.surface_index);
+
+    // advance the particle
+    for(auto& coord : clone.coord_) {
+      coord.r += boundary.distance * coord.u;
+    }
+
+    clone.event_cross_surface();
+  }
+
+  // return surfaces crossed before
+  return surfs_out;
+}
+
 void
 Particle::event_delta_advance() {
   double distance;
