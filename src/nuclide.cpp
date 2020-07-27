@@ -719,7 +719,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
-  if (!p.delta_tracking_ && settings::urr_ptables_on && urr_present_ && !use_mp) {
+  if (settings::urr_ptables_on && urr_present_ && !use_mp) {
     int n = urr_data_[micro.index_temp].n_energy_;
     if ((p.E_ > urr_data_[micro.index_temp].energy_(0)) &&
         (p.E_ < urr_data_[micro.index_temp].energy_(n-1))) {
@@ -774,7 +774,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 
   // Sample the probability table using the cumulative distribution
 
-  // Random nmbers for the xs calculation are sampled from a separate stream.
+  // Random numbers for the xs calculation are sampled from a separate stream.
   // This guarantees the randomness and, at the same time, makes sure we
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
@@ -795,6 +795,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   double elastic = 0.;
   double fission = 0.;
   double capture = 0.;
+  double total = 0.;
   double f;
   if (urr.interp_ == Interpolation::lin_lin) {
     // Determine the interpolation factor on the table
@@ -807,6 +808,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
          f * urr.prob_(i_energy + 1, URRTableParam::FISSION, i_up);
     capture = (1. - f) * urr.prob_(i_energy, URRTableParam::N_GAMMA, i_low) +
          f * urr.prob_(i_energy + 1, URRTableParam::N_GAMMA, i_up);
+    total = (1. - f) * urr.prob_(i_energy, URRTableParam::TOTAL, i_low) +
+         f * urr.prob_(i_energy + 1, URRTableParam::TOTAL, i_up);
   } else if (urr.interp_ == Interpolation::log_log) {
     // Determine interpolation factor on the table
     f = std::log(p.E_ / urr.energy_(i_energy)) /
