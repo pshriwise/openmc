@@ -63,7 +63,7 @@ public:
   void event_death();
 
   //! Determine the surfaces crossed between the last and current particle position
-  std::vector<int32_t> trace_out();
+  std::vector<std::pair<double, int32_t>> trace_out();
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();
