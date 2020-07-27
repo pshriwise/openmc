@@ -206,14 +206,21 @@ Particle::trace_out() {
     coord.reset();
   }
 
-  find_cell(clone, false);
+  if(!find_cell(clone, false)) {
+    this->mark_as_lost(fmt::format("Could not find containing cell for particle {}.", id_));
+  }
 
   double distance_traveled = 0;
-  while (distance_traveled < track_len) {
+  auto& boundary = clone.boundary_;
+
+  while (true) {
     int32_t surf;
     double dist = INFTY;
 
-    auto boundary = distance_to_boundary(clone);
+    boundary = distance_to_boundary(clone);
+
+    // stop if we've gone far enough
+    if (distance_traveled + boundary.distance > track_len) break;
 
     // update distance
     distance_traveled += boundary.distance;
@@ -251,6 +258,7 @@ Particle::event_delta_advance() {
   // Advance particle
   for (int j = 0; j < n_coord_; ++j) {
     coord_[j].r += distance * coord_[j].u;
+    coord_[j].reset();
   }
 
     // Score flux derivative accumulators for differential tallies.
@@ -259,6 +267,19 @@ Particle::event_delta_advance() {
   }
 
   if (!find_cell(*this, false)) {
+    auto surfaces_crossed = trace_out();
+
+    // get the last surface crossed
+    const auto& surf = model::surfaces[std::abs(surfaces_crossed.back()) - 1];
+    if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
+      keff_tally_leakage_ += wgt_;
+
+      // Display message
+      if (settings::verbosity >= 10 || trace_) {
+        write_message("    Leaked out of surface " + std::to_string(surf->id_));
+      }
+    }
+
     if (delta_tracking_) alive_ = false;
   }
 
