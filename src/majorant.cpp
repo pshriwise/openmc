@@ -1,6 +1,8 @@
 
 #include <fstream>
 
+#include <fmt/core.h>
+
 #include "openmc/constants.h"
 #include "openmc/majorant.h"
 #include "openmc/material.h"
@@ -40,7 +42,7 @@ void create_majorant() {
         auto max_band_vals = xt::amax(band_totals, 2);
 
         if(urr_data.interp_ == Interpolation::log_log) {
-          std::cout << "Log-log interpolation" << std::endl;
+          std::cout << fmt::format("Nuclide {} uses log-log interpolation", nuclide->name_) << std::endl;
         }
 
         if (urr_data.multiply_smooth_) {
