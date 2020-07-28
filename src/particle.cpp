@@ -193,22 +193,10 @@ void Particle::event_advance()
 }
 
 std::vector<std::pair<double, int32_t>>
-Particle::trace_out() {
+Particle::trace_out(double trace_dist) {
   std::vector<std::pair<double, int32_t>> surfs_out;
 
   Particle clone = *this;
-
-  double track_len = (r() - r_last_).norm();
-
-  // move particle to previous location and find cell
-  for (auto& coord : clone.coord_) {
-    coord.r -= track_len * coord.u;
-    coord.reset();
-  }
-
-  if(!find_cell(clone, false)) {
-    this->mark_as_lost(fmt::format("Could not find containing cell for particle {}.", id_));
-  }
 
   double distance_traveled = 0;
   auto& boundary = clone.boundary_;
@@ -218,9 +206,10 @@ Particle::trace_out() {
     double dist = INFTY;
 
     boundary = distance_to_boundary(clone);
+    boundary.distance -= TINY_BIT;
 
     // stop if we've gone far enough
-    if (distance_traveled + boundary.distance > track_len) break;
+    if (distance_traveled + boundary.distance > trace_dist) break;
 
     // update distance
     distance_traveled += boundary.distance;
@@ -257,6 +246,9 @@ Particle::event_delta_advance() {
     distance = -std::log(prn(this->current_seed())) / majorant_;
   }
 
+  // store a copy of the current coordinates
+  auto coord_cache = coord_;
+
   // Advance particle
   for (int j = 0; j < n_coord_; ++j) {
     coord_[j].r += distance * coord_[j].u;
@@ -269,62 +261,63 @@ Particle::event_delta_advance() {
   }
 
   if (!find_cell(*this, false)) {
-
-    auto surfaces_crossed = trace_out();
+    // reset coordinates and trace
+    coord_ = coord_cache;
+    auto surfaces_crossed = trace_out(distance);
     // get the last surface crossed
     int32_t i_surf = std::abs(surfaces_crossed.back().second);
     double surf_dist = surfaces_crossed.back().first;
     const auto& surf = model::surfaces[i_surf - 1];
 
-    if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
-      keff_tally_leakage_ += wgt_;
+    // if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
+    //   keff_tally_leakage_ += wgt_;
 
-      // Display message
-      if (settings::verbosity >= 10 || trace_) {
-        write_message("    Leaked out of surface " + std::to_string(surf->id_));
-      }
+    //   // Display message
+    //   if (settings::verbosity >= 10 || trace_) {
+    //     write_message("    Leaked out of surface " + std::to_string(surf->id_));
+    //   }
 
-      alive_ = false;
+    //   alive_ = false;
 
-    } else if ((surf->bc_ == Surface::BoundaryType::REFLECT || surf->bc_ == Surface::BoundaryType::WHITE) &&
-               (settings::run_mode != RunMode::PLOTTING))
-    {
-      if (n_coord_ != 1) {
-        this->mark_as_lost("Cannot reflect particle " + std::to_string(id_) +
-        " off surface in a lower universe.");
-        return;
-      }
+    // } else if ((surf->bc_ == Surface::BoundaryType::REFLECT || surf->bc_ == Surface::BoundaryType::WHITE) &&
+    //            (settings::run_mode != RunMode::PLOTTING))
+    // {
+    //   if (n_coord_ != 1) {
+    //     this->mark_as_lost("Cannot reflect particle " + std::to_string(id_) +
+    //     " off surface in a lower universe.");
+    //     return;
+    //   }
 
-      // determine remaining distance to travel after reflecting
-      double remaining_distance = (r() - r_last_).norm() - surf_dist;
+    //   // determine remaining distance to travel after reflecting
+    //   double remaining_distance = (r() - r_last_).norm() - surf_dist;
 
-      Direction u = (surf->bc_ == Surface::BoundaryType::REFLECT) ?
-        surf->reflect(this->r(), this->u(), this) :
-        surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
+    //   Direction u = (surf->bc_ == Surface::BoundaryType::REFLECT) ?
+    //     surf->reflect(this->r(), this->u(), this) :
+    //     surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
 
-      this->u() = u / u.norm();
+    //   this->u() = u / u.norm();
 
-      surface_ = -surfaces_crossed.back().second;
+    //   surface_ = -surfaces_crossed.back().second;
 
-      // // relocate particle
-      // for (auto& coord : coord_) { coord.reset(); }
+    //   // relocate particle
+    //   for (auto& coord : coord_) { coord.reset(); }
 
-      // n_coord_ = 1;
-      // if(!find_cell(*this, false)) {
-      //   this->mark_as_lost("Could not find particle after reflecting from surface "
-      //                     + std::to_string(surf->id_) + ".");
-      //   return;
-      // }
+    //   n_coord_ = 1;
+    //   if(!find_cell(*this, false)) {
+    //     this->mark_as_lost("Could not find particle after reflecting from surface "
+    //                       + std::to_string(surf->id_) + ".");
+    //     return;
+    //   }
 
-      // Set previous coordinate going slightly past surface crossing
-      r_last_current_ = this->r() + TINY_BIT*this->u();
+    //   // Set previous coordinate going slightly past surface crossing
+    //   r_last_current_ = this->r() + TINY_BIT*this->u();
 
-      if (settings::verbosity >= 10 || trace_) {
-        write_message(fmt::format("    Reflected from surface {}", surf->id_));
-      }
+    //   if (settings::verbosity >= 10 || trace_) {
+    //     write_message(fmt::format("    Reflected from surface {}", surf->id_));
+    //   }
 
-      return;
-    }
+    //   return;
+    // }
   }
 }
 
