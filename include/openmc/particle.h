@@ -76,7 +76,7 @@ public:
   void delta_transport();
 
   //! Determine the surfaces crossed between the last and current particle position
-  std::vector<std::pair<double, int32_t>> trace_out();
+  std::vector<std::pair<double, int32_t>> trace_out(double trace_dist);
 
   //! Cross a surface and handle boundary conditions
   void cross_surface(const Surface& surf);
