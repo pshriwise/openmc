@@ -39,7 +39,7 @@ def delta_tracking_model(nuclide):
 
     return model
 
-nuclides = ('Fe56', 'U238', 'H1', 'O16', 'He4', 'Zr91', 'Zr90', 'Zr92',  'Zr94',  'Zr96', 'B10', 'B11')
+nuclides = ('Fe56', 'U238', 'H1', 'O16', 'Zr91', 'Zr90', 'Zr92',  'Zr94',  'Zr96', 'B10', 'B11')
 @pytest.mark.parametrize('nuclide', nuclides)
 def test_delta_tracking(nuclide):
     model = delta_tracking_model(nuclide)
