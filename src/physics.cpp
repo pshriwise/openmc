@@ -457,7 +457,7 @@ int sample_nuclide(Particle& p)
     double atom_density = mat->atom_density_[i];
 
     // Increment probability to compare to cutoff
-    prob += atom_density * p.neutron_xs_[i_nuclide].total;
+    prob += atom_density * p.neutron_xs_.at(i_nuclide).total;
     if (prob >= cutoff) return i_nuclide;
   }
 
