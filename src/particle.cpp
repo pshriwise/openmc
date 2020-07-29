@@ -195,40 +195,33 @@ void Particle::event_advance()
 void
 Particle::trace_out(double trace_dist) {
 
-  Particle clone = *this;
-
-  BoundaryInfo& boundary = clone.boundary_;
-
   double distance_traveled = 0;
   while (true) {
-    boundary = distance_to_boundary(clone);
+    boundary_ = distance_to_boundary(*this);
 
     // stop if we've gone far enough
-    if (distance_traveled + boundary.distance > trace_dist) break;
+    if (distance_traveled + boundary_.distance > trace_dist) break;
 
     // update distance
-    distance_traveled += boundary.distance;
+    distance_traveled += boundary_.distance;
 
     // advance the particle
-    for(auto& coord : clone.coord_) {
-      coord.r += boundary.distance * coord.u;
+    for(auto& coord : coord_) {
+      coord.r += boundary_.distance * coord.u;
     }
 
-    clone.event_cross_surface();
-    if (!clone.alive_) break;
+    // cross the surface
+    this->event_cross_surface();
+    if (!alive_) break;
   }
-
 
   // move the remaining distance if needed
   if (distance_traveled < trace_dist) {
     double remaining_distance = trace_dist - distance_traveled;
-    for (auto& coord : clone.coord_) {
+    for (auto& coord : coord_) {
       coord.r += remaining_distance * coord.u;
     }
   }
-
-  alive_ = clone.alive_;
-  coord_ = clone.coord_;
 
   // reset some information to make sure the particle is relocated
   // before the next collision event
