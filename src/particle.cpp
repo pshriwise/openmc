@@ -192,28 +192,22 @@ void Particle::event_advance()
   }
 }
 
-std::vector<std::pair<double, int32_t>>
+void
 Particle::trace_out(double trace_dist) {
-  std::vector<std::pair<double, int32_t>> surfs_out;
 
   Particle clone = *this;
 
+  BoundaryInfo& boundary = clone.boundary_;
+
   double distance_traveled = 0;
-  auto& boundary = clone.boundary_;
-
   while (true) {
-    int32_t surf;
-    double dist = INFTY;
-
     boundary = distance_to_boundary(clone);
-    boundary.distance -= TINY_BIT;
 
     // stop if we've gone far enough
     if (distance_traveled + boundary.distance > trace_dist) break;
 
     // update distance
     distance_traveled += boundary.distance;
-    surfs_out.push_back({distance_traveled, boundary.surface_index});
 
     // advance the particle
     for(auto& coord : clone.coord_) {
@@ -221,12 +215,26 @@ Particle::trace_out(double trace_dist) {
     }
 
     clone.event_cross_surface();
+    if (!clone.alive_) break;
   }
 
+
+  // move the remaining distance if needed
+  if (distance_traveled < trace_dist) {
+    double remaining_distance = trace_dist - distance_traveled;
+    for (auto& coord : clone.coord_) {
+      coord.r += remaining_distance * coord.u;
+    }
+  }
+
+  alive_ = clone.alive_;
   coord_ = clone.coord_;
 
-  // return surfaces crossed before
-  return surfs_out;
+  // reset some information to make sure the particle is relocated
+  // before the next collision event
+  coord_[n_coord_ - 1].cell = C_NONE;
+  n_coord_ = 1;
+  material_ = C_NONE;
 }
 
 void
@@ -263,11 +271,8 @@ Particle::event_delta_advance() {
   if (!find_cell(*this, false)) {
     // reset coordinates and trace
     coord_ = coord_cache;
-    auto surfaces_crossed = trace_out(distance);
+    trace_out(distance);
     // get the last surface crossed
-    int32_t i_surf = std::abs(surfaces_crossed.back().second);
-    double surf_dist = surfaces_crossed.back().first;
-    const auto& surf = model::surfaces[i_surf - 1];
 
     // if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
     //   keff_tally_leakage_ += wgt_;
