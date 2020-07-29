@@ -193,7 +193,7 @@ void Particle::event_advance()
 }
 
 void
-Particle::trace_out(double trace_dist) {
+Particle::trace(double trace_dist) {
 
   double distance_traveled = 0;
   while (true) {
@@ -262,60 +262,11 @@ Particle::event_delta_advance() {
   }
 
   if (!find_cell(*this, false)) {
-    // reset coordinates and trace
+    // reset coordinates and trace particle through
+    // the geometry to determine what boundary condition should
+    // be applied or if the particle is lost
     coord_ = coord_cache;
-    trace_out(distance);
-    // get the last surface crossed
-
-    // if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
-    //   keff_tally_leakage_ += wgt_;
-
-    //   // Display message
-    //   if (settings::verbosity >= 10 || trace_) {
-    //     write_message("    Leaked out of surface " + std::to_string(surf->id_));
-    //   }
-
-    //   alive_ = false;
-
-    // } else if ((surf->bc_ == Surface::BoundaryType::REFLECT || surf->bc_ == Surface::BoundaryType::WHITE) &&
-    //            (settings::run_mode != RunMode::PLOTTING))
-    // {
-    //   if (n_coord_ != 1) {
-    //     this->mark_as_lost("Cannot reflect particle " + std::to_string(id_) +
-    //     " off surface in a lower universe.");
-    //     return;
-    //   }
-
-    //   // determine remaining distance to travel after reflecting
-    //   double remaining_distance = (r() - r_last_).norm() - surf_dist;
-
-    //   Direction u = (surf->bc_ == Surface::BoundaryType::REFLECT) ?
-    //     surf->reflect(this->r(), this->u(), this) :
-    //     surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
-
-    //   this->u() = u / u.norm();
-
-    //   surface_ = -surfaces_crossed.back().second;
-
-    //   // relocate particle
-    //   for (auto& coord : coord_) { coord.reset(); }
-
-    //   n_coord_ = 1;
-    //   if(!find_cell(*this, false)) {
-    //     this->mark_as_lost("Could not find particle after reflecting from surface "
-    //                       + std::to_string(surf->id_) + ".");
-    //     return;
-    //   }
-
-    //   // Set previous coordinate going slightly past surface crossing
-    //   r_last_current_ = this->r() + TINY_BIT*this->u();
-
-    //   if (settings::verbosity >= 10 || trace_) {
-    //     write_message(fmt::format("    Reflected from surface {}", surf->id_));
-    //   }
-
-    //   return;
-    // }
+    trace(distance);
   }
 }
 
