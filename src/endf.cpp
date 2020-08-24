@@ -133,6 +133,14 @@ double Polynomial::operator()(double x) const
   return y;
 }
 
+double Polynomial::max() const {
+  throw(std::runtime_error("Max is not implemented for polynomial functions."));
+}
+
+double Polynomial::max(double min_E, double max_E) const {
+  throw(std::runtime_error("Max is not implemented for polynomial functions."));
+}
+
 //==============================================================================
 // Tabulated1D implementation
 //==============================================================================
@@ -222,6 +230,23 @@ double Tabulated1D::operator()(double x) const
   }
 }
 
+double Tabulated1D::max() const {
+  return *std::max_element(y_.begin(), y_.end());
+}
+
+double Tabulated1D::max(double min_E, double max_E) const {
+  std::vector <double> vals;
+
+  for (int i = 0; i <= x().size(); i++) {
+    double x_val = x()[i];
+    if (x_val >= min_E && x_val <= max_E) {
+      vals.push_back(y()[i]);
+    }
+  }
+
+  return *std::max_element(vals.begin(), vals.end());
+}
+
 //==============================================================================
 // CoherentElasticXS implementation
 //==============================================================================
@@ -252,6 +277,17 @@ double CoherentElasticXS::operator()(double E) const
       lower_bound_index(bragg_edges_.begin(), bragg_edges_.end(), E);
     return factors_[i_grid] / E;
   }
+}
+
+double CoherentElasticXS::max() const {
+  return *std::max_element(factors_.begin(), factors_.end());
+}
+
+double CoherentElasticXS::max(double min_E, double max_E) const {
+  auto i_grid_min = lower_bound_index(bragg_edges().begin(), bragg_edges().end(), min_E);
+  auto i_grid_max = lower_bound_index(bragg_edges().begin(), bragg_edges().end(), max_E);
+
+  return std::max({factors()[i_grid_min], factors()[i_grid_max]});
 }
 
 //==============================================================================
@@ -297,6 +333,14 @@ double Sum1D::operator()(double x) const
     result += (*func)(x);
   }
   return result;
+}
+
+double IncoherentElasticXS::max() const {
+  return (*this)(0.0);
+}
+
+double IncoherentElasticXS::max(double min_E, double max_E) const {
+  return (*this)(min_E);
 }
 
 } // namespace openmc
