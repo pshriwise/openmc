@@ -9,6 +9,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/search.h"
 #include "openmc/simulation.h"
+#include "openmc/thermal.h"
 
 #include "xtensor/xview.hpp"
 
@@ -70,6 +71,8 @@ void create_majorant() {
   }
 
   auto majorant_e_grid = compute_majorant_energy_grid();
+
+
   std::vector<double> xs_vals;
 
   std::vector<Majorant> macro_majorants;
@@ -79,10 +82,51 @@ void create_majorant() {
     std::vector<double> material_xs;
     for (auto e_val : majorant_e_grid) {
       double xs_val = 0.0;
+
+      // See if thermal data is present for any of the material nuclides
+      bool check_sab = material->thermal_tables_.size() > 0;
+      int thermal_table_idx = 0;
+
+      int j = 0;
+
       for (int i = 0; i < material->nuclide_.size(); i++) {
         int i_nuc = material->nuclide_[i];
         xs_val += material->atom_density_(i) * data::nuclide_majorants[i_nuc]->calculate_xs(e_val);
+
+        int i_sab = C_NONE;
+        double sab_frac = 0.0;
+
+        if (check_sab) {
+          const auto& sab {material->thermal_tables_[j]};
+          if (i == sab.index_nuclide) {
+            // Get index in the sab_tables
+            i_sab = sab.index_table;
+            sab_frac = sab.fraction;
+
+            ++j;
+            if (j == material->thermal_tables_.size()) check_sab = false;
+          }
+        }
+
+        // compute the max sab xs if present
+        if (i_sab >= 0) {
+          const auto& tdata = data::thermal_scatt[i_sab];
+          // compute the maximum xs value over all temperatures
+          double thermal_xs = 0.0;
+          for (int k = 0; k < tdata->kTs_.size(); k++) {
+            // compute the thermal xs at the temperature and energy
+            double elastic, inelastic;
+            tdata->data_[k].calculate_xs(e_val, &elastic, &inelastic);
+            if (elastic + inelastic > thermal_xs) {
+              thermal_xs = elastic + inelastic;
+            }
+          }
+          // adjust the current xs_val for the thermal component
+          xs_val += sab_frac * thermal_xs;
+        }
+
       }
+
       material_xs.push_back(xs_val);
     }
     macro_majorants.emplace_back(Majorant());
