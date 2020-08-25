@@ -234,7 +234,7 @@ void
 Particle::event_delta_advance() {
   double distance;
 
-  this->majorant_ = 1.1 * data::n_majorant->calculate_xs(this->E_);
+  this->majorant_ = 1.000001 * data::n_majorant->calculate_xs(this->E_);
 
   // sample distance to next position
   if (type_ == Particle::Type::electron ||
