@@ -1025,7 +1025,6 @@ void read_cells(pugi::xml_node node)
     model::cells.push_back(std::make_unique<CSGCell>(cell_node));
   }
 
-  read_dagmc_universes(node);
 
   // Fill the cell map.
   for (int i = 0; i < model::cells.size(); i++) {
@@ -1037,6 +1036,8 @@ void read_cells(pugi::xml_node node)
       fatal_error(fmt::format("Two or more cells use the same unique ID: {}", id));
     }
   }
+
+  read_dagmc_universes(node);
 
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {
