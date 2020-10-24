@@ -1244,8 +1244,17 @@ void read_materials_xml()
 
   // Loop over XML material elements and populate the array.
   pugi::xml_node root = doc.document_element();
+  std::map<int, pugi::xml_node> mat_nodes;
   for (pugi::xml_node material_node : root.children("material")) {
-    model::materials.push_back(std::make_unique<Material>(material_node));
+    if (check_for_node(material_node, "id")) {
+      mat_nodes[std::stoi(get_node_value(material_node, "id"))] = material_node;
+    } else {
+      fatal_error("Must specify id of material in materials XML file.");
+    }
+  }
+
+  for (auto& material_node : mat_nodes) {
+    model::materials.push_back(std::make_unique<Material>(material_node.second));
   }
   model::materials.shrink_to_fit();
 }
