@@ -15,13 +15,7 @@ DAGMC_INSTALL_DIR=$HOME/DAGMC/
 CURRENT_DIR=$(pwd)
 
 # MOAB Install
-cd $HOME
-mkdir MOAB && cd MOAB
-git clone -b $MOAB_BRANCH $MOAB_REPO
-mkdir build && cd build
-cmake ../moab -DENABLE_HDF5=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=$MOAB_INSTALL_DIR -DENABLE_BLASLAPACK=OFF
-make -j && make -j install
-rm -rf $HOME/MOAB/moab $HOME/MOAB/build
+conda install -c conda-forge MOAB
 
 # DAGMC Install
 cd $HOME
