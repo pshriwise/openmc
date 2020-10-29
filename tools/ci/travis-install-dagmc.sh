@@ -15,15 +15,6 @@ DAGMC_INSTALL_DIR=$HOME/DAGMC/
 CURRENT_DIR=$(pwd)
 
 # MOAB Install
-conda install -c conda-forge MOAB
-
-# DAGMC Install
-cd $HOME
-mkdir DAGMC && cd DAGMC
-git clone -b $DAGMC_BRANCH $DAGMC_REPO
-mkdir build && cd build
-cmake ../dagmc -DBUILD_TALLY=ON -DCMAKE_INSTALL_PREFIX=$DAGMC_INSTALL_DIR -DMOAB_DIR=$MOAB_INSTALL_DIR
-make -j install
-rm -rf $HOME/DAGMC/dagmc $HOME/DAGMC/build
+conda install -c conda-forge DAGMC
 
 cd $CURRENT_DIR
