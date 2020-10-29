@@ -1,4 +1,3 @@
-
 #!/bin/bash
 set -ex
 
@@ -7,15 +6,15 @@ MOAB_BRANCH='Version5.1.0'
 MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
 MOAB_INSTALL_DIR=$HOME/MOAB/
 
+conda install eigen
+conda install -c conda-forge MOAB
+
 # DAGMC Variables
 DAGMC_BRANCH='develop'
 DAGMC_REPO='https://github.com/svalinn/dagmc'
 DAGMC_INSTALL_DIR=$HOME/DAGMC/
 
 CURRENT_DIR=$(pwd)
-
-# MOAB Install
-conda install -c conda-forge MOAB
 
 # DAGMC Install
 cd $HOME
