@@ -2,12 +2,7 @@
 set -ex
 
 # MOAB Variables
-MOAB_BRANCH='Version5.1.0'
-MOAB_REPO='https://bitbucket.org/fathomteam/moab/'
 MOAB_INSTALL_DIR=$HOME/miniconda
-
-conda install eigen
-conda install -c conda-forge MOAB
 
 # DAGMC Variables
 DAGMC_BRANCH='develop'

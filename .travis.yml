@@ -2,16 +2,6 @@
 sudo: required
 dist: xenial
 language: python
-addons:
-  apt:
-    packages:
-      - mpich
-      - libmpich-dev
-      - libhdf5-serial-dev
-      - libhdf5-mpich-dev
-      - libeigen3-dev
-    config:
-      retries: true
 services:
   - xvfb
 cache:
