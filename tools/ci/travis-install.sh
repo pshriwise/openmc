@@ -3,7 +3,7 @@ set -ex
 
 # Install conda packages
 conda install eigen
-conda install -c conda-forge mpich hdf5 hdf5-parallel moab
+conda install -c conda-forge mpich hdf5 hdf5-parallel
 conda install -c conda-forge MOAB
 
 # Install NJOY 2016
