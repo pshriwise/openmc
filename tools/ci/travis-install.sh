@@ -4,6 +4,7 @@ set -ex
 # Install conda packages
 conda install eigen
 conda install -c conda-forge mpich
+conda install -c conda-forge fortran-compiler
 
 if [[ $MPI = 'y' ]]; then
     conda install mpich mpi4py "h5py=*=*mpich*"
