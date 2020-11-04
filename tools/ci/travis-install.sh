@@ -1,6 +1,11 @@
 #!/bin/bash
 set -ex
 
+# Install conda packages
+conda install eigen
+conda install -c conda-forge mpich hdf5 hdf5-parallel moab
+conda install -c conda-forge MOAB
+
 # Install NJOY 2016
 ./tools/ci/travis-install-njoy.sh
 
