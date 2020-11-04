@@ -3,30 +3,29 @@ set -ex
 
 # Install conda packages
 conda install eigen
-conda install -c conda-forge mpich hdf5 hdf5-parallel
-conda install -c conda-forge MOAB
+conda install -c conda-forge mpich
+
+if [[ $MPI = 'y' ]]; then
+    conda install mpich mpi4py "h5py=*=*mpich*"
+else
+    conda install h5py
+fi
+
+# Python dependencies
+conda install pip
 
 # Install NJOY 2016
 ./tools/ci/travis-install-njoy.sh
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
+    conda install -c conda-forge MOAB
     ./tools/ci/travis-install-dagmc.sh
 fi
 
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then
     ./tools/ci/travis-install-vectfit.sh
-fi
-
-# Upgrade pip, pytest, numpy before doing anything else
-pip install --upgrade pip
-pip install --upgrade pytest
-pip install --upgrade numpy
-
-# Install mpi4py for MPI configurations
-if [[ $MPI == 'y' ]]; then
-    pip install --no-binary=mpi4py mpi4py
 fi
 
 # Build and install OpenMC executable
