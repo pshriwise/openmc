@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+# set default binary path
+export PATH=$HOME/miniconda/bin:$PATH
+
 # Install conda packages
 conda install eigen
 conda install mpich
