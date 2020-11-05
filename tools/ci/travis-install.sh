@@ -3,6 +3,7 @@ set -ex
 
 # set default binary path
 export PATH=$HOME/miniconda/bin:$PATH
+export HDF5_ROOT=$HOME/miniconda
 
 # Install conda packages
 conda install eigen
