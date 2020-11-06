@@ -32,6 +32,7 @@ python tools/ci/travis-install.py
 
 # For compilation of the ENDF and resonance reconstruction modules
 pip install cython
+echo $(which cython)
 
 # Install Python API in editable mode
 pip install -e .[test,vtk]
