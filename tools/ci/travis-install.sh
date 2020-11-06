@@ -30,6 +30,9 @@ fi
 # Build and install OpenMC executable
 python tools/ci/travis-install.py
 
+# For compilation of the ENDF and resonance reconstruction modules
+pip install cython
+
 # Install Python API in editable mode
 pip install -e .[test,vtk]
 
@@ -39,6 +42,3 @@ pip install cpp-coveralls
 # For coverage testing of the Python source files
 pip install coveralls
 
-
-# For compilation of the ENDF and resonance reconstruction modules
-pip install cython
