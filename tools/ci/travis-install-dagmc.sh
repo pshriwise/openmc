@@ -2,7 +2,7 @@
 set -ex
 
 # MOAB Variables
-MOAB_INSTALL_DIR=$HOME/miniconda
+MOAB_INSTALL_DIR=$HOME/miniconda/envs/openmc
 
 # DAGMC Variables
 DAGMC_BRANCH='develop'
