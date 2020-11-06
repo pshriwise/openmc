@@ -38,3 +38,7 @@ pip install cpp-coveralls
 
 # For coverage testing of the Python source files
 pip install coveralls
+
+
+# For compilation of the ENDF and resonance reconstruction modules
+pip install cython
