@@ -1,14 +1,8 @@
 #!/bin/bash
 set -ex
 
-# set default binary path
-export PATH=$HOME/miniconda/bin:$PATH
-export HDF5_ROOT=$HOME/miniconda
-
 # Install conda packages
-conda install eigen
-conda install mpich
-conda install -c conda-forge fortran-compiler
+conda install eigen fortran-compiler  pthread-stubs
 
 if [[ $MPI = 'y' ]]; then
     conda install mpich mpi4py "h5py=*=*mpich*"
@@ -24,7 +18,7 @@ conda install pip
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
-    conda install -c conda-forge MOAB
+    conda install MOAB
     ./tools/ci/travis-install-dagmc.sh
 fi
 
