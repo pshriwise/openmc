@@ -29,6 +29,15 @@ namespace model {
 } // namespace model
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+enum class GeometryType {
+  CSG,
+  DAG
+};
+
+//==============================================================================
 //! Coordinates for an axis-aligned cube that bounds a geometric object.
 //==============================================================================
 
@@ -94,8 +103,9 @@ public:
   };
 
   int id_;                    //!< Unique ID
-  BoundaryType bc_;                    //!< Boundary condition
+  BoundaryType bc_;           //!< Boundary condition
   std::string name_;          //!< User-defined name
+  GeometryType geom_type_;    //!< Geometry type indicator (CSG or DAGMC)
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -174,7 +184,7 @@ public:
   Direction normal(Position r) const;
   Direction reflect(Position r, Direction u, Particle* p) const;
 
-  void to_hdf5_inner(hid_t group_id) const override;
+  inline void to_hdf5_inner(hid_t group_id) const override {};
 
   std::shared_ptr<moab::DagMC> dagmc_ptr_; //!< Pointer to DagMC instance
   int32_t dag_index_;      //!< DagMC index of surface

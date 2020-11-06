@@ -31,11 +31,6 @@ enum class Fill {
   LATTICE
 };
 
-enum class UniverseType {
-  CSG,
-  DAG
-};
-
 // TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
 constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
@@ -77,7 +72,7 @@ public:
   void to_hdf5(hid_t group_id) const;
 
   BoundingBox bounding_box() const;
-  UniverseType type_ = UniverseType::CSG;
+  GeometryType type_ = GeometryType::CSG;
   std::unique_ptr<UniversePartitioner> partitioner_;
 };
 
@@ -177,8 +172,6 @@ public:
   //! \param[in] name Cell name
   void set_name(const std::string& name) { name_ = name; };
 
-
-
   //! Get all cell instances contained by this cell
   //! \return Map with cell indexes as keys and instances as values
   std::unordered_map<int32_t, std::vector<int32_t>>
@@ -195,10 +188,11 @@ public:
 
   int32_t id_;                //!< Unique ID
   std::string name_;          //!< User-defined name
-  Fill type_;                  //!< Material, universe, or lattice
+  Fill type_;                 //!< Material, universe, or lattice
   int32_t universe_;          //!< Universe # this cell is in
   int32_t fill_;              //!< Universe # filling this cell
   int32_t n_instances_{0};    //!< Number of instances of this cell
+  GeometryType geom_type_;    //!< Geometric representation type (CSG, DAGMC)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_{C_NONE};
