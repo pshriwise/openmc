@@ -339,7 +339,9 @@ Particle::event_collide()
   // Score flux derivative accumulators for differential tallies.
   if (!model::active_tallies.empty()) score_collision_derivative(*this);
 
+  #ifdef DAGMC
   history_.reset();
+  #endif
 }
 
 void
@@ -486,22 +488,22 @@ Particle::cross_surface()
     coord_[0].cell = cell_last_[n_coord_last_ - 1];
     surface_ = -surface_;
 
+    #ifdef DAGMC
     // if this is not a DAGMC surface, reset the particle history
     auto dag_surf = dynamic_cast<DAGSurface*>(surf);
     if (!dag_surf) { history_.reset(); }
+    #endif
 
     // If a reflective surface is coincident with a lattice or universe
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
     // (unless we're using a dagmc model, which has exactly one universe)
-    if (!dag_surf) {
-      n_coord_ = 1;
-      if (!find_cell(*this, false)) {
-        find_cell(*this, false);
-        this->mark_as_lost("Couldn't find particle after reflecting from surface "
-                           + std::to_string(surf->id_) + ".");
-        return;
-      }
+    n_coord_ = 1;
+    if (!find_cell(*this, false)) {
+      find_cell(*this, false);
+      this->mark_as_lost("Couldn't find particle after reflecting from surface "
+                          + std::to_string(surf->id_) + ".");
+      return;
     }
 
     // Set previous coordinate going slightly past surface crossing
