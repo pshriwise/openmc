@@ -51,7 +51,7 @@ install:
   - conda config --prepend channels conda-forge
   - conda update -q conda
   - conda info -a
-  - conda create -n openmc python=${python}
+  - conda create -n openmc python=$TRAVIS_PYTHON_VERSION
   - conda activate openmc
   - ./tools/ci/travis-install.sh
 before_script:
