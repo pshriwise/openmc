@@ -3,7 +3,6 @@ set -ex
 
 # Install conda packages
 conda install eigen fortran-compiler pthread-stubs
-conda install -c conda-forge gcc
 conda install pip
 
 if [[ $MPI = 'y' ]]; then
@@ -14,6 +13,8 @@ fi
 
 # Python dependencies
 conda install pip
+
+echo $PATH
 
 # Install NJOY 2016
 ./tools/ci/travis-install-njoy.sh
