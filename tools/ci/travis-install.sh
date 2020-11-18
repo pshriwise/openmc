@@ -3,6 +3,7 @@ set -ex
 
 # Install conda packages
 conda install eigen fortran-compiler pthread-stubs
+conda install -c conda-forge gcc
 conda install pip
 
 if [[ $MPI = 'y' ]]; then
