@@ -4,6 +4,7 @@ set -ex
 # Install conda packages
 conda install eigen fortran-compiler pthread-stubs
 conda install pip
+conda install gxx_linux-64
 
 if [[ $MPI = 'y' ]]; then
     conda install mpich mpi4py "h5py=*=*mpich*"
