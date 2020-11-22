@@ -2,6 +2,8 @@
 set -ex
 
 # Install conda packages
+source "$HOME/miniconda/etc/profile.d/conda.sh"
+conda activate openmc
 conda install eigen fortran-compiler pthread-stubs
 conda install pip
 conda install gxx_linux-64
