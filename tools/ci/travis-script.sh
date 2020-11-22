@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+source "$HOME/miniconda/etc/profile.d/conda.sh"
+conda activate openmc
+
 # Argument List
 args=" "
 
