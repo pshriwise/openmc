@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+source "$HOME/miniconda/etc/profile.d/conda.sh"
+conda activate openmc
+
 PYBIND_BRANCH='master'
 PYBIND_REPO='https://github.com/pybind/pybind11'
 
@@ -16,7 +19,7 @@ XTENSOR_PYTHON_REPO='https://github.com/xtensor-stack/xtensor-python'
 XTENSOR_BLAS_BRANCH='0.17.1'
 XTENSOR_BLAS_REPO='https://github.com/xtensor-stack/xtensor-blas'
 
-sudo apt-get install -y libblas-dev liblapack-dev
+conda install blas lapack
 
 cd $HOME
 git clone -b $PYBIND_BRANCH $PYBIND_REPO
