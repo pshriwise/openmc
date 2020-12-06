@@ -130,6 +130,14 @@ Particle::from_source(const Bank* src)
     E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
+
+  // Set the random number stream
+  if (type_ == Particle::Type::neutron) {
+    stream_ = STREAM_TRACKING;
+  } else {
+    stream_ = STREAM_PHOTON;
+  }
+
 }
 
 void

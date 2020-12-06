@@ -212,6 +212,7 @@ Majorant::calculate_xs(double energy) const
   double f = (energy - grid_.energy[i_grid]) /
               (grid_.energy[i_grid + 1]- grid_.energy[i_grid]);
 
+  if (f > 1.0) { std::cout << f << std::endl; }
   Expects(f <= 1.0);
   double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
 
