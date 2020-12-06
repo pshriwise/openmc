@@ -499,7 +499,7 @@ Particle::cross_surface()
     // the lower universes.
     // (unless we're using a dagmc model, which has exactly one universe)
     n_coord_ = 1;
-    if (!find_cell(*this, false)) {
+    if (!dag_surf && !find_cell(*this, false)) {
       find_cell(*this, false);
       this->mark_as_lost("Couldn't find particle after reflecting from surface "
                           + std::to_string(surf->id_) + ".");
