@@ -815,10 +815,8 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
   Expects(p);
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != p->last_dir_ || on_surface == 0) {
-    p->history_.reset();
-    p->last_dir_ = u;
-  }
+  if (u != p->last_dir_) { p->last_dir_ = u; p->history_.reset(); }
+  if (on_surface == 0) { p->history_.reset(); }
 
   const auto& univ = model::universes[p->coord_[p->n_coord_ - 1].universe];
 
@@ -840,6 +838,7 @@ DAGCell::distance(Position r, Direction u, int32_t on_surface, Particle* p) cons
     // indicate that particle is lost
     surf_idx = -1;
     dist = INFINITY;
+    p->mark_as_lost(fmt::format("No intersection found with DAGMC cell {}", id_));
   }
 
   return {dist, surf_idx};
