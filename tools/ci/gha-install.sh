@@ -1,10 +1,6 @@
 #!/bin/bash
 set -ex
 
-# Upgrade pip, pytest, numpy before doing anything else
-pip install --upgrade pip
-pip install --upgrade pytest
-pip install --upgrade numpy
 
 # Install NJOY 2016
 ./tools/ci/gha-install-njoy.sh
@@ -18,6 +14,11 @@ fi
 if [[ $VECTFIT = 'y' ]]; then
     ./tools/ci/gha-install-vectfit.sh
 fi
+
+# Upgrade pip, pytest, numpy before doing anything else
+pip install --upgrade pip
+pip install --upgrade pytest
+pip install --upgrade numpy
 
 # Install mpi4py for MPI configurations
 if [[ $MPI == 'y' ]]; then
