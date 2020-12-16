@@ -44,8 +44,10 @@ jobs:
             omp: n
             mpi: y
 
-    env:
-      OPENMC_CROSS_SECTIONS: ${{ runner.home }}/nndc_hdf5/cross_sections.xml
+    run: |
+      echo "OPENMC_CROSS_SECTIONS=${{ env.HOME }}/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+
+    env:      
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
