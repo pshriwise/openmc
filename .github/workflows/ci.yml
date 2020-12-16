@@ -7,7 +7,6 @@ env:
   DAGMC_ROOT: $HOME/DAGMC
   HDF5_ROOT: /usr
   OMP_NUM_THREADS: 2
-  OPENMC_CROSS_SECTIONS: ${{ runner.home }}/nndc_hdf5/cross_sections.xml
   OPENMC_ENDF_DATA: $HOME/endf-b-vii.1
   COVERALLS_PARALLEL: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,6 +45,7 @@ jobs:
             mpi: y
 
     env:
+      OPENMC_CROSS_SECTIONS: ${{ runner.home }}/nndc_hdf5/cross_sections.xml
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
