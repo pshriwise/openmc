@@ -45,7 +45,7 @@ jobs:
             mpi: y
 
     env:
-      OPENMC_CROSS_SECTIONS: ${{ home }}/nndc_hdf5/cross_sections.xml
+      OPENMC_CROSS_SECTIONS: ${{ env.home }}/nndc_hdf5/cross_sections.xml
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
