@@ -13,11 +13,12 @@ xs_xml = current_dir / datasets[0] / 'cross_sections.xml'
 data_lib = openmc.data.DataLibrary.from_xml(xs_xml)
 
 
-nuclides = []
+nuclides = set()
 for lib in data_lib.libraries:
     if lib['type'] in ('wmp', 'neutron'):
-        nuclides.append(lib['materials'][0])
+        nuclides.update(lib['materials'])
 
+nuclides = sorted(list(nuclides))
 
 @pytest.mark.parametrize('nuclide', nuclides)
 def test_inf_media(nuclide):
