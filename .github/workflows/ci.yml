@@ -44,9 +44,6 @@ jobs:
             omp: n
             mpi: y
 
-    run: |
-      echo "OPENMC_CROSS_SECTIONS=${{ env.HOME }}/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
-
     env:      
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
@@ -64,7 +61,10 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          
+      -
+         name: Env Vars
+         run: echo "OPENMC_CROSS_SECTIONS=${{ env.HOME }}/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV       
+         
       -
         name: Apt dependencies
         shell: bash
