@@ -45,6 +45,14 @@ jobs:
             omp: n
             mpi: y
 
+    env:
+      MPI: ${{ matrix.mpi }}
+      PHDF5: ${{ matrix.mpi }}
+      OMP: ${{ matrix.omp }}
+      DAGMC: ${{ matrix.dagmc }}
+      EVENT: ${{ matrix.event }}
+      VECTFIT: ${{ matrix.vectfit }}
+
     steps:
       -
         uses: actions/checkout@v2
@@ -54,16 +62,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
-      -
-        name: Environment Variables
-        run: |
-          echo "MPI=${{ matrix.mpi }}" >> $GITHUB_ENV
-          echo "PHDF5=${{ matrix.mpi }}" >> $GITHUB_ENV
-          echo "OMP=${{ matrix.omp }}" >> $GITHUB_ENV
-          echo "DAGMC=${{ matrix.dagmc }}" >> $GITHUB_ENV
-          echo "EVENT=${{ matrix.event }}" >> $GITHUB_ENV
-          echo "VECTFIT=${{ matrix.vectfit }}" >> $GITHUB_ENV
           
       -
         name: Apt dependencies
@@ -89,7 +87,9 @@ jobs:
       -
         name: test
         shell: bash
-        run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+        run: | 
+          echo $OPENMC_CROSS_SECTIONS
+          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - 
         name: after_success
