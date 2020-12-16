@@ -1,14 +1,6 @@
 name: CI
 
-on:
-  pull_request:
-    branches:
-      - develop
-      - master
-  push:
-    branches:
-      - develop
-      - master
+on: [push]
 
 env:
   MPI_DIR: /usr
