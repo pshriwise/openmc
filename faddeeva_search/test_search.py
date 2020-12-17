@@ -44,10 +44,11 @@ def test_inf_media(nuclide):
     model.settings.temperature['multipole'] = True
     model.settings.temperature['default'] = 294.0
     model.settings.resonance_scattering['enable'] = True
+    model.settings.create_fission_neutrons = False
 
 
     src_loc = openmc.stats.Point()
-    src_e = openmc.stats.Discrete([10E6], [1.0])
+    src_e = openmc.stats.Discrete([8E6], [1.0])
     model.settings.source = openmc.Source(space=src_loc, energy=src_e)
 
     model.export_to_xml()
