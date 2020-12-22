@@ -94,7 +94,7 @@ jobs:
         with:
           path: |
             ~/nndc_hdf5
-            ~/endf-b-vii.i
+            ~/endf-b-vii.1
           key: cross-section-cache
       -
         name: Download cross-sections
