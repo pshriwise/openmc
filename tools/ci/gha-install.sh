@@ -1,11 +1,6 @@
 #!/bin/bash
 set -ex
 
-# Upgrade pip, pytest, numpy before doing anything else
-pip install --upgrade pip
-pip install --upgrade pytest
-pip install --upgrade numpy
-
 # Install mpi4py for MPI configurations
 if [[ $MPI == 'y' ]]; then
     pip install --no-binary=mpi4py mpi4py
