@@ -107,6 +107,7 @@ jobs:
           echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
       - name: Cache NJOY
         id: njoy-cache
         uses: actions/cache@v2
@@ -118,7 +119,6 @@ jobs:
         shell: bash
         if: steps.njoy-cache.outputs.cache-hit != 'true'
         run: |
-          echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install-njoy.sh
       - name: Build DAGMC
         if: ${{ matrix.dagmc == 'y' }}
