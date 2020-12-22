@@ -64,7 +64,18 @@ jobs:
     steps:
       -
         uses: actions/checkout@v2
-
+      - 
+        name: before
+        shell: bash
+        run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
+      -
+        name: Cache cross-section data
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.i
+          key: cross-section-cache
       - 
         name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -94,11 +105,6 @@ jobs:
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
-      - 
-        name: before
-        shell: bash
-        run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
-
       -
         name: test
         shell: bash
