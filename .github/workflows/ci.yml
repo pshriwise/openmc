@@ -63,7 +63,23 @@ jobs:
 
     steps:
       -
+        name: Repo checkout
         uses: actions/checkout@v2
+      -
+        name: Aptitude dependencies
+        shell: bash
+        run: |
+          sudo apt -y update
+          sudo apt install -y mpich \
+                              libmpich-dev \
+                              libhdf5-serial-dev \
+                              libhdf5-mpich-dev \
+                              libeigen3-dev
+      - 
+        name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
       - 
         name: before
         shell: bash
@@ -76,40 +92,44 @@ jobs:
             ~/nndc_hdf5
             ~/endf-b-vii.i
           key: cross-section-cache
-      - 
-        name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
       -
         name: Environment Variables
         run: |
           echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
-
       -
-        name: Apt dependencies
-        shell: bash
-        run: |
-          sudo apt -y update
-          sudo apt install -y mpich \
-                              libmpich-dev \
-                              libhdf5-serial-dev \
-                              libhdf5-mpich-dev \
-                              libeigen3-dev
-      -
-        name: install
+        name: Build NJOY
         shell: bash
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
+          $GITHUB_WORKSPACE/tools/ci/gha-install-njoy.sh
+      - name: Cache NJOY
+        uses: actions/cache@v2
+        with:
+          path: ~/NJOY2016
+          key: njoy-cache
+      - name: Build DAGMC
+        if: ${{ matrix.dagmc == 'y' }}
+        run: $GITHUB_WORKSPACE/tools/ci/gha-install-dagmc.sh
+      - name: Cache DAGMC
+        uses: actions/cache@v2
+        with:
+          path: ~/DAGMC
+          key: dagmc-cache
+      -
+        name: Install vectfit
+        if: ${{ matrix.vectfit == 'y' }}
+        run: $GITHUB_WORKSPACE/tools/ci/gha-install-vectfit.sh
+      -
+        name: Install OpenMC
+        shell: bash
+        run: |
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
       -
         name: test
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
-
       - 
         name: after_success
         shell: bash
