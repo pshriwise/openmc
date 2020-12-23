@@ -138,7 +138,7 @@ jobs:
         run: |
           $GITHUB_WORKSPACE/tools/ci/gha-install-njoy.sh
       - name: Build DAGMC
-        if: ${{ matrix.dagmc == 'y' }}
+        if: ${{ matrix.dagmc == 'dagmc-y' }}
         run: $GITHUB_WORKSPACE/tools/ci/gha-install-dagmc.sh
       - name: Cache DAGMC
         uses: actions/cache@v2
@@ -147,7 +147,7 @@ jobs:
           key: dagmc-cache
       -
         name: Install vectfit
-        if: ${{ matrix.vectfit == 'y' }}
+        if: ${{ matrix.vectfit == 'vectfit-y' }}
         run: $GITHUB_WORKSPACE/tools/ci/gha-install-vectfit.sh
       -
         name: Install OpenMC
