@@ -2,7 +2,7 @@
 set -ex
 
 # Install mpi4py for MPI configurations
-if [[ $MPI == 'y' ]]; then
+if [[ $MPI == 'mpi-y' ]]; then
     pip install --no-binary=mpi4py mpi4py
 fi
 

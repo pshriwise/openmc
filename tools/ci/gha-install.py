@@ -61,10 +61,10 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False):
 
 def main():
     # Convert Travis matrix environment variables into arguments for install()
-    omp = (os.environ.get('OMP') == 'y')
-    mpi = (os.environ.get('MPI') == 'y')
-    phdf5 = (os.environ.get('PHDF5') == 'y')
-    dagmc = (os.environ.get('DAGMC') == 'y')
+    omp = (os.environ.get('OMP') == 'omp-y')
+    mpi = (os.environ.get('MPI') == 'mpi-y')
+    phdf5 = (os.environ.get('PHDF5') == 'mpi-y')
+    dagmc = (os.environ.get('DAGMC') == 'dagmc-y')
 
     # Build and install
     install(omp, mpi, phdf5, dagmc)

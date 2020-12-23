@@ -27,31 +27,48 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
-        mpi: [n, y]
-        omp: [n, y]
-        dagmc: [n]
-        event: [n]
-        vectfit: [n]
+        mpi: [mpi-n, mpi-y]
+        omp: [omp-n, omp-y]
+        dagmc: [dagmc-n]
+        event: [event-n]
+        vectfit: [vectfit-n]
 
         include:
+        # Python 3.6
           - python-version: 3.6
-            omp: n
-            mpi: n
+            mpi: mpi-n
+            omp: omp-n
+            dagmc: dagmc-n
+            event: event-n
+            vectfit: vectfit-n
+          # Python 3.7
           - python-version: 3.7
-            omp: n
-            mpi: n
-          - dagmc: y
-            python-version: 3.8
-            mpi: y
-            omp: y
-          - event: y
-            python-version: 3.8
-            omp: y
-            mpi: n
-          - vectfit: y
-            python-version: 3.8
-            omp: n
-            mpi: y
+            mpi: mpi-n
+            omp: omp-n
+            dagmc: dagmc-n
+            event: event-n
+            vectfit: vectfit-n
+          # DAGMC
+          - python-version: 3.8
+            mpi: mpi-y
+            omp: omp-y
+            dagmc: dagmc-y
+            event: event-n
+            vectfit: vectfit-n
+          # Event-based mode
+          - python-version: 3.8
+            omp: omp-y
+            mpi: mpi-n
+            dagmc: dagmc-y
+            event: event-n
+            vectfit: vectfit-n
+          # Vectfit
+          - python-version: 3.8
+            omp: omp-y
+            mpi: mpi-y
+            dagmc: dagmc-n
+            event: event-n
+            vectfit: vectfit-y
 
     env:
       MPI: ${{ matrix.mpi }}
