@@ -25,16 +25,16 @@ you have `conda` installed on your system, OpenMC can be installed via the
 To list the versions of OpenMC that are available on the `conda-forge` channel,
 in your terminal window or an Anaconda Prompt run:
 
-.. code-block:: sh 
+.. code-block:: sh
 
     conda search openmc
-    
+
 OpenMC can then be installed with:
 
 .. code-block:: sh
 
     conda create -n openmc-env openmc
-    
+
 This will install OpenMC in a conda environment called `openmc-env`. To activate
 the environment, run:
 
@@ -149,17 +149,25 @@ Prerequisites
           sudo apt install mpich libmpich-dev
           sudo apt install openmpi-bin libopenmpi-dev
 
+    * git_ version control software for obtaining source code
+
     * DAGMC_ toolkit for simulation using CAD-based geometries
 
       OpenMC supports particle tracking in CAD-based geometries via the Direct
       Accelerated Geometry Monte Carlo (DAGMC) toolkit (`installation
       instructions
-      <https://svalinn.github.io/DAGMC/install/dag_multiple.html>`_). For use in
+      <https://svalinn.github.io/DAGMC/install/openmc.html>`_). For use in
       OpenMC, only the ``MOAB_DIR`` and ``BUILD_TALLY`` variables need to be
-      specified in the CMake configuration step.
+      specified in the CMake configuration step when building DAGMC. This option
+      also allows unstructured mesh tallies on tetrahedral MOAB meshes.
 
-    * git_ version control software for obtaining source code
+    * libMesh_ mesh library framework for numerical simulations of partial
+    differential equations.
 
+      This optional dependency enables support for unstructured mesh tally
+      filters using libMesh meshes. Any 3D element type supported by libMesh
+      can be used, but the implementation is currently restricted
+      to collision estimators.
 
 .. _gcc: https://gcc.gnu.org/
 .. _CMake: http://www.cmake.org
@@ -167,6 +175,7 @@ Prerequisites
 .. _MPICH: http://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
+.. _libMesh: https://libmesh.github.io/
 
 Obtaining the Source
 --------------------
@@ -237,10 +246,14 @@ openmp
   being used must support OpenMP. (Default: on)
 
 dagmc
-  Enables use of CAD-based DAGMC_ geometries. Please see the note about DAGMC in
-  the optional dependencies list for more information on this feature. The
-  installation directory for DAGMC should also be defined as `DAGMC_ROOT` in the
-  CMake configuration command. (Default: off)
+  Enables use of CAD-based DAGMC_ geometries and MOAB_ unstructured mesh
+  tallies. Please see the note about DAGMC in the optional dependencies list
+  for more information on this feature. The installation directory for DAGMC
+  should also be defined as `DAGMC_ROOT` in the CMake configuration command.
+  (Default: off)
+
+libmesh
+  Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
 coverage
   Compile and link code instrumented for coverage analysis. This is typically
