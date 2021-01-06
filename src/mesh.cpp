@@ -1634,7 +1634,7 @@ double MOABMesh::volume(int bin) const
 
 std::string MOABMesh::library() const
 {
-   return "moab";
+  return "moab";
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
@@ -1992,7 +1992,7 @@ void LibMesh::initialize()
   }
 
   // create an equation system for storing values
-  eq_system_name_ = "mesh_" + std::to_string(id_) + "_system";
+  eq_system_name_ = fmt::format("mesh_{}_system", id_);
 
   equation_systems_ = std::make_unique<libMesh::EquationSystems>(*m_);
   libMesh::ExplicitSystem& eq_sys =
@@ -2021,7 +2021,7 @@ void LibMesh::initialize()
 Position
 LibMesh::centroid(int bin) const
 {
-  auto& elem = this->get_element_from_bin(bin);
+  const auto& elem = this->get_element_from_bin(bin);
   auto centroid = elem.centroid();
   return {centroid(0), centroid(1), centroid(2)};
 }
@@ -2156,7 +2156,7 @@ LibMesh::get_bin(Position r) const
 int
 LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
-  int bin =  elem->id() - first_element_->id();
+  int bin = elem->id() - first_element_->id();
   if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }
