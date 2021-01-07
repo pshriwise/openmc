@@ -32,7 +32,6 @@ jobs:
         dagmc: [n]
         event: [n]
         vectfit: [n]
-
         include:
           - python-version: 3.6
             omp: n
@@ -53,6 +52,7 @@ jobs:
             omp: n
             mpi: y
 
+    name: Python - ${{ matrix.python-version }}, OMP - ${{ matrix.omp }}, MPI - ${{ matrix.mpi }}, DAGMC - ${{ matrix.dagmc }}, EVENT - ${{ matrix.event }}
     env:
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}
@@ -65,7 +65,7 @@ jobs:
       -
         uses: actions/checkout@v2
 
-      - 
+      -
         name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -94,7 +94,7 @@ jobs:
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
-      - 
+      -
         name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
@@ -104,7 +104,7 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
-      - 
+      -
         name: after_success
         shell: bash
         run: |
