@@ -139,14 +139,14 @@ jobs:
         if: steps.njoy-cache.outputs.cache-hit != 'true'
         run: |
           $GITHUB_WORKSPACE/tools/ci/gha-install-njoy.sh
-      - name: Build DAGMC
-        if: ${{ matrix.dagmc == 'dagmc-y' }}
-        run: $GITHUB_WORKSPACE/tools/ci/gha-install-dagmc.sh
       - name: Cache DAGMC
         uses: actions/cache@v2
         with:
           path: ~/DAGMC
           key: dagmc-cache
+      - name: Build DAGMC
+        if: ${{ matrix.dagmc == 'dagmc-y' }}
+        run: $GITHUB_WORKSPACE/tools/ci/gha-install-dagmc.sh
       -
         name: Install vectfit
         if: ${{ matrix.vectfit == 'vectfit-y' }}
