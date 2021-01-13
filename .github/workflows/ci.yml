@@ -113,7 +113,7 @@ jobs:
 
       -
         name: test
-        shell: bashinit
+        shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       -
