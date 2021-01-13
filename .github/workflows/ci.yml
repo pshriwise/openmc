@@ -47,7 +47,7 @@ jobs:
             omp: y
           - libmesh: y
             python-version: 3.8
-            mpi: y
+            mpi: n
             omp: y
           - event: y
             python-version: 3.8
@@ -96,10 +96,8 @@ jobs:
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y libnetcdf-dev \
-                              libpnetcdf-dev \
-                              libhdf5-serial-dev \
-                              libhdf5-openmpi-dev \
+          sudo apt install -y libhdf5-serial-dev \
+                              libhdf5-mpich-dev \
                               libeigen3-dev
       -
         name: install
@@ -114,7 +112,7 @@ jobs:
 
       -
         name: test
-        shell: bash
+        shell: bashinit
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       -
