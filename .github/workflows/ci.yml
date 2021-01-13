@@ -96,7 +96,8 @@ jobs:
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y libhdf5-serial-dev \
+          sudo apt install -y libnetcdf-dev \
+                              libhdf5-serial-dev \
                               libhdf5-mpich-dev \
                               libeigen3-dev
       -
