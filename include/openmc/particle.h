@@ -296,6 +296,7 @@ public:
   int n_coord_ {1};              //!< number of current coordinate levels
   int cell_instance_;            //!< offset for distributed properties
   std::vector<LocalCoord> coord_; //!< coordinates for all levels
+  std::vector<BoundaryInfo> crossing_cache_; //!< cache for the next surface crossing on all levels
 
   // Particle coordinates before crossing a surface
   int n_coord_last_ {1};      //!< number of current coordinates

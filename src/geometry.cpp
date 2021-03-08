@@ -355,6 +355,10 @@ BoundaryInfo distance_to_boundary(Particle& p)
 
   // Loop over each coordinate level.
   for (int i = 0; i < p.n_coord_; i++) {
+
+
+
+
     const auto& coord {p.coord_[i]};
     Position r {coord.r};
     Direction u {coord.u};
@@ -401,37 +405,41 @@ BoundaryInfo distance_to_boundary(Particle& p)
     // is selected.  This logic must consider floating point precision.
     double& d = info.distance;
     if (d_surf < d_lat - FP_COINCIDENT) {
-      if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
-        d = d_surf;
+      auto& level_info = p.crossing_cache_[i];
+      level_info.distance = d_surf;
 
-        // If the cell is not simple, it is possible that both the negative and
-        // positive half-space were given in the region specification. Thus, we
-        // have to explicitly check which half-space the particle would be
-        // traveling into if the surface is crossed
-        if (c.simple_) {
-          info.surface_index = level_surf_cross;
+      // If the cell is not simple, it is possible that both the negative and
+      // positive half-space were given in the region specification. Thus, we
+      // have to explicitly check which half-space the particle would be
+      // traveling into if the surface is crossed
+      if (c.simple_) {
+        level_info.surface_index = level_surf_cross;
+      } else {
+        Position r_hit = r + d_surf * u;
+        Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
+        Direction norm = surf.normal(r_hit);
+        if (u.dot(norm) > 0) {
+          level_info.surface_index = std::abs(level_surf_cross);
         } else {
-          Position r_hit = r + d_surf * u;
-          Surface& surf {*model::surfaces[std::abs(level_surf_cross)-1]};
-          Direction norm = surf.normal(r_hit);
-          if (u.dot(norm) > 0) {
-            info.surface_index = std::abs(level_surf_cross);
-          } else {
-            info.surface_index = -std::abs(level_surf_cross);
-          }
+          level_info.surface_index = -std::abs(level_surf_cross);
         }
+      }
 
-        info.lattice_translation[0] = 0;
-        info.lattice_translation[1] = 0;
-        info.lattice_translation[2] = 0;
-        info.coord_level = i + 1;
+      level_info.lattice_translation[0] = 0;
+      level_info.lattice_translation[1] = 0;
+      level_info.lattice_translation[2] = 0;
+      level_info.coord_level = i + 1;
+      if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
+        info = level_info;
       }
     } else {
+      auto& level_info = p.crossing_cache_[i];
+      level_info.distance = d_lat;
+      level_info.surface_index = 0;
+      level_info.lattice_translation = level_lat_trans;
+      level_info.coord_level = i + 1;
       if (d == INFINITY || (d - d_lat)/d >= FP_REL_PRECISION) {
-        d = d_lat;
-        info.surface_index = 0;
-        info.lattice_translation = level_lat_trans;
-        info.coord_level = i + 1;
+        info = level_info;
       }
     }
   }

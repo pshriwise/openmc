@@ -63,6 +63,7 @@ Particle::Particle()
 {
   // Create and clear coordinate levels
   coord_.resize(model::n_coord_levels);
+  crossing_cache_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
   clear();
 
