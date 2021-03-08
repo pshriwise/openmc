@@ -353,11 +353,19 @@ BoundaryInfo distance_to_boundary(Particle& p)
   int32_t level_surf_cross;
   std::array<int, 3> level_lat_trans {};
 
+  bool use_cache {false};
+  double dist {0.0};
+  if (p.r() == p.r_last_) {
+    dist = p.last_dist();
+  }
+
   // Loop over each coordinate level.
   for (int i = 0; i < p.n_coord_; i++) {
 
-
-
+    if (use_cache && (dist - p.crossing_cache_[i].distance) / dist >= FP_REL_PRECISION) {
+       p.crossing_cache_[i].distance -= dist;
+       continue;
+    }
 
     const auto& coord {p.coord_[i]};
     Position r {coord.r};
@@ -403,7 +411,6 @@ BoundaryInfo distance_to_boundary(Particle& p)
     // If the boundary on this coordinate level is coincident with a boundary on
     // a higher level then we need to make sure that the higher level boundary
     // is selected.  This logic must consider floating point precision.
-    double& d = info.distance;
     if (d_surf < d_lat - FP_COINCIDENT) {
       auto& level_info = p.crossing_cache_[i];
       level_info.distance = d_surf;
@@ -429,20 +436,21 @@ BoundaryInfo distance_to_boundary(Particle& p)
       level_info.lattice_translation[1] = 0;
       level_info.lattice_translation[2] = 0;
       level_info.coord_level = i + 1;
-      if (d == INFINITY || (d - d_surf)/d >= FP_REL_PRECISION) {
-        info = level_info;
-      }
     } else {
       auto& level_info = p.crossing_cache_[i];
       level_info.distance = d_lat;
       level_info.surface_index = 0;
       level_info.lattice_translation = level_lat_trans;
       level_info.coord_level = i + 1;
-      if (d == INFINITY || (d - d_lat)/d >= FP_REL_PRECISION) {
-        info = level_info;
-      }
     }
   }
+
+  auto& d = info.distance;
+  for (int i = 0; i < p.n_coord_; i++) {
+    auto& c_dist = p.crossing_cache_[i].distance;
+    if (d == INFINITY || (d - c_dist) / c_dist >= FP_REL_PRECISION) info = p.crossing_cache_[i];
+  }
+
   return info;
 }
 

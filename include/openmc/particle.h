@@ -209,6 +209,9 @@ public:
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
+  // Get the last distance traveled
+  inline double last_dist() { return (r() - r_last_).norm() ; }
+
   //! resets all coordinate levels for the particle
   void clear();
 
