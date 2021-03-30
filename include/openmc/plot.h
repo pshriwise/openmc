@@ -179,6 +179,9 @@ T PlotBase::get_map() const
         if (level >= 0) {
           j = level;
         }
+#ifdef DAGMC
+        p.history().reset();
+#endif
         if (found_cell) {
           data.set_value(y, x, p, j);
         }
