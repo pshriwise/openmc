@@ -158,7 +158,7 @@ compute_majorant_energy_grid() {
   std::sort(common_e_grid.begin(), common_e_grid.end());
 
   // remove all values below the minimum neutron energy
-  int neutron = static_cast<int>(Particle::Type::neutron);
+  int neutron = static_cast<int>(ParticleType::neutron);
   auto min_it = common_e_grid.begin();
   while (*min_it < data::energy_min[neutron]) { min_it++; }
   common_e_grid.erase(common_e_grid.begin(), min_it + 1);
@@ -187,7 +187,7 @@ double
 Majorant::calculate_xs(double energy) const
 {
   // Find energy index on energy grid
-  int neutron = static_cast<int>(Particle::Type::neutron);
+  int neutron = static_cast<int>(ParticleType::neutron);
   int i_log_union = std::log(energy/data::energy_min[neutron])/simulation::log_spacing;
 
   int i_grid;
