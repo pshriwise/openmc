@@ -105,13 +105,11 @@ void Particle::event_calculate_xs()
   // beginning of the history and again for any secondary particles
   if (coord(n_coord() - 1).cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
-      if (!delta_tracking_) {
+      if (!delta_tracking()) {
         alive() = false;
-        return;
       } else {
         mark_as_lost("Could not find the cell containing particle " + std::to_string(id()));
       }
-    }
     return;
   }
 
@@ -182,7 +180,7 @@ void Particle::event_advance()
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
-      type() == ParticleType::neutron && !delta_tracking_) {
+      type() == ParticleType::neutron && !delta_tracking()) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
 
@@ -193,67 +191,67 @@ void Particle::event_advance()
 }
 
 void
-Particle::trace(double trace_dist) {
+Particle::trace_through_geom(double trace_dist) {
 
   double distance_traveled = 0;
   while (true) {
-    boundary_ = distance_to_boundary(*this);
+    boundary() = distance_to_boundary(*this);
 
     // stop if we've gone far enough
-    if (distance_traveled + boundary_.distance > trace_dist) break;
+    if (distance_traveled + boundary().distance > trace_dist) break;
 
     // update distance
-    distance_traveled += boundary_.distance;
+    distance_traveled += boundary().distance;
 
     // advance the particle
-    for(auto& coord : coord_) {
-      coord.r += boundary_.distance * coord.u;
+    for(auto& coord : coord()) {
+      coord.r += boundary().distance * coord.u;
     }
 
     // cross the surface
     this->event_cross_surface();
-    if (!alive_) break;
+    if (!alive()) break;
   }
 
   // move the remaining distance if needed
   if (distance_traveled < trace_dist) {
     double remaining_distance = trace_dist - distance_traveled;
-    for (auto& coord : coord_) {
+    for (auto& coord : coord()) {
       coord.r += remaining_distance * coord.u;
     }
   }
 
   // reset some information to make sure the particle is relocated
   // before the next collision event
-  coord_[n_coord_ - 1].cell = C_NONE;
-  n_coord_ = 1;
-  material_ = C_NONE;
+  coord(n_coord() - 1).cell = C_NONE;
+  n_coord() = 1;
+  material() = C_NONE;
 }
 
 void
 Particle::event_delta_advance() {
   double distance;
 
-  this->majorant_ = 1.000001 * data::n_majorant->calculate_xs(this->E_);
+  this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
 
   // sample distance to next position
-  if (type_ == Particle::Type::electron ||
-      type_ == Particle::Type::positron) {
+  if (type() == ParticleType::electron ||
+      type() == ParticleType::positron) {
     distance = 0.0;
   // } else if (macro_xs_.total == 0.0) {
   //   distance = INFINITY;
   } else {
     // calculate majorant value for this energy
-    distance = -std::log(prn(this->current_seed())) / majorant_;
+    distance = -std::log(prn(this->current_seed())) / majorant();
   }
 
   // store a copy of the current coordinates
-  auto coord_cache = coord_;
+  auto coord_cache = coord();
 
   // Advance particle
-  for (int j = 0; j < n_coord_; ++j) {
-    coord_[j].r += distance * coord_[j].u;
-    coord_[j].reset();
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += distance * coord(j).u;
+    coord(j).reset();
   }
 
   // Score flux derivative accumulators for differential tallies.
@@ -261,12 +259,12 @@ Particle::event_delta_advance() {
     score_track_derivative(*this, distance);
   }
 
-  if (!find_cell(*this, false)) {
+  if (!exhaustive_find_cell(*this)) {
     // reset coordinates and trace particle through
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
-    coord_ = coord_cache;
-    trace(distance);
+    coord() = coord_cache;
+    trace_through_geom(distance);
   }
 }
 
@@ -380,7 +378,7 @@ void Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event();
-  if (n_event() == MAX_EVENTS && !delta_tracking_) {
+  if (n_event() == MAX_EVENTS && !delta_tracking()) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     alive() = false;
@@ -419,7 +417,7 @@ void Particle::event_death()
   global_tally_absorption += keff_tally_absorption();
 #pragma omp atomic
   global_tally_collision += keff_tally_collision();
-  if (!delta_tracking_) {
+  if (!delta_tracking()) {
 #pragma omp atomic
   global_tally_tracklength += keff_tally_tracklength();
 }

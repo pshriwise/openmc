@@ -63,7 +63,7 @@ public:
   void event_death();
 
   //! Determine the surfaces crossed between the last and current particle position
-  void trace(double trace_dist);
+  void trace_through_geom(double trace_dist);
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();

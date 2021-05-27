@@ -310,7 +310,7 @@ private:
 
   int64_t n_progeny_ {0}; // Number of progeny produced by this particle
 
-  bool delta_tracking_{false}; // !< Flag to indicate whether or not delta tracking is active
+  bool delta_tracking_ {false}; // !< Flag to indicate whether or not delta tracking is active
   double majorant_ {0.0}; // !< most recent value for the majorant cross section
 
 public:
@@ -334,6 +334,10 @@ public:
   const int& cell_instance() const { return cell_instance_; }
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
+
+  const vector<LocalCoord>& coord() const { return coord_; }
+  vector<LocalCoord>& coord() { return coord_; }
+
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
@@ -428,6 +432,12 @@ public:
 #endif
 
   int64_t& n_progeny() { return n_progeny_; }
+
+  bool& delta_tracking() { return delta_tracking_; }
+  const bool& delta_tracking() const { return delta_tracking_; }
+
+  double& majorant() { return majorant_; }
+  const double& majorant() const { return majorant_; }
 
   // Accessors for position in global coordinates
   Position& r() { return coord_[0].r; }
