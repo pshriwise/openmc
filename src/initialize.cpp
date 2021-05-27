@@ -16,7 +16,6 @@
 #include "openmc/error.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
@@ -107,8 +106,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Read XML input files
   read_input_xml();
-
-  if (settings::delta_tracking) create_majorant();
 
   // Check for particle restart run
   if (settings::particle_restart_run)
