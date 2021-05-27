@@ -8,6 +8,7 @@
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
+#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
@@ -84,6 +85,8 @@ int openmc_simulation_init()
   if (settings::run_CE) {
     initialize_data();
   }
+
+  if (settings::delta_tracking) create_majorant();
 
   // Determine how much work each process should do
   calculate_work();
@@ -816,24 +819,24 @@ void transport_history_based()
 }
 
 void transport_delta_tracking_single_particle(Particle& p) {
-  p.delta_tracking_ = true;
+  p.delta_tracking() = true;
 
   while (true) {
     p.event_calculate_xs();
-    if (!p.alive_)
+    if (!p.alive())
       break;
     p.event_delta_advance();
-    if (!p.alive_)
+    if (!p.alive())
       break;
     p.event_calculate_xs();
-    if (!p.alive_)
+    if (!p.alive())
       break;
-    Expects(p.macro_xs_.total <= p.majorant_);
-    if (prn(p.current_seed()) < (p.macro_xs_.total / p.majorant_)) {
+    Expects(p.macro_xs().total <= p.majorant());
+    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
       p.event_collide();
     }
     p.event_revive_from_secondary();
-    if (!p.alive_)
+    if (!p.alive())
       break;
   }
   p.event_death();

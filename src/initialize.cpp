@@ -19,7 +19,6 @@
 #include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/majorant.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
@@ -126,8 +125,6 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Write some initial output under the header if needed
   initial_output();
-
-  if (settings::delta_tracking) create_majorant();
 
   // Check for particle restart run
   if (settings::particle_restart_run)
