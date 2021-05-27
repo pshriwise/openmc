@@ -461,7 +461,7 @@ private:
 
   int64_t n_progeny_ {0};
 
-  bool delta_tracking_{false}; // !< Flag to indicate whether or not delta tracking is active
+  bool delta_tracking_ {false}; // !< Flag to indicate whether or not delta tracking is active
   double majorant_ {0.0}; // !< most recent value for the majorant cross section
 
 public:
@@ -618,6 +618,12 @@ public:
 
   // Number of progeny produced by this particle
   int64_t& n_progeny() { return n_progeny_; }
+
+  bool& delta_tracking() { return delta_tracking_; }
+  const bool& delta_tracking() const { return delta_tracking_; }
+
+  double& majorant() { return majorant_; }
+  const double& majorant() const { return majorant_; }
 
   //! Gets the pointer to the particle's current PRN seed
   uint64_t* current_seed() { return seeds_ + stream_; }
