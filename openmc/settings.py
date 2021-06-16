@@ -152,7 +152,7 @@ class Settings:
 
         :surface_ids: List of surface ids at which crossing particles are to be
                    banked (int)
-        :max_particles: Maximum number of particles to be banked on 
+        :max_particles: Maximum number of particles to be banked on
                    surfaces per process (int)
     survival_biasing : bool
         Indicate whether survival biasing is to be used
@@ -199,7 +199,7 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-        
+
     weight_window_mesh : openmc.WeightWindowMesh
         Mesh to be used for Weight Window
 
@@ -276,7 +276,7 @@ class Settings:
 
         self._event_based = None
         self._max_particles_in_flight = None
-        
+
         self._weightwindowmesh = None
 
     @property
@@ -450,15 +450,15 @@ class Settings:
     @property
     def max_particles_in_flight(self):
         return self._max_particles_in_flight
-    
+
     @property
     def weightwindowmesh(self):
         return self._weightwindowmesh
-    
+
     @weightwindowmesh.setter
     def weightwindowmesh(self, weightwindowmesh):
-	    if not isinstance(weightwindowmesh, WeightWindowMesh):
-		    msg = 'Unable to set weightwindowmesh from "{0}" which is not a '\
+        if not isinstance(weightwindowmesh, WeightWindowMesh):
+            msg = 'Unable to set weightwindowmesh from "{0}" which is not a '\
                   ' Python dictionary'.format(cutoff)
             raise ValueError(msg)
         ##cv.check_type('weightwindow', weightwindowmesh, WeightWindowMesh)
