@@ -215,7 +215,7 @@ Majorant::calculate_xs(double energy) const
   Expects(f <= 1.0);
   double xs = (1.0 - f) * xs_[i_grid] + f * xs_[i_grid + 1];
 
-  return xs;
+  return 1.0 * xs;
 }
 
 bool Majorant::intersect_2D(std::pair<double, double> p1,
@@ -448,7 +448,7 @@ void Majorant::update(std::vector<double> energy_other,
   }
 
   // increase all xs values in the majorant by 5 percent
-  // std::transform(xs_out.begin(), xs_out.end(), xs_out.begin(), [](double xs_val) { return xs_val * safety_factor; });
+  std::transform(xs_out.begin(), xs_out.end(), xs_out.begin(), [](double xs_val) { return xs_val * 1.05; });
 
   // update the values of the majorant
   grid_.energy = std::move(e_out);
