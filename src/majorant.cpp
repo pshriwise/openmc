@@ -1,4 +1,3 @@
-
 #include <fstream>
 
 #include <fmt/core.h>
@@ -52,14 +51,10 @@ void create_majorant() {
           std::vector<double> xs_vals;
           for (int i = 0; i < energies.size(); i++) {
             xs_vals.push_back(majorant->calculate_xs(energies[i]) * max_band_vals(i));
-//            std::cout << xs_vals.back() << " " << std::endl;
           }
           majorant->update(energies, xs_vals);
         } else {
           std::vector<double> xs_vals(max_band_vals.begin(), max_band_vals.end());
-          for (const auto& val : xs_vals) {
-            // std::cout << val << " " << std::endl;
-          }
           majorant->update(energies, xs_vals);
         }
         // majorant->update_urr(energies, xs, urr_data.interp_);
@@ -131,6 +126,7 @@ void create_majorant() {
     }
     macro_majorants.emplace_back(Majorant());
     macro_majorants.back().update(majorant_e_grid, material_xs);
+    macro_majorants.back().write_ascii(fmt::format("mat_{}_majorant.txt", material->id_));
   }
 
   data::n_majorant = std::make_unique<Majorant>();
@@ -140,7 +136,7 @@ void create_majorant() {
   }
 
   data::n_majorant->grid_.init();
-  // data::n_majorant->write_ascii("macro_majorant.txt");
+  data::n_majorant->write_ascii("macro_majorant.txt");
 }
 
 std::vector<double>
@@ -188,7 +184,7 @@ Majorant::calculate_xs(double energy) const
 {
   // Find energy index on energy grid
   int neutron = static_cast<int>(ParticleType::neutron);
-  int i_log_union = std::log(energy/data::energy_min[neutron])/simulation::log_spacing;
+  int i_log_union = std::log(energy * data::energy_min_rcp[neutron]) * simulation::log_spacing_rcp;
 
   int i_grid;
   if (i_log_union < 0) {

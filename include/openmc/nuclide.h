@@ -152,6 +152,7 @@ namespace data {
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
 extern array<double, 2> energy_min;
+extern array<double, 2> energy_min_rcp;
 extern array<double, 2> energy_max;
 
 //! Minimum temperature in [K] that nuclide data is available at

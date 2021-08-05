@@ -92,6 +92,7 @@ void Particle::from_source(const SourceSite* src)
   material() = C_NONE;
   n_collision() = 0;
   fission() = false;
+  majorant() = 0.0;
   zero_flux_derivs();
 
   // Copy attributes from source bank site
@@ -111,9 +112,11 @@ void Particle::from_source(const SourceSite* src)
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
   }
-  E_last() = E();
+
+  E_last() = E(); // maybe should be 0.0?
   time() = src->time;
   time_last() = src->time;
+  if (delta_tracking()) majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
 }
 
 void Particle::event_calculate_xs()
@@ -225,7 +228,7 @@ void Particle::event_advance()
 }
 
 void
-Particle::trace_through_geom(double trace_dist) {
+Particle:: trace_through_geom(double trace_dist) {
 
   double distance_traveled = 0;
   while (true) {
@@ -266,7 +269,9 @@ void
 Particle::event_delta_advance() {
   double distance;
 
-  this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+  if (this->E() != this->E_last()) {
+    this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+  }
 
   // sample distance to next position
   if (type() == ParticleType::electron ||
@@ -280,7 +285,7 @@ Particle::event_delta_advance() {
   }
 
   // store a copy of the current coordinates
-  auto coord_cache = coord();
+  // auto coord_cache = coord();
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
@@ -297,9 +302,12 @@ Particle::event_delta_advance() {
     // reset coordinates and trace particle through
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
-    coord() = coord_cache;
-    trace_through_geom(distance);
+    alive() = false;
+    // coord() = coord_cache;
+    // trace_through_geom(distance);
   }
+
+  if (E() != E_last()) material_last() = C_NONE;  // ensure that cross sections will be re-calculated if the energy has changed
 }
 
 void
@@ -334,6 +342,12 @@ Particle::event_cross_surface()
 
 void Particle::event_collide()
 {
+  // Store pre-collision particle properties
+  wgt_last() = wgt();
+  E_last() = E();
+  u_last() = u();
+  r_last() = r();
+
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
