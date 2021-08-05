@@ -31,6 +31,7 @@ namespace openmc {
 
 namespace data {
 array<double, 2> energy_min {0.0, 0.0};
+array<double, 2> energy_min_rcp{0.0, 0.0};
 array<double, 2> energy_max {INFTY, INFTY};
 double temperature_min {INFTY};
 double temperature_max {0.0};
@@ -493,6 +494,7 @@ void Nuclide::EnergyGrid::init()
 void Nuclide::init_grid()
 {
   for (auto& grid : grid_) { grid.init(); }
+  for (auto& grid : grid_) { std::cout << "Nuclide grid size: " << grid.energy.size() << std::endl; }
 }
 
 double Nuclide::nu(double E, EmissionMode mode, int group) const

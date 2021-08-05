@@ -268,6 +268,7 @@ double k_col_abs {0.0};
 double k_col_tra {0.0};
 double k_abs_tra {0.0};
 double log_spacing;
+double log_spacing_rcp;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
@@ -572,11 +573,12 @@ void calculate_work()
 void initialize_data()
 {
   // Determine minimum/maximum energy for incident neutron/photon data
+  int neutron = static_cast<int>(ParticleType::neutron);
+  int photon = static_cast<int>(ParticleType::photon);
   data::energy_max = {INFTY, INFTY};
   data::energy_min = {0.0, 0.0};
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
-      int neutron = static_cast<int>(ParticleType::neutron);
       data::energy_min[neutron] =
         std::max(data::energy_min[neutron], nuc->grid_[0].energy.front());
       data::energy_max[neutron] =
@@ -587,7 +589,6 @@ void initialize_data()
   if (settings::photon_transport) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
-        int photon = static_cast<int>(ParticleType::photon);
         int n = elem->energy_.size();
         data::energy_min[photon] =
           std::max(data::energy_min[photon], std::exp(elem->energy_(1)));
@@ -600,7 +601,6 @@ void initialize_data()
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
-        int photon = static_cast<int>(ParticleType::photon);
         int n_e = data::ttb_e_grid.size();
         data::energy_min[photon] =
           std::max(data::energy_min[photon], std::exp(data::ttb_e_grid(1)));
@@ -609,6 +609,10 @@ void initialize_data()
       }
     }
   }
+
+  // set energy recipricals
+  data::energy_min_rcp[neutron] = 1.0 / data::energy_min[neutron];
+  if (settings::photon_transport) data::energy_min_rcp[photon] = 1.0 / data::energy_min[photon];
 
   // Show which nuclide results in lowest energy for neutron transport
   for (const auto& nuc : data::nuclides) {
@@ -633,10 +637,10 @@ void initialize_data()
   for (auto& nuc : data::nuclides) {
     nuc->init_grid();
   }
-  int neutron = static_cast<int>(ParticleType::neutron);
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
     settings::n_log_bins;
+  simulation::log_spacing_rcp = 1.0 / simulation::log_spacing;
 }
 
 #ifdef OPENMC_MPI
@@ -709,19 +713,14 @@ void transport_history_based()
   }
 }
 
-void transport_delta_tracking_single_particle(Particle& p) {
+void transport_delta_tracking_single_particle(Particle& p)
+{
   p.delta_tracking() = true;
-
   while (true) {
-    p.event_calculate_xs();
-    if (!p.alive())
-      break;
     p.event_delta_advance();
     if (!p.alive())
       break;
     p.event_calculate_xs();
-    if (!p.alive())
-      break;
     Expects(p.macro_xs().total <= p.majorant());
     if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
       p.event_collide();

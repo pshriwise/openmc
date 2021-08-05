@@ -275,7 +275,7 @@ private:
 
   // Current PRNG state
   uint64_t seeds_[N_STREAMS]; // current seeds
-  int stream_;                // current RNG stream
+  int stream_ {STREAM_TRACKING};             // current RNG stream
 
   // Secondary particle bank
   vector<SourceSite> secondary_bank_;
