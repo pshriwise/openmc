@@ -52,7 +52,7 @@ void calculate_generation_keff()
 
   // Get keff for this generation by subtracting off the starting value
   simulation::keff_generation =
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) -
     simulation::keff_generation;
 
   double keff_reduced;
