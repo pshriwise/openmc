@@ -83,7 +83,8 @@ void Particle::from_source(const SourceSite* src)
     E() = data::mg.energy_bin_avg_[g()];
   }
   E_last() = 0.0;
-  if (delta_tracking()) majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+  if (delta_tracking())
+    majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
 }
 
 void Particle::event_calculate_xs()
@@ -110,10 +111,11 @@ void Particle::event_calculate_xs()
       if (!delta_tracking()) {
         alive() = false;
       } else {
-        mark_as_lost("Could not find the cell containing particle " + std::to_string(id()));
+        mark_as_lost("Could not find the cell containing particle " +
+                     std::to_string(id()));
       }
-    return;
-  }
+      return;
+    }
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
@@ -192,27 +194,29 @@ void Particle::event_advance()
   }
 }
 
-void
-Particle:: trace_through_geom(double trace_dist) {
+void Particle::trace_through_geom(double trace_dist)
+{
 
   double distance_traveled = 0;
   while (true) {
     boundary() = distance_to_boundary(*this);
 
     // stop if we've gone far enough
-    if (distance_traveled + boundary().distance > trace_dist) break;
+    if (distance_traveled + boundary().distance > trace_dist)
+      break;
 
     // update distance
     distance_traveled += boundary().distance;
 
     // advance the particle
-    for(auto& coord : coord()) {
+    for (auto& coord : coord()) {
       coord.r += boundary().distance * coord.u;
     }
 
     // cross the surface
     this->event_cross_surface();
-    if (!alive()) break;
+    if (!alive())
+      break;
   }
 
   // move the remaining distance if needed
@@ -230,8 +234,8 @@ Particle:: trace_through_geom(double trace_dist) {
   material() = C_NONE;
 }
 
-void
-Particle::event_delta_advance() {
+void Particle::event_delta_advance()
+{
   double distance;
 
   if (this->E() != this->E_last()) {
@@ -239,11 +243,10 @@ Particle::event_delta_advance() {
   }
 
   // sample distance to next position
-  if (type() == ParticleType::electron ||
-      type() == ParticleType::positron) {
+  if (type() == ParticleType::electron || type() == ParticleType::positron) {
     distance = 0.0;
-  // } else if (macro_xs_.total == 0.0) {
-  //   distance = INFINITY;
+    // } else if (macro_xs_.total == 0.0) {
+    //   distance = INFINITY;
   } else {
     // calculate majorant value for this energy
     distance = -std::log(prn(this->current_seed())) / majorant();
@@ -268,15 +271,18 @@ Particle::event_delta_advance() {
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
     alive() = false;
+    // score to global leakage tally
+    keff_tally_leakage() += wgt();
     // coord() = coord_cache;
     // trace_through_geom(distance);
   }
 
-  if (E() != E_last()) material_last() = C_NONE;  // ensure that cross sections will be re-calculated if the energy has changed
+  if (E() != E_last())
+    material_last() = C_NONE; // ensure that cross sections will be
+                              // re-calculated if the energy has changed
 }
 
-void
-Particle::event_cross_surface()
+void Particle::event_cross_surface()
 {
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface_index;
@@ -432,8 +438,8 @@ void Particle::event_death()
   global_tally_collision += keff_tally_collision();
   if (!delta_tracking()) {
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
-}
+    global_tally_tracklength += keff_tally_tracklength();
+  }
 #pragma omp atomic
   global_tally_leakage += keff_tally_leakage();
 
