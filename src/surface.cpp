@@ -630,7 +630,7 @@ double SurfaceSphere::evaluate(Position r) const
   const double x = r.x - x0_;
   const double y = r.y - y0_;
   const double z = r.z - z0_;
-  return x * x + y * y + z * z - radius_ * radius_;
+  return std::sqrt(x * x + y * y + z * z) - radius_;
 }
 
 double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
@@ -642,11 +642,13 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
   const double c = x * x + y * y + z * z - radius_ * radius_;
   const double quad = k * k - c;
 
+  const double dist = std::sqrt(x * x + y * y + z * z) - radius_;
+
   if (quad < 0.0) {
     // No intersection with sphere.
     return INFTY;
 
-  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident || std::abs(dist) < FP_COINCIDENT) {
     // Particle is on the sphere, thus one distance is positive/negative and
     // the other is zero. The sign of k determines if we are facing in or out.
     if (k >= 0.0) {
