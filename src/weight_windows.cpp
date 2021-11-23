@@ -196,7 +196,8 @@ WeightWindow WeightWindows::weight_window(const int index) const
   ww.lower_weight = lower_ww()[index];
   ww.upper_weight = upper_ww()[index];
   ww.survival_weight = ww.lower_weight * survival_ratio();
-  ww.max_split = max_split();
+  ww.n_max_split = max_split();
+  ww.max_split = static_cast<double>(max_split());
   ww.weight_cutoff = weight_cutoff();
   return ww;
 }

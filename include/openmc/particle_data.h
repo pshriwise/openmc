@@ -174,7 +174,8 @@ struct WeightWindow {
   double lower_weight;
   double upper_weight;
   double survival_weight;
-  int max_split;
+  int n_max_split;
+  double max_split;
   double weight_cutoff;
 };
 
