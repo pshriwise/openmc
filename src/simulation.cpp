@@ -6,6 +6,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/event.h"
+#include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/majorant.h"
 #include "openmc/material.h"
@@ -721,6 +722,7 @@ void transport_history_based()
 void transport_delta_tracking_single_particle(Particle& p)
 {
   p.delta_tracking() = true;
+  if (!exhaustive_find_cell(p)) { return; }
   while (true) {
     p.event_delta_advance();
     if (!p.alive())

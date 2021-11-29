@@ -245,15 +245,13 @@ void Particle::event_delta_advance()
   // sample distance to next position
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
     distance = 0.0;
-    // } else if (macro_xs_.total == 0.0) {
-    //   distance = INFINITY;
   } else {
     // calculate majorant value for this energy
     distance = -std::log(prn(this->current_seed())) / majorant();
   }
 
   // store a copy of the current coordinates
-  // auto coord_cache = coord();
+  auto coord_cache = coord();
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
@@ -270,11 +268,11 @@ void Particle::event_delta_advance()
     // reset coordinates and trace particle through
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
-    alive() = false;
+    // alive() = false;
     // score to global leakage tally
-    keff_tally_leakage() += wgt();
-    // coord() = coord_cache;
-    // trace_through_geom(distance);
+    // keff_tally_leakage() += wgt();
+    coord() = coord_cache;
+    trace_through_geom(distance);
   }
 
   if (E() != E_last())
