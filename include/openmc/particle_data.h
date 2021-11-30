@@ -274,8 +274,8 @@ private:
   bool write_track_ {false};
 
   // Current PRNG state
-  uint64_t seeds_[N_STREAMS]; // current seeds
-  int stream_ {STREAM_TRACKING};             // current RNG stream
+  uint64_t seeds_[N_STREAMS]; //!< current seeds
+  int stream_ {STREAM_TRACKING}; //!< current RNG stream
 
   // Secondary particle bank
   vector<SourceSite> secondary_bank_;
