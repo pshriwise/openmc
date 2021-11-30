@@ -38,8 +38,13 @@ void create_majorant() {
         const auto& urr_data = nuclide->urr_data_[t];
         std::vector<double> energies(urr_data.energy_.begin(), urr_data.energy_.end());
 
-        auto band_totals = xt::view(urr_data.prob_, xt::all(), URRTableParam::TOTAL, xt::all());
-        auto max_band_vals = xt::amax(band_totals, 2);
+        //auto band_totals = xt::view(urr_data.prob_, xt::all(), URRTableParam::TOTAL, xt::all());
+
+        double max_urr_total {0.0};
+
+        for (auto xs_vals : xt::view(urr_data.xs_values_, xt::all() )) {
+          max_urr_total = std::max(max_urr_total, xs_vals.total);
+        }
 
         if(urr_data.interp_ == Interpolation::log_log) {
           std::cout << fmt::format("Nuclide {} uses log-log interpolation", nuclide->name_) << std::endl;
@@ -50,11 +55,11 @@ void create_majorant() {
           majorant->grid_.init();
           std::vector<double> xs_vals;
           for (int i = 0; i < energies.size(); i++) {
-            xs_vals.push_back(majorant->calculate_xs(energies[i]) * max_band_vals(i));
+            xs_vals.push_back(majorant->calculate_xs(energies[i]) * max_urr_total);
           }
           majorant->update(energies, xs_vals);
         } else {
-          std::vector<double> xs_vals(max_band_vals.begin(), max_band_vals.end());
+          std::vector<double> xs_vals(energies.size(), max_urr_total);
           majorant->update(energies, xs_vals);
         }
         // majorant->update_urr(energies, xs, urr_data.interp_);

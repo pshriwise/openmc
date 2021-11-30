@@ -89,14 +89,14 @@ void Particle::from_source(const SourceSite* src)
 
 void Particle::event_calculate_xs()
 {
+  // Set the random number stream
+  stream() = STREAM_TRACKING;
+
   // Store pre-collision particle properties
   wgt_last() = wgt();
   E_last() = E();
   u_last() = u();
   r_last() = r();
-
-  // Set the random number stream
-  stream() = STREAM_TRACKING;
 
   // Reset event variables
   event() = TallyEvent::KILL;
