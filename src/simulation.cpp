@@ -415,8 +415,13 @@ void initialize_generation()
       ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = simulation::global_tallies(
-      GlobalTally::K_COLLISION, TallyResult::VALUE);
+    if (settings::delta_tracking) {
+      simulation::keff_generation = simulation::global_tallies(
+        GlobalTally::K_COLLISION, TallyResult::VALUE);
+    } else {
+      simulation::keff_generation = simulation::global_tallies(
+        GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    }
   }
 }
 
