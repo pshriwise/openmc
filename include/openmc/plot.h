@@ -107,8 +107,27 @@ public:
   template<class T>
   T get_map() const;
 
+// Accessors
+  const Position& origin() const { return origin_; }
+  Position& origin() { return origin_; }
+
+  const Position& width() const { return width_; }
+  Position& width() { return width_; }
+
+  PlotBasis basis() const { return basis_; }
+  PlotBasis& basis() { return basis_; }
+
+  const array<size_t, 3>& pixels() const { return pixels_; }
+  array<size_t, 3>& pixels() { return pixels_; }
+
+  bool color_overlaps() const { return color_overlaps_; }
+  bool& color_overlaps() { return color_overlaps_; }
+
+  int level() const { return level_; }
+  int& level() { return level_; }
+
   // Members
-public:
+protected:
   Position origin_;         //!< Plot origin in geometry
   Position width_;          //!< Plot width in geometry
   PlotBasis basis_;         //!< Plot basis (XY/XZ/YZ)
@@ -198,6 +217,40 @@ public:
   // Constructor
   Plot(pugi::xml_node plot);
 
+  void plot() const;
+
+// Accessors
+
+  int id() const { return id_; }
+  int& id() { return id_; }
+
+  const PlotType& type() const { return type_; }
+  PlotType& type() { return type_; }
+
+  const PlotColorBy& color_by() const { return color_by_; }
+  PlotColorBy& color_by() { return color_by_; }
+
+  int meshlines_width() const { return meshlines_width_; }
+  int& meshlines_width() { return meshlines_width_; }
+
+  int index_meshlines_mesh() const { return index_meshlines_mesh_; }
+  int& index_meshlines_mesh() { return index_meshlines_mesh_; }
+
+  const RGBColor& meshlines_color() const { return meshlines_color_; }
+  RGBColor& meshlines_color() { return meshlines_color_; }
+
+  const RGBColor& not_found_color() const { return not_found_color_; }
+  RGBColor& not_found_color() { return not_found_color_; }
+
+  const RGBColor& overlap_color() const { return overlap_color_; }
+  RGBColor& overlap_color() { return overlap_color_; }
+
+  const vector<RGBColor>& user_colors() const { return user_colors_; }
+  vector<RGBColor>& user_colors() { return user_colors_; }
+
+  const std::string path_plot() const { return path_plot_; }
+  std::string path_plot() { return path_plot_; }
+
   // Methods
 private:
   void set_id(pugi::xml_node plot_node);
@@ -215,17 +268,16 @@ private:
   void set_overlap_color(pugi::xml_node plot_node);
 
   // Members
-public:
-  int id_;                        //!< Plot ID
-  PlotType type_;                 //!< Plot type (Slice/Voxel)
-  PlotColorBy color_by_;          //!< Plot coloring (cell/material)
-  int meshlines_width_;           //!< Width of lines added to the plot
-  int index_meshlines_mesh_ {-1}; //!< Index of the mesh to draw on the plot
-  RGBColor meshlines_color_;      //!< Color of meshlines on the plot
-  RGBColor not_found_ {WHITE};    //!< Plot background color
-  RGBColor overlap_color_ {RED};  //!< Plot overlap color
-  vector<RGBColor> colors_;       //!< Plot colors
-  std::string path_plot_;         //!< Plot output filename
+  int id_;                           //!< Plot ID
+  PlotType type_;                    //!< Plot type (Slice/Voxel)
+  PlotColorBy color_by_;             //!< Plot coloring (cell/material)
+  int meshlines_width_;              //!< Width of lines added to the plot
+  int index_meshlines_mesh_ {-1};    //!< Index of the mesh to draw on the plot
+  RGBColor meshlines_color_;         //!< Color of meshlines on the plot
+  RGBColor not_found_color_ {WHITE}; //!< Plot background color
+  RGBColor overlap_color_ {RED};     //!< Plot overlap color
+  vector<RGBColor> user_colors_;          //!< Plot colors
+  std::string path_plot_;            //!< Plot output filename
 };
 
 //===============================================================================

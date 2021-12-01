@@ -219,38 +219,38 @@ void print_plot()
 
   for (auto pl : model::plots) {
     // Plot id
-    fmt::print("Plot ID: {}\n", pl.id_);
+    fmt::print("Plot ID: {}\n", pl.id());
     // Plot filename
-    fmt::print("Plot file: {}\n", pl.path_plot_);
+    fmt::print("Plot file: {}\n", pl.path_plot());
     // Plot level
-    fmt::print("Universe depth: {}\n", pl.level_);
+    fmt::print("Universe depth: {}\n", pl.level());
 
     // Plot type
-    if (PlotType::slice == pl.type_) {
+    if (PlotType::slice == pl.type()) {
       fmt::print("Plot Type: Slice\n");
-    } else if (PlotType::voxel == pl.type_) {
+    } else if (PlotType::voxel == pl.type()) {
       fmt::print("Plot Type: Voxel\n");
     }
 
     // Plot parameters
     fmt::print(
-      "Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
+      "Origin: {} {} {}\n", pl.origin()[0], pl.origin()[1], pl.origin()[2]);
 
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Width: {:4} {:4}\n", pl.width_[0], pl.width_[1]);
-    } else if (PlotType::voxel == pl.type_) {
+    if (PlotType::slice == pl.type()) {
+      fmt::print("Width: {:4} {:4}\n", pl.width()[0], pl.width()[1]);
+    } else if (PlotType::voxel == pl.type()) {
       fmt::print(
-        "Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1], pl.width_[2]);
+        "Width: {:4} {:4} {:4}\n", pl.width()[0], pl.width()[1], pl.width()[2]);
     }
 
-    if (PlotColorBy::cells == pl.color_by_) {
+    if (PlotColorBy::cells == pl.color_by()) {
       fmt::print("Coloring: Cells\n");
-    } else if (PlotColorBy::mats == pl.color_by_) {
+    } else if (PlotColorBy::mats == pl.color_by()) {
       fmt::print("Coloring: Materials\n");
     }
 
-    if (PlotType::slice == pl.type_) {
-      switch (pl.basis_) {
+    if (PlotType::slice == pl.type()) {
+      switch (pl.basis()) {
       case PlotBasis::xy:
         fmt::print("Basis: XY\n");
         break;
@@ -261,10 +261,10 @@ void print_plot()
         fmt::print("Basis: YZ\n");
         break;
       }
-      fmt::print("Pixels: {} {}\n", pl.pixels_[0], pl.pixels_[1]);
-    } else if (PlotType::voxel == pl.type_) {
+      fmt::print("Pixels: {} {}\n", pl.pixels()[0], pl.pixels()[1]);
+    } else if (PlotType::voxel == pl.type()) {
       fmt::print(
-        "Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
+        "Voxels: {} {} {}\n", pl.pixels()[0], pl.pixels()[1], pl.pixels()[2]);
     }
 
     fmt::print("\n");
