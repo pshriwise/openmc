@@ -107,19 +107,10 @@ uint64_t plotter_seed = 1;
 
 extern "C" int openmc_plot_geometry()
 {
-
   for (auto& pl : model::plots) {
     write_message(5, "Processing plot {}: {}...", pl.id(), pl.path_plot());
-
-    if (PlotType::slice == pl.type()) {
-      // create 2D image
-      create_image(pl);
-    } else if (PlotType::voxel == pl.type()) {
-      // create voxel file for 3D viewing
-      create_voxel(pl);
-    }
+    pl.plot();
   }
-
   return 0;
 }
 
@@ -663,6 +654,18 @@ Plot::Plot(pugi::xml_node plot_node)
   set_meshlines(plot_node);
   set_mask(plot_node);
   set_overlap_color(plot_node);
+}
+
+void Plot::plot() const {
+  switch (type())
+  {
+  case PlotType::slice:
+    create_image(*this);
+    break;
+  case PlotType::voxel:
+    create_voxel(*this);
+    break;
+  }
 }
 
 //==============================================================================
