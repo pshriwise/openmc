@@ -200,9 +200,9 @@ void create_image(Plot const& pl)
 
 // create image file
 #ifdef USE_LIBPNG
-  output_png(pl, data);
+  output_png(data, pl.path_plot_);
 #else
-  output_ppm(pl, data);
+  output_ppm(data, pl.path_plot_);
 #endif
 }
 
@@ -669,26 +669,28 @@ Plot::Plot(pugi::xml_node plot_node)
 // OUTPUT_PPM writes out a previously generated image to a PPM file
 //==============================================================================
 
-void output_ppm(Plot const& pl, const ImageData& data)
+void output_ppm(const ImageData& data, std::string filename)
 {
   // Open PPM file for writing
-  std::string fname = pl.path_plot_;
-  fname = strtrim(fname);
+  std::string fname = strtrim(filename);
   std::ofstream of;
 
   of.open(fname);
 
+  int h_res = data.shape()[0];
+  int v_res = data.shape()[1];
+
   // Write header
   of << "P6\n";
-  of << pl.pixels_[0] << " " << pl.pixels_[1] << "\n";
+  of << h_res << " " << v_res << "\n";
   of << "255\n";
   of.close();
 
   of.open(fname, std::ios::binary | std::ios::app);
   // Write color for each pixel
-  for (int y = 0; y < pl.pixels_[1]; y++) {
-    for (int x = 0; x < pl.pixels_[0]; x++) {
-      RGBColor rgb = data(x, y);
+  for (int y = 0; y < v_res; y++) {
+    for (int x = 0; x < h_res; x++) {
+      const RGBColor& rgb = data(x, y);
       of << rgb.red << rgb.green << rgb.blue;
     }
   }
@@ -700,11 +702,10 @@ void output_ppm(Plot const& pl, const ImageData& data)
 //==============================================================================
 
 #ifdef USE_LIBPNG
-void output_png(Plot const& pl, const ImageData& data)
+void output_png(const ImageData& data, std::string filename)
 {
   // Open PNG file for writing
-  std::string fname = pl.path_plot_;
-  fname = strtrim(fname);
+  std::string fname = strtrim(filename);
   auto fp = std::fopen(fname.c_str(), "wb");
 
   // Initialize write and info structures
@@ -719,8 +720,8 @@ void output_png(Plot const& pl, const ImageData& data)
   png_init_io(png_ptr, fp);
 
   // Write header (8 bit colour depth)
-  int width = pl.pixels_[0];
-  int height = pl.pixels_[1];
+  int width = data.shape()[0];
+  int height = data.shape()[1];
   png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
   png_write_info(png_ptr, info_ptr);

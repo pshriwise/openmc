@@ -238,15 +238,15 @@ public:
 void draw_mesh_lines(Plot const& pl, ImageData& data);
 
 //! Write a PPM image using a plot object's image data
-//! \param[in] plot object
-//! \param[out] image data associated with the plot object
-void output_ppm(Plot const& pl, const ImageData& data);
+//! \param[in] image data
+//! \param[in] filename of the image
+void output_ppm(const ImageData& data, std::string filename);
 
 #ifdef USE_LIBPNG
 //! Write a PNG image using a plot object's image data
-//! \param[in] plot object
-//! \param[out] image data associated with the plot object
-void output_png(Plot const& pl, const ImageData& data);
+//! \param[in] image data
+//! \param[in] filename of the image
+void output_png(const ImageData& data, std::string filename);
 #endif
 
 //! Initialize a voxel file
