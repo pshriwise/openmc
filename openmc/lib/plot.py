@@ -1,10 +1,14 @@
 from ctypes import (c_bool, c_char, c_int, c_size_t, c_int32, c_uint8,
                     c_double, Structure, POINTER)
+from typing import Mapping
+
+import numpy as np
 
 from . import _dll
 from .error import _error_handler
+from ..exceptions import AllocationError, InvalidIDError
 
-import numpy as np
+__all__ = ['Plot', 'plots']
 
 
 class _Position(Structure):
@@ -239,10 +243,10 @@ class _PlotBase(Structure):
     def color_overlaps(self, val):
         self.color_overlaps_ = val
 
-    def __repr__(self):
-        out_str = ["-----",
-                   "Plot:",
-                   "-----",
+    def __repr__(self, base=True):
+        out_str = ["---------",
+                   "PlotBase:",
+                   "---------",
                    "Origin: {}".format(self.origin),
                    "Width: {}".format(self.width),
                    "Height: {}".format(self.height),
@@ -251,7 +255,10 @@ class _PlotBase(Structure):
                    "VRes: {}".format(self.v_res),
                    "Color Overlaps: {}".format(self.color_overlaps),
                    "Level: {}".format(self.level)]
-        return '\n'.join(out_str)
+        if base:
+            return '\n'.join(out_str)
+        else:
+            return '\n'.join(out_str[3:])
 
 
 class Plot(_PlotBase):
@@ -315,6 +322,23 @@ class Plot(_PlotBase):
         if id:
             self.id = id
 
+    def __repr__(self):
+        plotbase = super().__repr__(False)
+        header = ["-----",
+                  "Plot:",
+                  "-----"]
+        out_a = ["ID: {}".format(self.id),
+                 "Type: {}".format(self.type),
+                 "Color By: {}".format(self.color_by)]
+        colors = "\t\n".join("{}".format(c) for c in self.colors)
+        out_b = ["Meshlines Width: {}".format(self.meshlines_witdh),
+                 "Meshlines Color: {}".format(self.meshlines_color),
+                 "Not Found Color: {}".format(self.not_found_color),
+                 "Overlap Color: {}".format(self.overlap_color),
+                 "User Colors: {}".format(colors),
+                 "Plot Path: {}".format(self.plot_path)]
+        return "\n".join(header + out_a + plotbase + out_b)
+
     @property
     def id(self):
         return self.id_
@@ -354,6 +378,27 @@ class Plot(_PlotBase):
     @property
     def plot_path(self):
         return self.plot_path_
+
+class _PlotMapping(Mapping):
+    def __getitem__(self, key):
+        index = c_int32()
+        try:
+            _dll.openmc_get_plot_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
+            raise KeyError(str(e))
+        return Plot(index=index.value)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield Plot(index=i).id
+
+    def __len__(self):
+        return _dll.plots_size()
+
+    def __repr__(self):
+        return repr(dict(self))
+
+plots = _PlotMapping()
 
 _dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_int32)]
 _dll.openmc_id_map.restype = c_int
@@ -409,9 +454,9 @@ def property_map(plotbase):
     _dll.openmc_property_map(plotbase, prop_data.ctypes.data_as(POINTER(c_double)))
     return prop_data
 
-_dll.openmc_create_image.argtypes = [POINTER(Plot)]
-_dll.openmc_create_image.restype = c_int
-_dll.openmc_create_image.errcheck = _error_handler
+# _dll.openmc_create_image.argtypes = [POINTER(Plot)]
+# _dll.openmc_create_image.restype = c_int
+# _dll.openmc_create_image.errcheck = _error_handler
 
 def create_image(plot, filename):
     """
@@ -429,6 +474,3 @@ def create_image(plot, filename):
     plot.plot_path = filename
 
     _dll.openmc_create_image(POINTER(plot))
-
-
-
