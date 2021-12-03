@@ -565,6 +565,10 @@ class RectilinearMesh(MeshBase):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
         self._z_grid = grid
 
+    @property
+    def llc(self):
+        return (self.x_grid[0], self.y_grid[0], self.z_grid[0])
+
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()

@@ -3,9 +3,10 @@ from numbers import Real, Integral
 
 from xml.etree import ElementTree as ET
 import numpy as np
+from numpy.core.function_base import linspace
 
 from openmc.filter import _PARTICLES
-from openmc.mesh import MeshBase
+from openmc.mesh import MeshBase, RectilinearMesh
 import openmc.checkvalue as cv
 
 from .._xml import clean_indentation, get_text
@@ -413,4 +414,341 @@ class WeightWindowDomain(IDManagerMixin):
         settings_element.text = str(self.settings.id)
 
         return element
+
+    @classmethod
+    def from_wwinp(cls):
+
+        #
+
+    @staticmethod
+    def wwinp(filename):
+        """
+        Returns the next value in the wwinp file.
+
+        filename : str or pathlib.Path
+            Location of the wwinp file
+        """
+        fh = open(filename, 'r')
+
+        # read the first line of the file and
+        # keep only the first four entries
+        line = next(fh)
+        if not line or line.startswith('c'):
+            line = line.strip().split()[:4]
+
+        # the remainder of the file can be read as
+        # sequential values
+        while(True):
+            line = next(fh)
+            # skip empty or commented lines
+            if not line or line.startswith('c'):
+                continue
+            values = line.strip().split()
+            for value in values:
+                yield value
+
+
+    @staticmethod
+    def read_block_1(fh):
+        """Reads the first block of a wwinp file
+
+        Parameters
+        ----------
+        fh : TextIOWrapper
+            File handle of the MCNP weight window file, opened to the start of the block.
+
+        Returns
+        -------
+        dict
+            A mapping of the parameters read from the block
+        """
+
+        # create generator for getting the next parameter from the file
+        wwinp = WeightWindowDomain.wwinp(fh)
+
+        output = dict()
+
+        # first parameter, if, of wwinp file is unused
+        next(wwinp)
+
+        # check time parameter
+        if int(next(wwinp)) > 1:
+            raise ValueError('Time-dependent weight windows are not yet supported.')
+
+        # number of particles
+        ni = int(next(wwinp))
+
+        # read the mesh type
+        nr = int(next(wwinp))
+        if nr != 10:
+            # TODO: read the first entry by default and display a warning
+            raise ValueError('Cylindrical meshes are not currently supported')
+
+        prob_id = next(wwinp)
+
+        # read the number of energy groups for each particle
+        nes = [int(next(wwinp)) for _ in range(ni)]
+
+        particle_type = int(next(wwinp))
+        if particle_type == 1:
+            particle_type = 'neutron'
+        elif particle_type == 2:
+            particle_type = 'photon'
+        else:
+            msg = ('Only neutron and photon weight windows '
+                   'are currently supported in OpenMC.')
+            raise ValueError(msg)
+
+        # read number of fine mesh elements in each coarse element
+        nfx = int(next(wwinp))
+        nfy = int(next(wwinp))
+        nfz = int(next(wwinp))
+
+        # read the mesh origin
+        llc = (float(next(wwinp) for _ in range(3)))
+
+        # read the number of coarse mesh elements
+        ncx = int(next(wwinp))
+        ncy = int(next(wwinp))
+        ncz = int(next(wwinp))
+
+        # skip the nwg value defining the geometry type, we already know this
+        next(wwinp)
+
+        mesh = RectilinearMesh()
+
+        # read the coordinates for each dimension
+        mesh.x_grid = cls._read_mesh_coords(wwinp, ncx)
+        mesh.y_grid = cls._read_mesh_coords(wwinp, ncy)
+        mesh.z_grid = cls._read_mesh_coords(wwinp, ncz)
+
+        dims = ('x', 'y', 'z')
+
+        # check consistency of mesh coordinates
+        for dim, header_val, mesh_val in zip(dims, llc, mesh.origin):
+            if header_val != mesh_val:
+                msg = ('The {} corner of the mesh ({}) does not match '
+                       'the value read in block 1 of the wwinp file ({})')
+                raise ValueError(msg.format(dim, mesh_val, header_val))
+
+        mesh_dims = mesh.dimension
+        for dim, header_val, mesh_val in zip(dims, (nfx, nfy, nfz), mesh_dims):
+            if header_val != mesh_val:
+                msg = ('Total number of mesh elements read in the {} '
+                       'direction ({}) is inconsistent with the '
+                       'number read in block 1 of the wwinp file ({})')
+                raise ValueError(msg.format(dim, mesh_val, header_val))
+
+        # total number of fine mesh elements
+        nft = nfx * nfy * nfz
+        # read energy bins and weight window values for each particle
+        ww_settings = []
+        for i, ne in enumerate(range(nes)):
+            # read energy
+            e_groups = np.asarray((float(next(wwinp)) for _ in range(ne)))
+
+            # create an array for weight window lower bounds
+            ww_lb = np.zeros((ne, nft))
+            for e in range(ne):
+                ww_lb[e, :] = [float(next(wwinp)) for _ in range(nft)]
+
+            settings = WeightWindowSettings(id=None,
+                                            particle_type='neutron',
+                                            energy_bins=e_groups,
+                                            lower_ww_bounds=ww_lb,
+                                            upper_bound_ratio=5.0)
+            ww_settings.append(settings)
+
+        # tie weight window settings and mesh together in WeightWindowDomains
+        return [cls(id=None, mesh=mesh, settings=s) for s in ww_settings]
+
+        @staticmethod
+        def _read_mesh_coords(wwinp, n_coarse_bins):
+            """Read a set of mesh coordinates from a wwinp file
+
+            Parameters
+            ----------
+            wwinp : IOTextWrapper
+                wwinp file handle that will read the first value of the coordinates next.
+            n_coarse_bins : int
+                The number of coarse mesh bins to be read.
+            """
+
+            coords = [float(next(wwinp))]
+
+            for _ in range(n_coarse_bins):
+                # TODO: These are setup to read according to the MCNP5 format
+                sx = int(next(wwinp)) # number of fine mesh elements in between
+                px = float(next(wwinp))  # value of next coordinate
+                qx = next(wwinp)  # this value is unused
+
+                # append the fine mesh coordinates for this coarse element
+                coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
+
+            return np.asarray(coords)
+
+
+class VarianceReduction():
+    """ A class to handle various Variance Reduction operations
+    """
+    def __init__(self):
+        self._weight_window_domains = []
+
+    def __repr__(self):
+        string = type(self).__name__ +  '\n\n'
+        string += '{0: <16}\n'.format('Weight Window Domains:')
+        for wwd in self._weight_window_domains:
+            string += '\t{}\n'.format(wwd)
+        return string
+
+    @property
+    def weight_window_domains(self):
+        return self._weight_window_domains
+
+    @weight_window_domains.setter
+    def weight_window_domains(self, domains):
+        cv.check_type('Weight window domains', domains, Iterable)
+        cv.check_iterable_type('Weight window domains',
+                               domains,
+                               WeightWindowDomain)
+        self._weight_window_domains = domains
+
+    def export_to_xml(self, path='variance_reduction.xml'):
+        """Exports the variance reduction parameters to an XML file
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'variance_reduction.xml'.
+        """
+        # Check if path is a directory
+        p = Path(path)
+        if p.is_dir():
+            p /= 'variance_reduction.xml'
+
+        with open(str(p), 'w', encoding='utf-8',
+                  errors='xmlcharrefreplace') as fh:
+
+            # Write the header and the opening tag for the root element.
+            fh.write("<?xml version='1.0' encoding='utf-8'?>\n")
+
+            # Create XML representation
+            root_element = ET.Element("variance_reduction")
+
+            if self.weight_window_domains:
+                ww_element = ET.SubElement(root_element, 'weight_windows')
+
+                for domain in self.weight_window_domains:
+                    domain_element = domain.to_xml_element()
+                    clean_indentation(domain_element, level=1)
+                    ww_element.append(domain_element)
+
+                    settings_element = domain.settings.to_xml_element()
+                    clean_indentation(settings_element, level=1)
+                    ww_element.append(settings_element)
+
+                    mesh_element = domain.mesh.to_xml_element()
+                    clean_indentation(mesh_element, level=1)
+                    root_element.append(mesh_element)
+
+                clean_indentation(ww_element)
+
+            clean_indentation(root_element)
+
+            # Write the XML Tree
+            tree = ET.ElementTree(root_element)
+            tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='variance_reduction.xml'):
+        """Generate variance reduction parameters from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to the variance reduction XML file
+
+        Returns
+        -------
+        openmc.VarianceReduction
+            VarianceReduction object
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        vr = cls()
+
+        # read any meshes in the file first
+        meshes = {}
+        for mesh_elem in root.findall('mesh'):
+            try:
+                mesh = MeshBase.from_xml(mesh_elem)
+            except AttributeError as e:
+                msg = ('Can only read Regular or Unstructured meshes from XML')
+                raise e(msg)
+
+            meshes[mesh.id] = mesh
+
+        # get the weight window node
+        ww_elem = root.find('weight_windows')
+
+        if ww_elem:
+            ww_settings = {}
+            for settings_elem in ww_elem.findall('settings'):
+                settings = \
+                        WeightWindowSettings.from_xml_element(settings_elem)
+                ww_settings[settings.id] = settings
+
+            # read weight window domains
+            for domain_elem in ww_elem.findall('domain'):
+                id = int(get_text(domain_elem, 'id'))
+                mesh_id = int(get_text(domain_elem, 'mesh'))
+                settings_id = int(get_text(domain_elem, 'settings'))
+
+                domain = WeightWindowDomain(id=id,
+                mesh=meshes[mesh_id],
+                settings=ww_settings[settings_id])
+
+                vr.weight_window_domains.append(domain)
+
+        return vr
+
+    @classmethod
+    def from_hdf5(cls, group, meshes):
+        """Generate a variance reduction class from HDF5 group
+
+        Paramters
+        ----------
+        group : h5py.Group
+            HDF5 group containing variance reduction information
+        meshes: Mapping
+            Set of meshes available in the model
+
+        Returns
+        -------
+        openmc.VarianceReduction
+            A variance reduction object
+        """
+        vr = cls()
+
+        ww_settings_group = group['weight_window_settings']
+        ww_settings = {}
+        for settings_group in ww_settings_group.values():
+            settings = WeightWindowSettings.from_hdf5(settings_group)
+            ww_settings[settings.id] = settings
+
+        ww_domains_group = group['weight_window_domains']
+        for domains_group in ww_domains_group.values():
+            id = int(domains_group.name.split('/')[-1].lstrip('domain'))
+            mesh_id = domains_group['mesh'][()]
+            settings_id = domains_group['settings'][()]
+
+            domain = WeightWindowDomain(id,
+                                        meshes[mesh_id],
+                                        ww_settings[settings_id])
+            vr.weight_window_domains.append(domain)
+
+        return vr
+
 
