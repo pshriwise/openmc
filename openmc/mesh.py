@@ -505,6 +505,8 @@ class RectilinearMesh(MeshBase):
         Mesh boundary points along the y-axis.
     z_grid : Iterable of float
         Mesh boundary points along the z-axis.
+    llc : Iterable of float
+        Lower left corner of the mesh
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]

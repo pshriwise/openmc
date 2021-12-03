@@ -427,9 +427,15 @@ class WeightWindowDomain(IDManagerMixin):
 
         # read the first line of the file and
         # keep only the first four entries
-        line = next(fh)
-        if not line or line.startswith('c'):
-            line = line.strip().split()[:4]
+        while(True):
+            line = next(fh)
+            if line and not line.startswith('c'):
+                break
+
+        values = line.strip().split()[:4]
+        for value in values:
+            print("Value: {}".format(value))
+            yield value
 
         # the remainder of the file can be read as
         # sequential values
@@ -440,10 +446,11 @@ class WeightWindowDomain(IDManagerMixin):
                 continue
             values = line.strip().split()
             for value in values:
+                print("Value: {}".format(value))
                 yield value
 
-    @staticmethod
-    def from_wwinp(fh):
+    @classmethod
+    def from_wwinp(cls, fh):
         """Reads a wwinp file into WeightWindowDomain's
 
         Parameters
@@ -460,8 +467,6 @@ class WeightWindowDomain(IDManagerMixin):
         # create generator for getting the next parameter from the file
         wwinp = WeightWindowDomain.wwinp(fh)
 
-        output = dict()
-
         # first parameter, if, of wwinp file is unused
         next(wwinp)
 
@@ -474,44 +479,42 @@ class WeightWindowDomain(IDManagerMixin):
 
         # read the mesh type
         nr = int(next(wwinp))
+
         if nr != 10:
             # TODO: read the first entry by default and display a warning
             raise ValueError('Cylindrical meshes are not currently supported')
 
-        prob_id = next(wwinp)
-
         # read the number of energy groups for each particle
         nes = [int(next(wwinp)) for _ in range(ni)]
 
-        particle_type = int(next(wwinp))
-        if particle_type == 1:
-            particle_type = 'neutron'
-        elif particle_type == 2:
-            particle_type = 'photon'
+        if len(nes) == 1:
+            particles = ['neutron']
+        elif len(nes) == 2:
+            particles = ['neutron', 'photon']
         else:
-            msg = ('Only neutron and photon weight windows '
-                   'are currently supported in OpenMC.')
-            raise ValueError(msg)
+            msg = ('More than two particle types are present. '
+                   'Only neutron and photon weight windows will be read.')
+            raise Warning(msg)
 
         # read number of fine mesh elements in each coarse element
-        nfx = int(next(wwinp))
-        nfy = int(next(wwinp))
-        nfz = int(next(wwinp))
+        nfx = int(float(next(wwinp)))
+        nfy = int(float(next(wwinp)))
+        nfz = int(float(next(wwinp)))
 
         # read the mesh origin
-        llc = (float(next(wwinp) for _ in range(3)))
-
+        llc = tuple(float(next(wwinp)) for _ in range(3))
+        print(llc)
         # read the number of coarse mesh elements
-        ncx = int(next(wwinp))
-        ncy = int(next(wwinp))
-        ncz = int(next(wwinp))
+        ncx = int(float(next(wwinp)))
+        ncy = int(float(next(wwinp)))
+        ncz = int(float(next(wwinp)))
 
         # skip the nwg value defining the geometry type, we already know this
         next(wwinp)
 
-        mesh = RectilinearMesh()
 
-        # read the coordinates for each dimension
+        # read the coordinates for each dimension into a rectilinear mesh
+        mesh = RectilinearMesh()
         mesh.x_grid = cls._read_mesh_coords(wwinp, ncx)
         mesh.y_grid = cls._read_mesh_coords(wwinp, ncy)
         mesh.z_grid = cls._read_mesh_coords(wwinp, ncz)
@@ -519,7 +522,7 @@ class WeightWindowDomain(IDManagerMixin):
         dims = ('x', 'y', 'z')
 
         # check consistency of mesh coordinates
-        for dim, header_val, mesh_val in zip(dims, llc, mesh.origin):
+        for dim, header_val, mesh_val in zip(dims, llc, mesh.llc):
             if header_val != mesh_val:
                 msg = ('The {} corner of the mesh ({}) does not match '
                        'the value read in block 1 of the wwinp file ({})')
@@ -537,19 +540,21 @@ class WeightWindowDomain(IDManagerMixin):
         nft = nfx * nfy * nfz
         # read energy bins and weight window values for each particle
         ww_settings = []
-        for i, ne in enumerate(range(nes)):
+        for particle, ne in zip(particles, nes):
             # read energy
-            e_groups = np.asarray((float(next(wwinp)) for _ in range(ne)))
+            e_groups = np.asarray(list(float(next(wwinp)) for _ in range(ne)))
 
             # create an array for weight window lower bounds
             ww_lb = np.zeros((ne, nft))
             for e in range(ne):
                 ww_lb[e, :] = [float(next(wwinp)) for _ in range(nft)]
 
+            print(e_groups)
             settings = WeightWindowSettings(id=None,
-                                            particle_type='neutron',
+                                            particle_type=,
                                             energy_bins=e_groups,
-                                            lower_ww_bounds=ww_lb,
+                                            # TODO: check order
+                                            lower_ww_bounds=ww_lb.flatten(),
                                             upper_bound_ratio=5.0)
             ww_settings.append(settings)
 
@@ -572,7 +577,7 @@ class WeightWindowDomain(IDManagerMixin):
 
         for _ in range(n_coarse_bins):
             # TODO: These are setup to read according to the MCNP5 format
-            sx = int(next(wwinp)) # number of fine mesh elements in between
+            sx = int(float(next(wwinp))) # number of fine mesh elements in between
             px = float(next(wwinp))  # value of next coordinate
             qx = next(wwinp)  # this value is unused
 
@@ -744,5 +749,3 @@ class VarianceReduction():
             vr.weight_window_domains.append(domain)
 
         return vr
-
-
