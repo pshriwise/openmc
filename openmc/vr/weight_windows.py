@@ -415,11 +415,6 @@ class WeightWindowDomain(IDManagerMixin):
 
         return element
 
-    @classmethod
-    def from_wwinp(cls):
-
-        #
-
     @staticmethod
     def wwinp(filename):
         """
@@ -447,10 +442,9 @@ class WeightWindowDomain(IDManagerMixin):
             for value in values:
                 yield value
 
-
     @staticmethod
-    def read_block_1(fh):
-        """Reads the first block of a wwinp file
+    def from_wwinp(fh):
+        """Reads a wwinp file into WeightWindowDomain's
 
         Parameters
         ----------
@@ -562,30 +556,30 @@ class WeightWindowDomain(IDManagerMixin):
         # tie weight window settings and mesh together in WeightWindowDomains
         return [cls(id=None, mesh=mesh, settings=s) for s in ww_settings]
 
-        @staticmethod
-        def _read_mesh_coords(wwinp, n_coarse_bins):
-            """Read a set of mesh coordinates from a wwinp file
+    @staticmethod
+    def _read_mesh_coords(wwinp, n_coarse_bins):
+        """Read a set of mesh coordinates from a wwinp file
 
-            Parameters
-            ----------
-            wwinp : IOTextWrapper
-                wwinp file handle that will read the first value of the coordinates next.
-            n_coarse_bins : int
-                The number of coarse mesh bins to be read.
-            """
+        Parameters
+        ----------
+        wwinp : IOTextWrapper
+            wwinp file handle that will read the first value of the coordinates next.
+        n_coarse_bins : int
+            The number of coarse mesh bins to be read.
+        """
 
-            coords = [float(next(wwinp))]
+        coords = [float(next(wwinp))]
 
-            for _ in range(n_coarse_bins):
-                # TODO: These are setup to read according to the MCNP5 format
-                sx = int(next(wwinp)) # number of fine mesh elements in between
-                px = float(next(wwinp))  # value of next coordinate
-                qx = next(wwinp)  # this value is unused
+        for _ in range(n_coarse_bins):
+            # TODO: These are setup to read according to the MCNP5 format
+            sx = int(next(wwinp)) # number of fine mesh elements in between
+            px = float(next(wwinp))  # value of next coordinate
+            qx = next(wwinp)  # this value is unused
 
-                # append the fine mesh coordinates for this coarse element
-                coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
+            # append the fine mesh coordinates for this coarse element
+            coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
 
-            return np.asarray(coords)
+        return np.asarray(coords)
 
 
 class VarianceReduction():
