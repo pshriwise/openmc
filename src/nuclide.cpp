@@ -530,7 +530,6 @@ void Nuclide::EnergyGrid::init()
 void Nuclide::init_grid()
 {
   for (auto& grid : grid_) { grid.init(); }
-  for (auto& grid : grid_) { std::cout << "Nuclide grid size: " << grid.energy.size() << std::endl; }
 }
 
 double Nuclide::nu(double E, EmissionMode mode, int group) const

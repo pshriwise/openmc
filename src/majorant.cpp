@@ -51,7 +51,6 @@ void create_majorant() {
         }
 
         if (urr_data.multiply_smooth_) {
-          std::cout << "Multiplied URR: " << nuclide->name_ << std::endl;
           majorant->grid_.init();
           std::vector<double> xs_vals;
           for (int i = 0; i < energies.size(); i++) {
