@@ -101,7 +101,7 @@ class MeshBase(IDManagerMixin, ABC):
         """
         mesh_type = get_text(elem, 'type')
 
-        if mesh_type == 'regular':
+        if mesh_type == 'regular' or mesh_type is None:
             return RegularMesh.from_xml_element(elem)
         elif mesh_type == 'rectilinear':
             return RectilinearMesh.from_xml_element(elem)
