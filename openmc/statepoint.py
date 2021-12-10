@@ -10,7 +10,7 @@ from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.variance_reduction import VarianceReduction
+from openmc.vr import VarianceReduction
 
 _VERSION_STATEPOINT = 17
 
