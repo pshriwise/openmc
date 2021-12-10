@@ -174,7 +174,10 @@ class RegularMesh(MeshBase):
             return self._upper_right
         elif self._width is not None:
             if self._lower_left is not None and self._dimension is not None:
-                return self._lower_left + self._width * self._dimension
+                ls = self._lower_left
+                ws = self._width
+                dims = self._dimension
+                return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
     @property
     def width(self):
@@ -182,7 +185,10 @@ class RegularMesh(MeshBase):
             return self._width
         elif self._upper_right is not None:
             if self._lower_left is not None and self._dimension is not None:
-                return (self._upper_right - self._lower_left)/self._dimension
+                us = self._upper_right
+                ls = self._lower_left
+                dims =  self._dimension
+                return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @property
     def num_mesh_cells(self):
@@ -222,7 +228,7 @@ class RegularMesh(MeshBase):
     def upper_right(self, upper_right):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
         cv.check_length('mesh upper_right', upper_right, 1, 3)
-        self._upper_right = np.asarray(upper_right)
+        self._upper_right = upper_right
 
         if self._width is not None:
             self._width = None
@@ -232,7 +238,7 @@ class RegularMesh(MeshBase):
     def width(self, width):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
-        self._width = np.asarray(width)
+        self._width = width
 
         if self._upper_right is not None:
             self._upper_right = None
