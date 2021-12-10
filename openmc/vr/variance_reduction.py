@@ -3,8 +3,9 @@ from pathlib import Path
 
 from xml.etree import ElementTree as ET
 
-from openmc.mesh import MeshBase
 import openmc.checkvalue as cv
+from openmc.mesh import MeshBase
+from openmc.vr.weight_windows import WeightWindowSettings, WeightWindowDomain
 
 from .._xml import clean_indentation, get_text
 
