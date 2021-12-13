@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <plots>
 
-  <plot id="1" basis="xy">
+  <plot id="1" basis="xy" type="slice">
     <origin>0. 0. 0.</origin>
     <width>25 25</width>
     <pixels>200 200</pixels>
@@ -9,7 +9,7 @@
     <meshlines meshtype="entropy" linewidth="0" />
   </plot>
 
-  <plot id="2" basis="xz">
+  <plot id="2" basis="xz" type="slice">
     <origin>0. 0. 0.</origin>
     <width>25 25</width>
     <pixels>200 200</pixels>
@@ -17,7 +17,7 @@
     <meshlines meshtype="tally" id="2" linewidth="0" />
   </plot>
 
-  <plot id="3" basis="yz" color_by="material">
+  <plot id="3" basis="yz" color_by="material" type="slice">
     <origin>0. 0. 0.</origin>
     <width>25 25</width>
     <pixels>200 200</pixels>
