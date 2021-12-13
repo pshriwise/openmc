@@ -232,7 +232,7 @@ class RegularMesh(MeshBase):
 
         if self._width is not None:
             self._width = None
-            raise Warning("Unsetting width attribute.")
+            warnings.warn("Unsetting width attribute.")
 
     @width.setter
     def width(self, width):
@@ -242,7 +242,7 @@ class RegularMesh(MeshBase):
 
         if self._upper_right is not None:
             self._upper_right = None
-            raise Warning("Unsetting upper_right attribute.")
+            warnings.warn("Unsetting upper_right attribute.")
 
     def __repr__(self):
         string = super().__repr__()
