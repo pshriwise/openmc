@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <plots>
 
-  <plot id="1" basis="xy">
+  <plot id="1" basis="xy" type="slice">
     <origin>0. 0. 0.</origin>
     <width>25 25</width>
     <pixels>200 200</pixels>
@@ -10,7 +10,7 @@
     <show_overlaps>true</show_overlaps>
   </plot>
 
-  <plot id="2" basis="xz">
+  <plot id="2" basis="xz" type="slice">
     <origin>0. 0. 0.</origin>
     <width>25 25</width>
     <pixels>200 200</pixels>
@@ -19,14 +19,14 @@
     <overlap_color>255 211 0</overlap_color>
   </plot>
 
-  <plot id="3" basis="yz" color_by="material">
+  <plot id="3" basis="yz" color_by="material" type="slice">
     <origin>0. 0. 0.</origin>
     <width>25 25</width>
     <pixels>200 200</pixels>
     <background>0 0 0</background>
   </plot>
 
-  <plot id="4" type="voxel">
+  <plot id="4" type="voxel" type="slice">
     <pixels>100 100 10</pixels>
     <origin>0. 0. 0.</origin>
     <width>20 20 10</width>
