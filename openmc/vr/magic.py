@@ -59,7 +59,7 @@ def _magic_inner(model, statepoint_name, tally_id):
             e_groups = [0, 1E40]
 
         if 'flux' not in tally.scores:
-            msg = ('The MAGIC method requires a flux score on the tally.
+            msg = ('The MAGIC method requires a flux score on the tally. '
                    'No flux score is present on tally with ID {}')
             raise ValueError(msg.format(tally_id))
 
@@ -78,16 +78,17 @@ def _magic_inner(model, statepoint_name, tally_id):
     lower_ww_bnds = np.zeros_like(flux_mean)
 
     for i in range(n_e_groups):
-        group_flux = flux_mean[::, i]
+        indices = (slice(None),) * len(mesh.dimension) + (i,)
+        group_flux = flux_mean[indices]
 
-        group_max = np.max(group_flux)
+        group_max = np.amax(group_flux)
 
         # normalize to max weight window value of 0.5
-        lower_ww_bnds[::, i] = group_flux / group_max
-        lower_ww_bnds[::, i] *= 0.5
+        lower_ww_bnds[indices] = group_flux / group_max
+        lower_ww_bnds[indices] *= 0.5
 
     # create weight window settings
-    wws = openmc.WeightWindowSettings(None, particle, e_groups, lower_ww_bnds, 5.0)
+    wws = openmc.WeightWindowSettings(None, particle, e_groups, lower_ww_bnds.flatten(), 5.0)
 
     # make a copy of the mesh to circumvent problems with the
     # same mesh written to multiple input files
