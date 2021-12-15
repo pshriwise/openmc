@@ -70,6 +70,12 @@ def _magic_inner(model, statepoint_name, tally_id):
             particle = 'neutron'
 
     flux_mean = tally.get_values(scores=['flux'])
+    flux_rel_err = tally.get_values(scores=['flux'], value='rel_err')
+
+    # filter out values with high relative error
+    rel_err_tol = 0.4
+    filter_indices = np.logical_and(flux_rel_err > rel_err_tol, np.isfinite(flux_rel_err))
+    flux_mean[filter_indices] = 0.0
 
     # generate lower_ww_bound values for the weight windows for each energy group
 
@@ -93,6 +99,7 @@ def _magic_inner(model, statepoint_name, tally_id):
     # make a copy of the mesh to circumvent problems with the
     # same mesh written to multiple input files
     mesh_copy = deepcopy(mesh)
+    mesh_copy.id += 1
 
     # create the weight window domain
     wwd = openmc.WeightWindowDomain(None, mesh_copy, wws)
