@@ -1224,6 +1224,10 @@ void split_particle(Particle& p)
   p.wgt_last() = weight;
   const auto& weight_window = p.weight_window();
 
+  // do nothing for zero weight windows
+  if (weight_window.lower_weight == 0.0)
+    return;
+
   // first check to see if particle should be killed for
   // weight cutoff
   if (p.wgt() < weight_window.weight_cutoff) {

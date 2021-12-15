@@ -104,8 +104,7 @@ class WeightWindowSettings(IDManagerMixin):
             raise ValueError(msg)
 
         if upper_bound_ratio:
-            self.upper_ww_bounds = \
-                [lb * upper_bound_ratio for lb in self.lower_ww_bounds]
+            self.upper_ww_bounds = upper_bound_ratio * self.lower_ww_bounds
 
         if upper_ww_bounds is not None:
             self.upper_ww_bounds = upper_ww_bounds
@@ -157,7 +156,7 @@ class WeightWindowSettings(IDManagerMixin):
     @lower_ww_bounds.setter
     def lower_ww_bounds(self, bounds):
         cv.check_type('Lower WW bounds', bounds, Iterable)
-        cv.check_iterable_type('Weight window bound', bounds, Real)
+        # cv.check_iterable_type('Weight window bound', bounds, Real)
         self._lower_ww_bounds = np.array(bounds)
 
     @property
@@ -167,7 +166,7 @@ class WeightWindowSettings(IDManagerMixin):
     @upper_ww_bounds.setter
     def upper_ww_bounds(self, bounds):
         cv.check_type('Upper WW bounds', bounds, Iterable)
-        cv.check_iterable_type('Weight window bound', bounds, Real)
+        # cv.check_iterable_type('Weight window bound', bounds, Real)
         self._upper_ww_bounds = np.array(bounds)
 
     @property

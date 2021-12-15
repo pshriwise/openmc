@@ -53,7 +53,7 @@ def _magic_inner(model, statepoint_name, tally_id):
         try:
             ef = tally.find_filter(openmc.EnergyFilter)
             n_e_groups = ef.num_bins
-            e_groups = ef.bins
+            e_groups = np.unique(ef.bins.flatten())
         except ValueError:
             n_e_groups = 1
             e_groups = [0, 1E40]
@@ -88,6 +88,9 @@ def _magic_inner(model, statepoint_name, tally_id):
         group_flux = flux_mean[indices]
 
         group_max = np.amax(group_flux)
+
+        if group_max == 0.0:
+            continue
 
         # normalize to max weight window value of 0.5
         lower_ww_bnds[indices] = group_flux / group_max
