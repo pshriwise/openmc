@@ -67,6 +67,8 @@ constexpr int MAX_WORD_LEN {150};
 constexpr int EXTSRC_REJECT_THRESHOLD {10000};
 constexpr double EXTSRC_REJECT_FRACTION {0.05};
 
+constexpr int MAX_PARTICLE_SPLITS {1000};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 

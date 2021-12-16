@@ -1235,9 +1235,16 @@ void split_particle(Particle& p)
   // if particles weight is above the weight window
   // split until they are within the window
   if (weight > weight_window.upper_weight) {
+
+    // do not further split the particle if above
+    // the limit
+    if (p.n_split() >= MAX_PARTICLE_SPLITS) return;
+
     double n_split = weight / weight_window.upper_weight;
     n_split = std::min(
       std::ceil(n_split), static_cast<double>(weight_window.max_split));
+
+    p.n_split() += n_split;
 
     int i_split = std::round(n_split);
     for (int l = 0; l < i_split - 1; l++) {

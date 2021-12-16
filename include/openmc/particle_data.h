@@ -322,6 +322,7 @@ private:
 
   // Weight window information
   WeightWindow weight_window_;
+  int n_split_ {0}; // Number of splits this particle has undergone
 
 // DagMC state variables
 #ifdef DAGMC
@@ -442,6 +443,9 @@ public:
 
   const WeightWindow& weight_window() const { return weight_window_; }
   WeightWindow& weight_window() { return weight_window_; }
+
+  int n_split() const { return n_split_; }
+  int& n_split() { return n_split_; }
 
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }
