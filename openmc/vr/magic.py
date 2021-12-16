@@ -1,9 +1,11 @@
+from argparse import ArgumentParser
+import argparse
 from copy import deepcopy
-import numpy as np
 
+import numpy as np
 import openmc
 
-def magic(model, tally_id, iterations):
+def magic(model, tally_id, iterations, rel_err_tol=0.7):
     """
     Performs weight window generation using the MAGIC method
 
@@ -21,6 +23,9 @@ def magic(model, tally_id, iterations):
         The tally ID to use for weight window generation
     iterations : int
         The number of iterations to perform
+    rel_err_tol : float (default: 0.7)
+        Upper limit on relative error of flux values used to produce
+        weight windows.
     """
 
     # determine the name of the statepoint file
@@ -28,10 +33,10 @@ def magic(model, tally_id, iterations):
     statepoint_name = f'statepoint.{model.settings.batches}.h5'
 
     for i in range(iterations):
-        _magic_inner(model, statepoint_name, tally_id)
+        _magic_inner(model, statepoint_name, tally_id, rel_err_tol)
 
 
-def _magic_inner(model, statepoint_name, tally_id):
+def _magic_inner(model, statepoint_name, tally_id, rel_err_tol):
     """
     Internal function for the MAGIC method
     """
@@ -73,7 +78,6 @@ def _magic_inner(model, statepoint_name, tally_id):
     flux_rel_err = tally.get_values(scores=['flux'], value='rel_err')
 
     # filter out values with high relative error
-    rel_err_tol = 0.4
     filter_indices = np.logical_and(flux_rel_err > rel_err_tol, np.isfinite(flux_rel_err))
     flux_mean[filter_indices] = 0.0
 
@@ -97,7 +101,7 @@ def _magic_inner(model, statepoint_name, tally_id):
         lower_ww_bnds[indices] *= 0.5
 
     # create weight window settings
-    wws = openmc.WeightWindowSettings(None, particle, e_groups, lower_ww_bnds.flatten(), 5.0)
+    wws = openmc.WeightWindowSettings(None, particle, e_groups, lower_ww_bnds.flatten(), 10.0)
 
     # make a copy of the mesh to circumvent problems with the
     # same mesh written to multiple input files
@@ -111,3 +115,16 @@ def _magic_inner(model, statepoint_name, tally_id):
     vr = openmc.VarianceReduction()
     vr.weight_window_domains = [wwd]
     vr.export_to_xml()
+
+
+if __name__ == '__main__':
+    ap = ArgumentParser("Applies MAGIC method to a local OpenMC model.")
+    ap.add_argument('t', type=int, help='ID of the tally to use for weight window generation')
+    ap.add_argument('n', type=int, help='Number of iterations to perform')
+    ap.add_argument('r', type=float, default=0.7, help='Relative error tolerance')
+
+    args = ap.parse_args()
+
+    model = openmc.Model.from_xml()
+
+    magic(model, args.t, args.n, args.r)
