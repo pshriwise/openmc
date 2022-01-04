@@ -47,6 +47,7 @@ void free_memory()
   free_memory_tally();
   free_memory_bank();
   free_memory_plot();
+  free_memory_variance_reduction();
   if (mpi::master) {
     free_memory_cmfd();
   }

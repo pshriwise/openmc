@@ -96,5 +96,7 @@ private:
     weight_windows_idx_; //!< the idx of the weight windows this domain uses
 };
 
+  void free_memory_variance_reduction();
+
 } // namespace openmc
 #endif //OPENMC_WEIGHT_WINDOWS_H

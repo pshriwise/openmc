@@ -303,4 +303,11 @@ void WeightWindowDomain::to_statepoint(hid_t group) const
   close_group(domain_group);
 }
 
+void free_memory_variance_reduction() {
+  variance_reduction::ww_domain_map.clear();
+  variance_reduction::weight_window_domains.clear();
+  variance_reduction::ww_map.clear();
+  variance_reduction::weight_windows.clear();
+}
+
 } // namespace openmc
