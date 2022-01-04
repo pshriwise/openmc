@@ -434,7 +434,6 @@ class WeightWindowDomain(IDManagerMixin):
 
         values = line.strip().split()[:4]
         for value in values:
-            print("Value: {}".format(value))
             yield value
 
         # the remainder of the file can be read as
@@ -446,7 +445,6 @@ class WeightWindowDomain(IDManagerMixin):
                 continue
             values = line.strip().split()
             for value in values:
-                print("Value: {}".format(value))
                 yield value
 
     @classmethod
@@ -471,14 +469,14 @@ class WeightWindowDomain(IDManagerMixin):
         next(wwinp)
 
         # check time parameter
-        if int(next(wwinp)) > 1:
+        if int(float(next(wwinp))) > 1:
             raise ValueError('Time-dependent weight windows are not yet supported.')
 
         # number of particles
-        ni = int(next(wwinp))
+        ni = int(float(next(wwinp)))
 
         # read the mesh type
-        nr = int(next(wwinp))
+        nr = int(float(next(wwinp)))
 
         if nr != 10:
             # TODO: read the first entry by default and display a warning
@@ -503,7 +501,7 @@ class WeightWindowDomain(IDManagerMixin):
 
         # read the mesh origin
         llc = tuple(float(next(wwinp)) for _ in range(3))
-        print(llc)
+
         # read the number of coarse mesh elements
         ncx = int(float(next(wwinp)))
         ncy = int(float(next(wwinp)))
@@ -544,14 +542,16 @@ class WeightWindowDomain(IDManagerMixin):
             # read energy
             e_groups = np.asarray(list(float(next(wwinp)) for _ in range(ne)))
 
+            # adjust energy from MeV to eV
+            e_groups *= 1E6
+
             # create an array for weight window lower bounds
             ww_lb = np.zeros((ne, nft))
             for e in range(ne):
                 ww_lb[e, :] = [float(next(wwinp)) for _ in range(nft)]
 
-            print(e_groups)
             settings = WeightWindowSettings(id=None,
-                                            particle_type=,
+                                            particle_type=particle,
                                             energy_bins=e_groups,
                                             # TODO: check order
                                             lower_ww_bounds=ww_lb.flatten(),
