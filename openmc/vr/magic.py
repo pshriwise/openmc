@@ -5,7 +5,7 @@ from copy import deepcopy
 import numpy as np
 import openmc
 import openmc.lib
-from openmc.mpi import comm
+from openmc.mpi import comm, with_barrier
 
 
 def magic(model, tally_id, iterations, rel_err_tol=0.7):
@@ -37,14 +37,10 @@ def magic(model, tally_id, iterations, rel_err_tol=0.7):
 
     if comm.rank == 0:
         model.export_to_xml()
-
     comm.barrier()
-    openmc.lib.init()
 
     for i in range(iterations):
         _magic_inner(model, statepoint_name, tally_id, rel_err_tol)
-
-    openmc.lib.finalize()
 
 
 def _magic_inner(model, statepoint_name, tally_id, rel_err_tol):
@@ -52,15 +48,14 @@ def _magic_inner(model, statepoint_name, tally_id, rel_err_tol):
     Internal function for the MAGIC method
     """
     # run the model
+    openmc.lib.init()
     openmc.lib.run()
-    openmc.lib.reset()
+    openmc.lib.finalize()
 
-    if comm.rank == 0:
-        update_wws(statepoint_name, tally_id, rel_err_tol)
-
-    comm.barrier()
+    update_wws(statepoint_name, tally_id, rel_err_tol)
 
 
+@with_barrier()
 def update_wws(statepoint_name, tally_id, rel_err_tol):
 
     # get the tally from the statepoint file
@@ -69,7 +64,9 @@ def update_wws(statepoint_name, tally_id, rel_err_tol):
 
         # find the mesh used on the tally
         try:
-            mesh = tally.find_filter(openmc.MeshFilter).mesh
+            mesh_filter = tally.find_filter(openmc.MeshFilter)
+            mesh = mesh_filter.mesh
+            n_mesh_bins = mesh_filter.num_bins
         except ValueError as e:
             msg = ('The MAGIC method requires that a mesh is present on the tally')
             raise e(msg)
@@ -102,12 +99,17 @@ def update_wws(statepoint_name, tally_id, rel_err_tol):
     flux_mean[filter_indices] = 0.0
 
     # generate lower_ww_bound values for the weight windows for each energy group
-    flux_mean = flux_mean.reshape((*mesh.dimension, n_e_groups))
+    flux_mean = flux_mean.reshape((n_mesh_bins, n_e_groups))
 
     lower_ww_bnds = np.zeros_like(flux_mean)
 
+    flux_max = np.amax(flux_mean)
+
+    if flux_max == 0.0:
+        raise RuntimeError("Specified tally has a zero score.")
+
     for i in range(n_e_groups):
-        indices = (slice(None),) * len(mesh.dimension) + (i,)
+        indices = (slice(None), i)
         group_flux = flux_mean[indices]
 
         group_max = np.amax(group_flux)
@@ -134,7 +136,6 @@ def update_wws(statepoint_name, tally_id, rel_err_tol):
     vr = openmc.VarianceReduction()
     vr.weight_window_domains = [wwd]
     vr.export_to_xml()
-
 
 
 if __name__ == '__main__':
