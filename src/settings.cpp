@@ -67,6 +67,7 @@ bool trigger_on {false};
 bool trigger_predict {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool variance_reduction_on {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
 bool weight_windows_present {false};
@@ -478,6 +479,10 @@ void read_settings_xml()
   // Probability tables
   if (check_for_node(root, "ptables")) {
     urr_ptables_on = get_node_value_bool(root, "ptables");
+  }
+
+  if (check_for_node(root, "variance_reduction_on")) {
+    variance_reduction_on = get_node_value_bool(root, "variance_reduction_on");
   }
 
   // Cutoffs

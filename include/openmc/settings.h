@@ -57,6 +57,7 @@ extern "C" bool trigger_on;        //!< tally triggers enabled?
 extern bool trigger_predict;       //!< predict batches for triggers?
 extern bool ufs_on;                //!< uniform fission site method on?
 extern bool urr_ptables_on;        //!< use unresolved resonance prob. tables?
+extern bool variance_reduction_on; //!< use variance reduction?
 extern bool write_all_tracks;      //!< write track files for every particle?
 extern bool write_initial_source;  //!< write out initial source file?
 extern bool weight_windows_present; //!< use weight window or not

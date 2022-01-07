@@ -192,6 +192,8 @@ class Settings:
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fision
         site (UFS) method.
+    variance_reduction_on : bool
+        Whether or not to apply variance reduction parameters
     verbosity : int
         Verbosity during simulation between 1 and 10. Verbosity levels are
         described in :ref:`verbosity`.
@@ -258,6 +260,8 @@ class Settings:
 
         # Uniform fission source subelement
         self._ufs_mesh = None
+
+        self._variance_reduction_on = None
 
         self._resonance_scattering = {}
         self._volume_calculations = cv.CheckedList(
@@ -409,6 +413,10 @@ class Settings:
         return self._ufs_mesh
 
     @property
+    def variance_reductin_on(self):
+        return self._variance_reduction_on
+
+    @property
     def resonance_scattering(self):
         return self._resonance_scattering
 
@@ -547,6 +555,11 @@ class Settings:
             else:
                 cv.check_type("output['path']", value, str)
         self._output = output
+
+    @variance_reductin_on.setter
+    def variance_reduction_on(self, val):
+        cv.check_type('variance reduction on', val, bool)
+        self._variance_reduction_on = val
 
     @verbosity.setter
     def verbosity(self, verbosity):
@@ -902,6 +915,11 @@ class Settings:
                     subelement.text = str(value).lower()
                 else:
                     subelement.text = value
+
+    def _create_variance_reduction_subelement(self, root):
+        if self._variance_reduction_on is not None:
+            element = ET.SubElement(root, "variance_reduction_on")
+            element.text = str(self._variance_reduction_on)
 
     def _create_verbosity_subelement(self, root):
         if self._verbosity is not None:
@@ -1448,6 +1466,7 @@ class Settings:
         self._create_entropy_mesh_subelement(root_element)
         self._create_trigger_subelement(root_element)
         self._create_no_reduce_subelement(root_element)
+        self._create_variance_reduction_subelement(root_element)
         self._create_verbosity_subelement(root_element)
         self._create_tabular_legendre_subelements(root_element)
         self._create_temperature_subelements(root_element)
