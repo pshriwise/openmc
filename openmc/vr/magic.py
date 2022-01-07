@@ -87,54 +87,60 @@ def update_wws(statepoint_name, tally_id, rel_err_tol):
 
         try:
             pf = tally.find_filter(openmc.ParticleFilter)
-            particle = pf.bins[0] # TODO: support multiple particle types
+            particles = pf.bins
         except ValueError:
-            particle = 'neutron'
+            particles = ['neutron']
 
-    flux_mean = tally.get_values(scores=['flux'])
-    flux_rel_err = tally.get_values(scores=['flux'], value='rel_err')
-
-    # filter out values with high relative error
-    filter_indices = np.logical_and(flux_rel_err > rel_err_tol, np.isfinite(flux_rel_err))
-    flux_mean[filter_indices] = 0.0
-
-    # generate lower_ww_bound values for the weight windows for each energy group
-    flux_mean = flux_mean.reshape((n_mesh_bins, n_e_groups))
-
-    lower_ww_bnds = np.zeros_like(flux_mean)
-
-    flux_max = np.amax(flux_mean)
-
-    if flux_max == 0.0:
-        raise RuntimeError("Specified tally has a zero score.")
-
-    for i in range(n_e_groups):
-        indices = (slice(None), i)
-        group_flux = flux_mean[indices]
-
-        group_max = np.amax(group_flux)
-
-        if group_max == 0.0:
-            continue
-
-        # normalize to max weight window value of 0.5
-        lower_ww_bnds[indices] = group_flux / group_max
-        lower_ww_bnds[indices] *= 0.5
-
-    # create weight window settings
-    wws = openmc.WeightWindowSettings(None, particle, e_groups, lower_ww_bnds.flatten(), 10.0)
+    ww_domains = []
 
     # make a copy of the mesh to circumvent problems with the
     # same mesh written to multiple input files
     mesh_copy = deepcopy(mesh)
-    mesh_copy.id += 1
+    mesh_copy.id = None # assigns the next available mesh ID
 
-    # create the weight window domain
-    wwd = openmc.WeightWindowDomain(None, mesh_copy, wws)
+    for particle in particles:
+
+        get_val_args = (['flux'], [openmc.ParticleFilter], [(particle,)])
+        flux_mean = tally.get_values(*get_val_args)
+        flux_rel_err = tally.get_values(*get_val_args, value='rel_err')
+
+        # filter out values with high relative error
+        filter_indices = np.logical_and(flux_rel_err > rel_err_tol, np.isfinite(flux_rel_err))
+        flux_mean[filter_indices] = 0.0
+
+        # generate lower_ww_bound values for the weight windows for each energy group
+        flux_mean = flux_mean.reshape((n_mesh_bins, n_e_groups))
+
+        lower_ww_bnds = np.zeros_like(flux_mean)
+
+        flux_max = np.amax(flux_mean)
+
+        if flux_max == 0.0:
+            raise RuntimeError("Specified tally has a zero score.")
+
+        for i in range(n_e_groups):
+            indices = (slice(None), i)
+            group_flux = flux_mean[indices]
+
+            group_max = np.amax(group_flux)
+
+            if group_max == 0.0:
+                continue
+
+            # normalize to max weight window value of 0.5
+            lower_ww_bnds[indices] = group_flux / group_max
+            lower_ww_bnds[indices] *= 0.5
+
+        # create weight window settings
+        wws = openmc.WeightWindowSettings(None, particle, e_groups, lower_ww_bnds.flatten(), 10.0)
+
+        # create the weight window domain
+        wwd = openmc.WeightWindowDomain(None, mesh_copy, wws)
+        ww_domains.append(wwd)
 
     # export variance reduction properties
     vr = openmc.VarianceReduction()
-    vr.weight_window_domains = [wwd]
+    vr.weight_window_domains = ww_domains
     vr.export_to_xml()
 
 
