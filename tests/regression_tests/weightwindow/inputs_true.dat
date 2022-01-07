@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <cell id="2" material="void" region="1 -2" universe="1" />
+  <surface coeffs="0.0 0.0 0.0 240" id="1" type="sphere" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 250" id="2" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material id="1">
+    <density units="g/cc" value="2.3" />
+    <nuclide ao="0.168018676" name="H1" />
+    <nuclide ao="1.93244e-05" name="H2" />
+    <nuclide ao="0.561814465" name="O16" />
+    <nuclide ao="0.00021401" name="O17" />
+    <nuclide ao="0.021365" name="Na23" />
+    <nuclide ao="0.021343" name="Al27" />
+    <nuclide ao="0.187439342" name="Si28" />
+    <nuclide ao="0.009517714" name="Si29" />
+    <nuclide ao="0.006273944" name="Si30" />
+    <nuclide ao="0.018026179" name="Ca40" />
+    <nuclide ao="0.00012031" name="Ca42" />
+    <nuclide ao="2.51033e-05" name="Ca43" />
+    <nuclide ao="0.000387892" name="Ca44" />
+    <nuclide ao="7.438e-07" name="Ca46" />
+    <nuclide ao="3.47727e-05" name="Ca48" />
+    <nuclide ao="0.000248179" name="Fe54" />
+    <nuclide ao="0.003895875" name="Fe56" />
+    <nuclide ao="8.99727e-05" name="Fe57" />
+    <nuclide ao="1.19737e-05" name="Fe58" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>500</particles>
+  <batches>2</batches>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0.001 0.001 0.001</parameters>
+    </space>
+    <energy type="discrete">
+      <parameters>14000000.0 1.0</parameters>
+    </energy>
+  </source>
+  <photon_transport>true</photon_transport>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <mesh id="1">
+    <dimension>5 10 15</dimension>
+    <lower_left>-240 -240 -240</lower_left>
+    <upper_right>240 240 240</upper_right>
+  </mesh>
+  <filter id="1" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <filter id="2" type="particle">
+    <bins>neutron photon</bins>
+  </filter>
+  <tally id="1">
+    <filters>1 2</filters>
+    <scores>flux</scores>
+  </tally>
+</tallies>
