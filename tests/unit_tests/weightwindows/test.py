@@ -1,10 +1,12 @@
+import os
+
+import numpy as np
 import pytest
 
 import openmc
-from openmc.stats import Point, Discrete
+from openmc.stats import Discrete, Point
 
-from tests.testing_harness import PyAPITestHarness
-
+from tests import cdtemp
 
 @pytest.fixture
 def model():
@@ -60,19 +62,45 @@ def model():
 
     mesh_filter = openmc.MeshFilter(mesh)
 
-    energy_filter = openmc.EnergyFilter([0.0, 0.5, 2E7])
-
     particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
 
     tally = openmc.Tally()
-    tally.filters = [mesh_filter, energy_filter, particle_filter]
+    tally.filters = [mesh_filter, particle_filter]
     tally.scores = ['flux']
 
     model.tallies.append(tally)
 
     return model
 
-
 def test_weightwindows(model):
-    test = PyAPITestHarness('statepoint.2.h5', model)
-    test.main()
+
+    with cdtemp(['variance_reduction.xml']):
+        # run once with variance reduction off
+        model.settings.variance_reduction_on = False
+        analog_sp = model.run()
+        os.rename(analog_sp, 'statepoint.analog.h5')
+
+        # run again with variance reduction on
+        model.settings.variance_reduction_on = True
+        ww_sp = model.run()
+        os.rename(ww_sp, 'statepoint.ww.h5')
+
+        # load both statepoints and examine results
+        asp = openmc.StatePoint('statepoint.analog.h5')
+        wsp = openmc.StatePoint('statepoint.ww.h5')
+
+        analog_tally = asp.tallies[1]
+        ww_tally = wsp.tallies[1]
+
+        def compare_results(particle, analog_tally, ww_tally):
+
+            # get values from each of the tallies
+            an_mean = analog_tally.get_values(filters=[openmc.ParticleFilter],
+                                            filter_bins=[(particle,)])
+            ww_mean = ww_tally.get_values(filters=[openmc.ParticleFilter],
+                                        filter_bins=[(particle,)])
+
+            assert np.count_nonzero(an_mean) < np.count_nonzero(ww_mean)
+
+        compare_results('neutron', analog_tally, ww_tally)
+        compare_results('photon', analog_tally, ww_tally)
