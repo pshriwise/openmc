@@ -65,6 +65,7 @@ public:
   void event_calculate_xs();
   void event_advance();
   void event_delta_advance();
+  bool will_collide();
   void event_cross_surface();
   void event_collide();
   void event_revive_from_secondary();

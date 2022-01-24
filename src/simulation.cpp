@@ -85,7 +85,8 @@ int openmc_simulation_init()
     initialize_data();
   }
 
-  if (settings::delta_tracking) create_majorant();
+  // if (settings::delta_tracking) create_majorant();
+  create_majorant();
 
   // Determine how much work each process should do
   calculate_work();
@@ -780,15 +781,15 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     p.event_calculate_xs();
-    if (p.alive()) {
-      p.event_advance();
-    }
-    if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance) {
-        p.event_cross_surface();
-      } else if (p.alive()) {
-        p.event_collide();
-      }
+    if (!p.alive())
+      break;
+    p.event_advance();
+    if (!p.alive())
+      break;
+    if (p.will_collide()) {
+      p.event_collide();
+    } else if (!p.delta_tracking()) {
+      p.event_cross_surface();
     }
     p.event_revive_from_secondary();
   }

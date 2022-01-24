@@ -144,6 +144,11 @@ void Particle::from_source(const SourceSite* src)
 
 void Particle::event_calculate_xs()
 {
+
+  if (this->E() != this->E_last()) {
+    this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+  }
+
   // Set the random number stream
   stream() = STREAM_TRACKING;
 
@@ -177,7 +182,9 @@ void Particle::event_calculate_xs()
         wgt() = 0.0;
       } else {
         mark_as_lost("Could not find the cell containing particle " +
-                     std::to_string(id()));
+                     std::to_string(id()) + " at position " +
+                     std::to_string(r().x) + ", " + std::to_string(r().y) +
+                     ", " + std::to_string(r().z));
       }
       return;
     }
@@ -228,6 +235,27 @@ void Particle::event_calculate_xs()
 
 void Particle::event_advance()
 {
+
+  bool delta_track =
+    this->macro_xs().total / this->majorant() > 1 - settings::delta_threshold;
+
+  if ((settings::verbosity > 10 || trace()) &&
+      delta_track != delta_tracking()) {
+    if (delta_track)
+      write_message("Switching to delta tracking");
+    else
+      write_message("Switching to surface tracking");
+  }
+
+  delta_tracking() = delta_track;
+
+  if (delta_tracking()) {
+    event_delta_advance();
+    event_calculate_xs();
+    this->boundary().distance == INFTY;
+    return;
+  }
+
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
 
@@ -375,6 +403,14 @@ void Particle::event_delta_advance()
 
 void Particle::event_cross_surface()
 {
+  // if we are delta tracking, we don't need to do this
+  if (delta_tracking())
+    return;
+
+  // Set surface that particle is on and adjust coordinate levels
+  surface() = boundary().surface_index;
+  n_coord() = boundary().coord_level;
+
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell;
@@ -417,8 +453,18 @@ void Particle::event_cross_surface()
   }
 }
 
+bool Particle::will_collide()
+{
+  if (delta_tracking()) {
+    return prn(current_seed()) < macro_xs().total / majorant();
+  } else {
+    return collision_distance() <= boundary().distance;
+  }
+}
+
 void Particle::event_collide()
 {
+
   // Store pre-collision particle properties
   wgt_last() = wgt();
   E_last() = E();
