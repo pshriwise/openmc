@@ -779,18 +779,29 @@ void free_memory_simulation()
 
 void transport_history_based_single_particle(Particle& p)
 {
-  while (p.alive()) {
-    p.event_calculate_xs();
-    if (!p.alive())
-      break;
-    p.event_advance();
-    if (!p.alive())
-      break;
+  while (true) {
+    if (p.delta_tracking()) {
+      p.event_delta_advance();
+      if (!p.alive())
+        break;
+      p.event_calculate_xs();
+      if (!p.alive())
+        break;
+    } else {
+      p.event_calculate_xs();
+      if (!p.alive())
+        break;
+      p.event_advance();
+      if (!p.alive())
+        break;
+    }
     if (p.will_collide()) {
       p.event_collide();
     } else if (!p.delta_tracking()) {
       p.event_cross_surface();
     }
+    if (!p.alive())
+      break;
     p.event_revive_from_secondary();
   }
   p.event_death();
