@@ -150,12 +150,16 @@ void Particle::event_calculate_xs()
     this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
   }
 
-  bool delta_track = this->macro_xs().total / this->majorant() > 1 - settings::delta_threshold;
+  bool delta_track =
+    this->macro_xs().total / this->majorant() > 1 - settings::delta_threshold;
 
   // set delta tracking
-  if ((settings::verbosity > 10 || trace()) && delta_track != delta_tracking()) {
-    if (delta_track) write_message("Switching to delta tracking");
-    else write_message("Switching to surface tracking");
+  if ((settings::verbosity > 10 || trace()) &&
+      delta_track != delta_tracking()) {
+    if (delta_track)
+      write_message("Switching to delta tracking");
+    else
+      write_message("Switching to surface tracking");
   }
 
   this->delta_tracking() = delta_track;
@@ -242,7 +246,6 @@ void Particle::event_calculate_xs()
     macro_xs().fission = 0.0;
     macro_xs().nu_fission = 0.0;
   }
-
 }
 
 void Particle::event_advance()
