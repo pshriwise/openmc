@@ -264,6 +264,10 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
   auto i_cell = p.coord(coord_lvl).cell;
   Cell& c {*model::cells[i_cell]};
 
+  // if this particle has no current cell, an exaustive search will be needed
+  if (i_cell == C_NONE)
+    return false;
+
   // Search for the particle in that cell's neighbor list.  Return if we
   // found the particle.
   bool found = find_cell_inner(p, &c.neighbors_, verbose);
