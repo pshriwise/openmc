@@ -134,7 +134,7 @@ int trigger_batch_interval {1};
 int verbosity {7};
 double weight_cutoff {0.25};
 double weight_survive {1.0};
-double delta_threshold {0.95};
+double delta_threshold {0.5};
 
 } // namespace settings
 

@@ -147,7 +147,7 @@ void Particle::event_calculate_xs()
 
   // update majorant
   if (this->E() != this->E_last()) {
-    this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+    this->update_majorant();
   }
 
   bool delta_track =
@@ -326,6 +326,11 @@ void Particle::event_advance()
   if (hit_time_boundary) {
     wgt() = 0.0;
   }
+}
+
+void Particle::update_majorant()
+{
+  majorant() = 1.000001 * data::n_majorant->calculate_xs(E());
 }
 
 void Particle::trace_through_geom(double trace_dist)

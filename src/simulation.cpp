@@ -560,6 +560,7 @@ void finalize_generation()
 
 void initialize_history(Particle& p, int64_t index_source)
 {
+
   // set defaults
   if (settings::run_mode == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank
@@ -630,6 +631,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Prepare to write out particle track.
   if (p.write_track())
     add_particle_track(p);
+
+  // set majorant cross section
+  p.update_majorant();
 }
 
 int overall_generation()

@@ -70,10 +70,6 @@ public:
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
-
-  //! pulse-height recording
-  void pht_collision_energy();
-  void pht_secondary_particles();
   void delta_transport();
 
   //! Determine the surfaces crossed between the last and current particle position
