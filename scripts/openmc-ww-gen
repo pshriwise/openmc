@@ -95,6 +95,7 @@ def update_wws(model, statepoint_name, tally_id, rel_err_tol):
             sum[particle] += flux_mean
             sum_sq[particle] += flux_mean**2
 
+            # update the current mean and rel. err. over all runs
             if N > 1:
                 mean = sum[particle] / N
                 rel_err = (sum_sq[particle]/N) - (mean**2)/(N-1)
