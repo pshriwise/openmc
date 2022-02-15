@@ -269,6 +269,31 @@ protected:
     vector<int32_t>::iterator start, const vector<int32_t>& rpn);
 };
 
+class MeshCell : public Cell {
+public:
+  MeshCell(int32_t mesh, int32_t idx) : mesh_(mesh), idx_(idx) {};
+
+  virtual bool contains(
+    Position r, Direction u, int32_t on_surface) const override
+  {
+    return true;
+  };
+
+  virtual std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const override
+  {
+    return {INFTY, 1};
+  };
+
+  virtual void to_hdf5_inner(hid_t group_id) const override {};
+
+  virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
+
+protected:
+  int32_t mesh_; // mesh index
+  int32_t idx_;  // flat index of mesh element
+};
+
 //==============================================================================
 //! Define an instance of a particular cell
 //==============================================================================

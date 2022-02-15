@@ -2,6 +2,8 @@
 #define OPENMC_UNIVERSE_H
 
 #include "openmc/cell.h"
+#include "openmc/particle.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -41,8 +43,25 @@ public:
 
   unique_ptr<UniversePartitioner> partitioner_;
 
-private:
+protected:
   GeometryType geom_type_ = GeometryType::CSG;
+  std::string name_;
+};
+
+class MeshUniverse : public Universe {
+
+  MeshUniverse() { geom_type_ = GeometryType::MESH; };
+
+  explicit MeshUniverse(pugi::xml_node node);
+
+  virtual bool find_cell(Particle& p) const override;
+
+  // setup cell instances for the mesh geometry
+  void create_cells(const vector<std::string>& cell_fills);
+
+protected:
+  int32_t mesh_;
+  vector<int32_t> cells_;
 };
 
 //==============================================================================
