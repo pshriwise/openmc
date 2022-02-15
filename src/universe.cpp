@@ -1,8 +1,12 @@
 #include "openmc/universe.h"
 
+#include <fmt/core.h>
 #include <set>
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
+#include "openmc/mesh.h"
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -71,6 +75,90 @@ BoundingBox Universe::bounding_box() const
     }
   }
   return bbox;
+}
+
+//==============================================================================
+// MeshUniverse implementation
+//==============================================================================
+
+MeshUniverse::MeshUniverse(pugi::xml_node node)
+{
+  geom_type_ = GeometryType::MESH;
+
+  if (check_for_node(node, "id")) {
+    id_ = std::stoi(get_node_value(node, "id"));
+  } else {
+    fatal_error("Must specify the ID of the Mesh Universe");
+  }
+
+  if (check_for_node(node, "name")) {
+    name_ = std::stoi(get_node_value(node, "name"));
+  }
+
+  if (check_for_node(node, "mesh")) {
+    int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+    // Ensure the speicifed mesh is present
+    if (model::mesh_map.find(mesh_id) == model::mesh_map.end()) {
+      fatal_error(fmt::format("Mesh {} could not be found", mesh_id));
+    }
+    mesh_ = model::mesh_map[mesh_id];
+  } else {
+    fatal_error(fmt::format("No mesh specified on mesh universe {}", id_));
+  }
+
+  if (check_for_node(node, "fills")) {
+    std::string fill_str = get_node_value(node, "fills");
+    vector<std::string> fill_strs = split(fill_str);
+    if (fill_strs.size() != model::meshes[mesh_]->n_bins()) {
+      fatal_error(fmt::format(
+        "Number of fills ({}) is not equal to the number of mesh bins ({})",
+        fill_strs.size(), model::meshes[mesh_]->n_bins()));
+    }
+    create_cells(fill_strs);
+  }
+}
+
+void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
+{
+  cells_.reserve(cell_fills.size());
+
+  // find the available cell id
+  int32_t next_cell_id;
+  for (const auto& c : model::cells) {
+    next_cell_id = std::max(next_cell_id, c->id_);
+  }
+  next_cell_id++;
+
+  // create cells to fill the mesh elements
+  // TODO: extend beyond material fills
+  for (int i = 0; i < cell_fills.size(); i++) {
+    int32_t fill = std::stoi(cell_fills[i]);
+    // check that this fill is in the material array
+    if (model::material_map.find(fill) == model::material_map.end()) {
+      fatal_error(
+        fmt::format("Material {} not found for MeshUniverse {}", fill, id_));
+    }
+
+    // create a new mesh cell
+    model::cells.push_back(std::make_unique<MeshCell>(mesh_, i));
+    const auto& cell = model::cells.back();
+
+    cell->type_ = Fill::MATERIAL;
+    cell->material_.push_back(fill);
+    cell->universe_ = id_;
+    cell->id_ = next_cell_id++;
+    model::cell_map[cell->id_] = model::cells.size() - 1;
+  }
+}
+
+bool MeshUniverse::find_cell(Particle& p) const
+{
+  int mesh_bin = model::meshes[mesh_]->get_bin(p.r());
+
+  if (mesh_bin == -1)
+    return false;
+
+  p.coord(p.n_coord() - 1).cell = cells_[mesh_bin] return true;
 }
 
 //==============================================================================
