@@ -7,6 +7,7 @@ import random
 from xml.etree import ElementTree as ET
 
 import numpy as np
+from pyparsing import Or
 
 import openmc
 import openmc.checkvalue as cv
@@ -810,6 +811,7 @@ class MeshUniverse(UniverseBase):
         self.mesh = mesh
 
         self._fills = None
+        self._outer = None
 
     @property
     def mesh(self):
@@ -830,6 +832,15 @@ class MeshUniverse(UniverseBase):
         (openmc.Material, openmc.Lattice, openmc.UniverseBase))
         self._fills = f
 
+    @property
+    def outer(self):
+        return self._outer
+
+    @outer.setter
+    def outer(self, u):
+        cv.check_type('Outer universe', u, openmc.UniverseBase)
+        self._outer = u
+
     def get_all_cells(self, memo=None):
         """Return all cells contained in the universe.
 
@@ -848,7 +859,10 @@ class MeshUniverse(UniverseBase):
         universes : collections.OrderedDict
             Always an empty OrderedDict for MeshUniverses.
         """
-        return OrderedDict()
+        if self.outer is not None:
+            return OrderedDict({self.outer.id : self.outer})
+        else:
+            return OrderedDict()
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the universe xml representation to an incoming xml element
@@ -881,6 +895,12 @@ class MeshUniverse(UniverseBase):
 
         fill_subelement = ET.SubElement(univ_element, 'fills')
         fill_subelement.text = ' '.join(map(lambda f: str(f.id), self.fills))
+
+        if self._outer is not None:
+            for cell in self.outer.get_all_cells().values():
+                xml_element.append(cell.create_xml_subelement(xml_element))
+            outer_subelement = ET.SubElement(univ_element, 'outer')
+            outer_subelement.text = str(self.outer.id)
 
         xml_element.append(univ_element)
 
