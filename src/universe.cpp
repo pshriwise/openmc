@@ -107,9 +107,12 @@ MeshUniverse::MeshUniverse(pugi::xml_node node)
   }
 
   if (check_for_node(node, "fills")) {
-    std::string fill_str = get_node_value(node, "fills");
-    vector<std::string> fill_strs = split(fill_str);
+    auto fill_strs = get_node_array<std::string>(node, "fills");
     create_cells(fill_strs);
+  }
+
+  if (check_for_node(node, "outer")) {
+      outer() = std::stoi(get_node_value(node, "outer"));
   }
 }
 
@@ -161,8 +164,11 @@ bool MeshUniverse::find_cell(Particle& p) const
 {
   int mesh_bin = model::meshes[mesh_]->get_bin(p.r());
 
-  if (mesh_bin == -1)
-    return false;
+  if (mesh_bin == -1) {
+    if (outer() == C_NONE) return false;
+    p.coord(p.n_coord() - 1).universe = outer();
+    return model::universes[outer()]->find_cell(p);
+  }
 
   p.coord(p.n_coord() - 1).cell = cells_[mesh_bin];
   return true;
