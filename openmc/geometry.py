@@ -115,7 +115,7 @@ class Geometry:
                 path = f"./mesh[@id='{univ.mesh.id}']"
                 if root_element.find(path) is None:
                     mesh_elem = univ.mesh.to_xml_element()
-                    xml.clean_indentation(mesh_elem)
+                    xml.clean_indentation(mesh_elem, level=1)
                     root_element.append(mesh_elem)
 
         # Write the XML Tree to the geometry.xml file
