@@ -24,6 +24,7 @@ jobs:
 
 on: [pull_request]
 
+<<<<<<< HEAD
 
   check_dependencies:
     runs-on: ubuntu-latest
@@ -32,6 +33,16 @@ on: [pull_request]
     - uses: gregsdennis/dependencies-action@main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+=======
+  jobs:
+    check_dependencies:
+      runs-on: ubuntu-latest
+      name: Check Dependencies
+      steps:
+      - uses: gregsdennis/dependencies-action@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+>>>>>>> 742c2f63f (Moving dependency check into ci file)
 
   main:
     runs-on: ubuntu-20.04
