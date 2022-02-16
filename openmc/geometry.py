@@ -109,6 +109,15 @@ class Geometry:
         if p.is_dir():
             p /= 'geometry.xml'
 
+        # add any meshes we might need from mesh-based universes
+        for univ in self.get_all_universes().values():
+            if isinstance(univ, openmc.MeshUniverse):
+                path = f"./mesh[@id='{univ.mesh.id}']"
+                if root_element.find(path) is None:
+                    mesh_elem = univ.mesh.to_xml_element()
+                    xml.clean_indentation(mesh_elem)
+                    root_element.append(mesh_elem)
+
         # Write the XML Tree to the geometry.xml file
         xml.reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
