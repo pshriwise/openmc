@@ -59,8 +59,13 @@ public:
   // setup cell instances for the mesh geometry
   void create_cells(const vector<std::string>& cell_fills);
 
+  // accessors
+  int32_t& outer() { return outer_; }
+  int32_t outer() const { return outer_; }
+
 protected:
   int32_t mesh_;
+  int32_t outer_ {C_NONE};
 };
 
 //==============================================================================

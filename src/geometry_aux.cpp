@@ -290,6 +290,15 @@ int32_t find_root_universe()
     }
   }
 
+  for (const auto& univ : model::universes) {
+    if (univ->geom_type() == GeometryType::MESH) {
+      auto mesh_univ = dynamic_cast<MeshUniverse*>(univ.get());
+      if (mesh_univ->outer() == C_NONE) continue;
+      const auto& outer_univ = model::universes[mesh_univ->outer()];
+      fill_univ_ids.insert(outer_univ->id_);
+    }
+  }
+
   // Figure out which universe is not in the set.  This is the root universe.
   bool root_found {false};
   int32_t root_univ;
@@ -600,6 +609,7 @@ int maximum_levels(int32_t univ)
         int32_t next_univ = *it;
         levels_below = std::max(levels_below, maximum_levels(next_univ));
       }
+      levels_below = std::max(levels_below, maximum_levels(lat.outer_));
     }
   }
 
