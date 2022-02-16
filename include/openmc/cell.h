@@ -14,6 +14,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/mesh.h"
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
@@ -271,18 +272,20 @@ protected:
 
 class MeshCell : public Cell {
 public:
-  MeshCell(int32_t mesh, int32_t idx) : mesh_(mesh), idx_(idx) {};
+  MeshCell(int32_t mesh, int32_t idx) : mesh_(mesh), elem_idx_(idx) {};
 
   virtual bool contains(
     Position r, Direction u, int32_t on_surface) const override
   {
-    return true;
+    int mesh_bin = model::meshes[mesh_]->get_bin(r);
+    return mesh_bin == elem_idx_;
   };
 
   virtual std::pair<double, int32_t> distance(
     Position r, Direction u, int32_t on_surface, Particle* p) const override
   {
-    return {INFTY, 1};
+    const auto& mesh = model::meshes[mesh_];
+    return mesh->distance_to_next_bin(r, u);
   };
 
   virtual void to_hdf5_inner(hid_t group_id) const override {};
@@ -291,7 +294,7 @@ public:
 
 protected:
   int32_t mesh_; // mesh index
-  int32_t idx_;  // flat index of mesh element
+  int32_t elem_idx_; // flat index of mesh element corresponding to this cell
 };
 
 //==============================================================================

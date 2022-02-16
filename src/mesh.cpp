@@ -540,6 +540,12 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
+std::pair<double, int32_t> StructuredMesh::distance_to_next_bin(
+  Position r, const Direction& u) const
+{
+  return {INFTY, -1};
+}
+
 //==============================================================================
 // RegularMesh implementation
 //==============================================================================
@@ -1968,6 +1974,12 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   }
 };
 
+std::pair<double, int32_t> MOABMesh::distance_to_next_bin(
+  Position r, const Direction& u) const
+{
+  return {INFTY, -1};
+}
+
 moab::EntityHandle MOABMesh::get_tet(const Position& r) const
 {
   moab::CartVect pos(r.x, r.y, r.z);
@@ -2504,6 +2516,12 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 {
   // TODO: Implement triangle crossings here
   fatal_error("Tracklength tallies on libMesh instances are not implemented.");
+}
+
+std::pair<double, int32_t> LibMesh::distance_to_next_bin(
+  Position r, const Direction& u) const
+{
+  return {INFTY, -1};
 }
 
 int LibMesh::get_bin(Position r) const

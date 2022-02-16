@@ -87,6 +87,14 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
+  //! Determine which mesh bin the particle will enter next
+  //
+  //! \param[in] r Current position of the particle
+  //! \param[in] u Particle direction
+  //! \returns distance and next bin's flat index
+  virtual std::pair<double, int32_t> distance_to_next_bin(
+    Position r, const Direction& u) const = 0;
+
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
@@ -164,6 +172,9 @@ public:
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
+
+  virtual std::pair<double, int32_t> distance_to_next_bin(
+    Position r, const Direction& u) const override;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -531,6 +542,9 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
+  virtual std::pair<double, int32_t> distance_to_next_bin(
+    Position r, const Direction& u) const override;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -678,6 +692,9 @@ public:
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  virtual std::pair<double, int32_t> distance_to_next_bin(
+    Position r, const Direction& u) const override;
 
   int get_bin(Position r) const override;
 
