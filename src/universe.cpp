@@ -162,7 +162,9 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 
 bool MeshUniverse::find_cell(Particle& p) const
 {
-  int mesh_bin = model::meshes[mesh_]->get_bin(p.r());
+  Position r {p.r_local()};
+
+  int mesh_bin = model::meshes[mesh_]->get_bin(r);
 
   if (mesh_bin == -1) {
     if (outer() == C_NONE)
