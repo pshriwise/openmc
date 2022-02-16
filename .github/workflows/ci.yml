@@ -21,8 +21,21 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+
+on: [pull_request]
+
+
+  check_dependencies:
+    runs-on: ubuntu-latest
+    name: Check Dependencies
+    steps:
+    - uses: gregsdennis/dependencies-action@main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   main:
     runs-on: ubuntu-20.04
+    needs: check_dependencies
     strategy:
       matrix:
         python-version: [3.8]
