@@ -845,6 +845,7 @@ void read_cells(pugi::xml_node node)
   }
 
   read_dagmc_universes(node);
+  read_mesh_universes(node);
 
   // Populate the Universe vector and map.
   for (int i = 0; i < model::cells.size(); i++) {

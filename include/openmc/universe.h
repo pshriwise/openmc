@@ -49,7 +49,7 @@ protected:
 };
 
 class MeshUniverse : public Universe {
-
+public:
   MeshUniverse() { geom_type_ = GeometryType::MESH; };
 
   explicit MeshUniverse(pugi::xml_node node);
@@ -61,7 +61,6 @@ class MeshUniverse : public Universe {
 
 protected:
   int32_t mesh_;
-  vector<int32_t> cells_;
 };
 
 //==============================================================================
@@ -92,6 +91,10 @@ private:
   //! between `surfs_[i-1]` and `surfs_[i]`.
   vector<vector<int32_t>> partitions_;
 };
+
+// non-member functions
+
+void read_mesh_universes(pugi::xml_node node);
 
 } // namespace openmc
 #endif // OPENMC_UNIVERSE_H

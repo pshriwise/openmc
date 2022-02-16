@@ -148,6 +148,7 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
     cell->universe_ = id_;
     cell->id_ = next_cell_id++;
     model::cell_map[cell->id_] = model::cells.size() - 1;
+    cells_[i] = model::cells.size() - 1;
   }
 }
 
@@ -158,7 +159,8 @@ bool MeshUniverse::find_cell(Particle& p) const
   if (mesh_bin == -1)
     return false;
 
-  p.coord(p.n_coord() - 1).cell = cells_[mesh_bin] return true;
+  p.coord(p.n_coord() - 1).cell = cells_[mesh_bin];
+  return true;
 }
 
 //==============================================================================
@@ -303,6 +305,15 @@ const vector<int32_t>& UniversePartitioner::get_cells(
         return partitions_[middle];
       }
     }
+  }
+}
+
+void read_mesh_universes(pugi::xml_node node)
+{
+  for (pugi::xml_node mesh_univ_node : node.children("mesh_universe")) {
+    model::universes.push_back(std::make_unique<MeshUniverse>(mesh_univ_node));
+    model::universe_map[model::universes.back()->id_] =
+      model::universes.size() - 1;
   }
 }
 
