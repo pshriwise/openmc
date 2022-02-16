@@ -109,19 +109,20 @@ MeshUniverse::MeshUniverse(pugi::xml_node node)
   if (check_for_node(node, "fills")) {
     std::string fill_str = get_node_value(node, "fills");
     vector<std::string> fill_strs = split(fill_str);
-    if (fill_strs.size() != model::meshes[mesh_]->n_bins()) {
-      fatal_error(fmt::format(
-        "Number of fills ({}) is not equal to the number of mesh bins ({})",
-        fill_strs.size(), model::meshes[mesh_]->n_bins()));
-    }
     create_cells(fill_strs);
   }
 }
 
 void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 {
-  cells_.reserve(cell_fills.size());
+  int n_bins = model::meshes[mesh_]->n_bins();
+  if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
+    fatal_error(fmt::format("Invalid number of cell fills provided for mesh "
+                            "universe {}. Must be 1 or {}",
+      id_, n_bins));
+  }
 
+  cells_.reserve(n_bins);
   // find the available cell id
   int32_t next_cell_id;
   for (const auto& c : model::cells) {
@@ -131,8 +132,12 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 
   // create cells to fill the mesh elements
   // TODO: extend beyond material fills
-  for (int i = 0; i < cell_fills.size(); i++) {
-    int32_t fill = std::stoi(cell_fills[i]);
+  int32_t fill = std::stoi(cell_fills[0]);
+  for (int i = 0; i < n_bins; i++) {
+    // if more than one cell fill is provided, assume that each mesh
+    // element has its own fill
+    if (cell_fills.size() != 1)
+      fill = std::stoi(cell_fills[i]);
     // check that this fill is in the material array
     if (model::material_map.find(fill) == model::material_map.end()) {
       fatal_error(
