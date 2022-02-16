@@ -182,7 +182,7 @@ public:
   std::string name_;        //!< User-defined name
   Fill type_;               //!< Material, universe, or lattice
   int32_t universe_;        //!< Universe # this cell is in
-  int32_t fill_;            //!< Universe # filling this cell
+  int32_t fill_ {-1};       //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
   GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
 

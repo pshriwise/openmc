@@ -16,6 +16,7 @@
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/mesh.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
@@ -62,6 +63,7 @@ void read_geometry_xml()
   pugi::xml_node root = doc.document_element();
 
   // Read surfaces, cells, lattice
+  read_meshes(root);
   read_surfaces(root);
   read_cells(root);
   read_lattices(root);
