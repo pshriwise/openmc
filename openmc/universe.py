@@ -802,6 +802,8 @@ class MeshUniverse(UniverseBase):
         Mesh used to define the universe
     fills : Iterable containing openmc.Material, openmc.Lattice, or openmc.UniverseBase
         The geometry filling each mesh cell
+    outer : openmc.UniverseBase
+        An outer universe used to define the region exterior to the mesh
     """
 
     def __init__(self, mesh, id=None, name=''):
