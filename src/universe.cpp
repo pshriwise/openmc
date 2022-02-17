@@ -153,7 +153,6 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 
     cell->type_ = Fill::MATERIAL;
     cell->material_.push_back(fill);
-    cell->universe_ = id_;
     cell->id_ = next_cell_id++;
     model::cell_map[cell->id_] = model::cells.size() - 1;
     cells_[i] = model::cells.size() - 1;
@@ -324,10 +323,18 @@ const vector<int32_t>& UniversePartitioner::get_cells(
 
 void read_mesh_universes(pugi::xml_node node)
 {
+  vector<int> mesh_universe_ids;
   for (pugi::xml_node mesh_univ_node : node.children("mesh_universe")) {
     model::universes.push_back(std::make_unique<MeshUniverse>(mesh_univ_node));
+    mesh_universe_ids.push_back(model::universes.back()->id_);
     model::universe_map[model::universes.back()->id_] =
       model::universes.size() - 1;
+  }
+
+  for (int id : mesh_universe_ids) {
+    int32_t idx = model::mesh_map[id];
+    const auto& mesh_univ = model::universes[idx];
+    for (int32_t c : mesh_univ->cells_) model::cells[c]->universe_ = idx;
   }
 }
 
