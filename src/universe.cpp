@@ -334,7 +334,8 @@ void read_mesh_universes(pugi::xml_node node)
   for (int id : mesh_universe_ids) {
     int32_t idx = model::mesh_map[id];
     const auto& mesh_univ = model::universes[idx];
-    for (int32_t c : mesh_univ->cells_) model::cells[c]->universe_ = idx;
+    for (int32_t c : mesh_univ->cells_)
+      model::cells[c]->universe_ = idx;
   }
 }
 
