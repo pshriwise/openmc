@@ -174,7 +174,7 @@ bool MeshUniverse::find_cell(Particle& p) const
     return model::universes[outer()]->find_cell(p);
   }
 
-  p.coord(p.n_coord() - 1).mesh_cell = mesh_bin;
+  p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
   p.coord(p.n_coord() - 1).cell = cells_[mesh_bin];
   return true;
 }
@@ -197,7 +197,7 @@ void MeshUniverse::next_cell(Particle& p) const
   p.material_last() = p.material();
   p.sqrtkT_last() = p.sqrtkT();
   // set new cell value
-  p.coord(p.n_coord() - 1).mesh_cell = next_mesh_idx;
+  p.coord(p.n_coord() - 1).mesh_cell_index() = next_mesh_idx;
   p.coord(p.n_coord() - 1).cell = next_cell_idx;
   p.coord(p.n_coord() - 1).lattice_i = p.boundary().lattice_translation;
   const auto& cell = model::cells.at(next_cell_idx);

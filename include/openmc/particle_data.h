@@ -75,9 +75,11 @@ public:
   int cell {-1};
   int universe {-1};
   int lattice {-1};
-  int mesh_cell {-1};
   array<int, 3> lattice_i {{-1, -1, -1}};
   bool rotated {false}; //!< Is the level rotated?
+
+  int& mesh_cell_index() { return lattice; }
+  int mesh_cell_index() const { return lattice; }
 };
 
 //==============================================================================
