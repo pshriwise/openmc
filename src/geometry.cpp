@@ -384,7 +384,8 @@ BoundaryInfo distance_to_boundary(Particle& p)
       const auto mesh_univ =
         dynamic_cast<MeshUniverse*>(model::universes[coord.universe].get());
       const auto& mesh = model::meshes[mesh_univ->mesh()];
-      auto mesh_dist = mesh->distance_to_next_bin(coord.mesh_cell, r, u);
+      auto mesh_dist =
+        mesh->distance_to_next_bin(coord.mesh_cell_index(), r, u);
       if ((info.distance - mesh_dist.first) / info.distance >=
           FP_REL_PRECISION) {
         info.distance = mesh_dist.first;
