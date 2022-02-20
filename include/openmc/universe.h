@@ -36,6 +36,8 @@ public:
 
   virtual bool find_cell(Particle& p) const;
 
+  virtual void next_cell(Particle& p) const {};
+
   BoundingBox bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }
@@ -56,10 +58,15 @@ public:
 
   virtual bool find_cell(Particle& p) const override;
 
+  virtual void next_cell(Particle& p) const override;
+
   // setup cell instances for the mesh geometry
   void create_cells(const vector<std::string>& cell_fills);
 
   // accessors
+  int32_t& mesh() { return mesh_; }
+  int32_t mesh() const { return mesh_; }
+
   int32_t& outer() { return outer_; }
   int32_t outer() const { return outer_; }
 

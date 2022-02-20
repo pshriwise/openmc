@@ -317,7 +317,7 @@ int32_t find_root_universe()
     }
   }
   if (!root_found)
-    fatal_error("Could not find a root universe.  Make sure "
+    fatal_error("Could not find a root universe. Make sure "
                 "there are no circular dependencies in the geometry.");
 
   return root_univ;
