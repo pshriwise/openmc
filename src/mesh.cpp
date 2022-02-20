@@ -540,10 +540,41 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-std::pair<double, int32_t> StructuredMesh::distance_to_next_bin(
-  Position r, const Direction& u) const
+std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
 {
-  return {INFTY, -1};
+  // start in the specified mesh bin
+  MeshIndex ijk = get_indices_from_bin(bin);
+
+  // compute next distance in each direction
+  std::array<MeshDistance, 3> distances;
+  for (int i = 0; i < n_dimension_; i++) {
+    distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
+  }
+
+  int idx = C_NONE;
+  double min_dist = INFTY;
+  for (int i = 0; i < n_dimension_; i++) {
+    const auto& dist = distances[i];
+    if (dist.distance > FP_COINCIDENT && dist.distance < min_dist) {
+      min_dist = dist.distance;
+      idx = i;
+    }
+  }
+
+  if (idx == C_NONE) {
+    fatal_error(
+      fmt::format("Could find next mesh cell. Mesh distances: {}, {}, {}",
+        distances[0].distance, distances[1].distance, distances[2].distance));
+  }
+
+  const auto& dist_out = distances[idx];
+  ijk[idx] = dist_out.next_index;
+  write_message(
+    fmt::format("\tStructured mesh distance: {}, Next cell: {}, {}, {}",
+      dist_out.distance, ijk[0], ijk[1], ijk[2]),
+    10);
+  return {dist_out.distance, ijk};
 }
 
 //==============================================================================
@@ -1974,10 +2005,10 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   }
 };
 
-std::pair<double, int32_t> MOABMesh::distance_to_next_bin(
-  Position r, const Direction& u) const
+std::pair<double, std::array<int, 3>> MOABMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
 {
-  return {INFTY, -1};
+  return {INFTY, {-1, -1, -1}};
 }
 
 moab::EntityHandle MOABMesh::get_tet(const Position& r) const
@@ -2518,8 +2549,8 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   fatal_error("Tracklength tallies on libMesh instances are not implemented.");
 }
 
-std::pair<double, int32_t> LibMesh::distance_to_next_bin(
-  Position r, const Direction& u) const
+std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
 {
   return {INFTY, -1};
 }

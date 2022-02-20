@@ -185,7 +185,7 @@ public:
   int32_t universe_;        //!< Universe # this cell is in
   int32_t fill_ {-1};       //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
+  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC, MESH)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
@@ -272,7 +272,10 @@ protected:
 
 class MeshCell : public Cell {
 public:
-  MeshCell(int32_t mesh, int32_t idx) : mesh_(mesh), elem_idx_(idx) {};
+  MeshCell(int32_t mesh, int32_t idx) : mesh_(mesh), elem_idx_(idx)
+  {
+    geom_type_ = GeometryType::MESH;
+  };
 
   virtual bool contains(
     Position r, Direction u, int32_t on_surface) const override
@@ -284,8 +287,10 @@ public:
   virtual std::pair<double, int32_t> distance(
     Position r, Direction u, int32_t on_surface, Particle* p) const override
   {
-    const auto& mesh = model::meshes[mesh_];
-    return mesh->distance_to_next_bin(r, u);
+    // TODO: Make appropriate call for distance here
+    // const auto& mesh = model::meshes[mesh_];
+    // return mesh->distance_to_next_bin(r, u);
+    return {INFTY, -1};
   };
 
   virtual void to_hdf5_inner(hid_t group_id) const override {};

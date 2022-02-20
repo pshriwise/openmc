@@ -154,6 +154,9 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
     cell->type_ = Fill::MATERIAL;
     cell->material_.push_back(fill);
     cell->id_ = next_cell_id++;
+    // set universe ID, this will be updated later by another loop in
+    // geometry_aux
+    cell->universe_ = id_;
     model::cell_map[cell->id_] = model::cells.size() - 1;
     cells_[i] = model::cells.size() - 1;
   }
@@ -164,7 +167,6 @@ bool MeshUniverse::find_cell(Particle& p) const
   Position r {p.r_local()};
 
   int mesh_bin = model::meshes[mesh_]->get_bin(r);
-
   if (mesh_bin == -1) {
     if (outer() == C_NONE)
       return false;
@@ -172,8 +174,38 @@ bool MeshUniverse::find_cell(Particle& p) const
     return model::universes[outer()]->find_cell(p);
   }
 
+  p.coord(p.n_coord() - 1).mesh_cell = mesh_bin;
   p.coord(p.n_coord() - 1).cell = cells_[mesh_bin];
   return true;
+}
+
+void MeshUniverse::next_cell(Particle& p) const
+{
+  auto& coord = p.coord(p.n_coord() - 1);
+  const auto mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_].get());
+
+  // the particle's surface attributte should contain the flat index
+  // of the mesh cell it will enter next
+  int32_t next_mesh_idx =
+    mesh->get_bin_from_indices(p.boundary().lattice_translation);
+  int32_t next_cell_idx = cells_[next_mesh_idx];
+
+  p.boundary().lattice_translation[0] = 0;
+  p.boundary().lattice_translation[1] = 0;
+  p.boundary().lattice_translation[2] = 0;
+  // update material and temperature
+  p.material_last() = p.material();
+  p.sqrtkT_last() = p.sqrtkT();
+  // set new cell value
+  p.coord(p.n_coord() - 1).mesh_cell = next_mesh_idx;
+  p.coord(p.n_coord() - 1).cell = next_cell_idx;
+  p.coord(p.n_coord() - 1).lattice_i = p.boundary().lattice_translation;
+  const auto& cell = model::cells.at(next_cell_idx);
+  // TODO: Support multiple cell instances
+  p.cell_instance() = 0;
+  p.material() = cell->material_[0];
+  p.sqrtkT() = cell->sqrtkT_[0];
+  return;
 }
 
 //==============================================================================
@@ -329,13 +361,6 @@ void read_mesh_universes(pugi::xml_node node)
     mesh_universe_ids.push_back(model::universes.back()->id_);
     model::universe_map[model::universes.back()->id_] =
       model::universes.size() - 1;
-  }
-
-  for (int id : mesh_universe_ids) {
-    int32_t idx = model::mesh_map[id];
-    const auto& mesh_univ = model::universes[idx];
-    for (int32_t c : mesh_univ->cells_)
-      model::cells[c]->universe_ = idx;
   }
 }
 
