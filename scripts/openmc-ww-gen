@@ -137,15 +137,15 @@ def update_wws(model, statepoint_name, tally_id, rel_err_tol):
 
                 lower_ww_bnds[lower_ww_bnds <= 0.0] = -1
 
-                # create weight window settings
-                ww = openmc.WeightWindows(mesh_copy,
-                                          lower_ww_bnds.flatten(),
-                                          None,
-                                          10.0,
-                                          e_bounds,
-                                          particle)
-                # create the weight window domain
-                wws.append(ww)
+            # create weight window settings
+            ww = openmc.WeightWindows(mesh_copy,
+                                      lower_ww_bnds.flatten(),
+                                      None,
+                                      10.0,
+                                      e_bounds,
+                                      particle)
+            # create the weight window domain
+            wws.append(ww)
 
         model.settings.weight_windows = wws
         model.export_to_xml()
