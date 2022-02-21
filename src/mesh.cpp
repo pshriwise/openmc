@@ -2552,7 +2552,7 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
   int bin, Position r, const Direction& u) const
 {
-  return {INFTY, -1};
+  return {INFTY, {-1, -1, -1}};
 }
 
 int LibMesh::get_bin(Position r) const
