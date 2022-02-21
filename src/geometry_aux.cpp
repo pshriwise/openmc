@@ -610,7 +610,8 @@ int maximum_levels(int32_t univ)
         int32_t next_univ = *it;
         levels_below = std::max(levels_below, maximum_levels(next_univ));
       }
-      levels_below = std::max(levels_below, maximum_levels(lat.outer_));
+      if (lat.outer_ != NO_OUTER_UNIVERSE)
+        levels_below = std::max(levels_below, maximum_levels(lat.outer_));
     }
   }
 

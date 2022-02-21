@@ -87,7 +87,7 @@ int cell_instance_at_level(const Particle& p, int level)
       instance += c_i.offset_[c.distribcell_index_];
     } else if (c_i.type_ == Fill::LATTICE) {
       instance += c_i.offset_[c.distribcell_index_];
-      auto& lat {*model::lattices[p.coord(i + 1).lattice]};
+      auto& lat {*model::lattices[p.coord(i + 1).lattice()]};
       const auto& i_xyz {p.coord(i + 1).lattice_i};
       if (lat.are_valid_indices(i_xyz)) {
         instance += lat.offset(c.distribcell_index_, i_xyz);
@@ -234,7 +234,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       coord.r = lat.get_local_position(coord.r, i_xyz);
 
       // Set lattice indices.
-      coord.lattice = c.fill_;
+      coord.lattice() = c.fill_;
 
       // Set the lower coordinate level universe.
       if (lat.are_valid_indices(i_xyz)) {
@@ -307,7 +307,7 @@ bool exhaustive_find_cell(Particle& p)
 void cross_lattice(Particle& p, const BoundaryInfo& boundary)
 {
   auto& coord {p.coord(p.n_coord() - 1)};
-  auto& lat {*model::lattices[coord.lattice]};
+  auto& lat {*model::lattices[coord.lattice()]};
 
   if (settings::verbosity >= 10 || p.trace()) {
     write_message(
@@ -402,8 +402,8 @@ BoundaryInfo distance_to_boundary(Particle& p)
     level_surf_cross = surface_distance.second;
 
     // Find the distance to the next lattice tile crossing.
-    if (coord.lattice != C_NONE) {
-      auto& lat {*model::lattices[coord.lattice]};
+    if (coord.lattice() != C_NONE) {
+      auto& lat {*model::lattices[coord.lattice()]};
       // TODO: refactor so both lattice use the same position argument (which
       // also means the lat.type attribute can be removed)
       std::pair<double, array<int, 3>> lattice_distance;

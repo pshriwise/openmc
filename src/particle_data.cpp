@@ -21,7 +21,7 @@ void LocalCoord::reset()
 {
   cell = C_NONE;
   universe = C_NONE;
-  lattice = C_NONE;
+  lattice_or_mesh_bin = C_NONE;
   lattice_i[0] = 0;
   lattice_i[1] = 0;
   lattice_i[2] = 0;
