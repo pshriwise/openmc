@@ -183,8 +183,8 @@ void print_particle(Particle& p)
       fmt::print("    Universe         = {}\n", u.id_);
     }
 
-    if (p.coord(i).lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p.coord(i).lattice]};
+    if (p.coord(i).lattice() != C_NONE) {
+      const Lattice& lat {*model::lattices[p.coord(i).lattice()]};
       fmt::print("    Lattice          = {}\n", lat.id_);
       fmt::print("    Lattice position = ({},{},{})\n", p.coord(i).lattice_i[0],
         p.coord(i).lattice_i[1], p.coord(i).lattice_i[2]);
