@@ -715,6 +715,9 @@ class DAGMCUniverse(UniverseBase):
     def get_all_materials(self, memo=None):
         return OrderedDict()
 
+    def get_all_universes(self, memo=None):
+        return OrderedDict()
+
     def create_xml_subelement(self, xml_element, memo=None):
         if memo and self in memo:
             return
@@ -915,8 +918,3 @@ class MeshUniverse(UniverseBase):
         elem : xml.etree.ElementTree.Element
             `<mesh_universe>` element
         """
-
-
-
-
-
