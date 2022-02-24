@@ -291,9 +291,16 @@ class RegularMesh(StructuredMesh):
         # ensure that points are always returned with x,y,z ordering
         return np.vstack((x.ravel(), y.ravel(), z.ravel())).T
 
-    def create_vtk_mesh(self, tally=None):
+    def create_vtk_mesh(self, data=None):
         """
         Create a VTK representation of the mesh
+
+        Parameters
+        ----------
+            data : dict
+                Data to apply to the mesh. A dictionary with dataset names as keys
+                and data arrays as values. The dimensions of the data arrays must
+                match the dimensions of the mesh.
         """
         import vtk
         from vtk.util import numpy_support as nps
@@ -307,9 +314,24 @@ class RegularMesh(StructuredMesh):
         grid.SetDimensions(n_pnts)
         grid.SetPoints(vtk_pnts)
 
+        if data is not None:
+            for name, vals in data.items():
+                if vals.shape != self.dimension:
+                    raise ValueError(f'Cannot apply dataset {name} with '
+                                     f'shape {vals.shape} to mesh {self.id} '
+                                     f'with dimensions {self.dimensions}')
+
+                arr = vtk.vtkDoubleArray()
+                arr.SetName(name)
+                arr.SetNumberOfTuples(vals.size)
+                for i in range(vals.size):
+                    arr.SetTuple1(i, vals.flat[i])
+
+                grid.GetCellData().AddArray(arr)
+
         return grid
 
-    def write_vtk_mesh(self, filename=None):
+    def write_vtk_mesh(self, filename=None, data=None):
         import vtk
 
         if filename is None:
@@ -318,7 +340,7 @@ class RegularMesh(StructuredMesh):
         writer = vtk.vtkStructuredGridWriter()
         writer.SetFileName(filename)
 
-        grid = self.create_vtk_mesh()
+        grid = self.create_vtk_mesh(data)
 
         if vtk.VTK_MAJOR_VERSION == 5:
             grid.update()
@@ -333,16 +355,69 @@ class RegularMesh(StructuredMesh):
                         show_axes=True,
                         opacity=1.0,
                         line_color=(0.0, 0.0, 0.0),
+                        window_size=None,
+                        data=None,
+                        color_by=None,
                         view=None):
+        """
+        Render mesh in an interactive VTK window.
+
+        Parameters
+        ----------
+        background : 3-tuple of float
+            RGB background color of the window
+        show_axes : bool
+            Whether axes should appear in the window
+        opacity : float
+            Opacity of the mesh cells
+        line_color : 3-tuple of float
+            RGB color for mesh edges. Edges will not appear
+            if this value is None.
+        window_size : 2-tuple of int
+            Width and height of the render window in pixels
+        data : dict
+            Data to apply to the mesh. A dictionary with dataset names as keys
+            and data arrays as values. The dimensions of the data arrays must
+            match the dimensions of the mesh.
+        color_by : str
+            Data values used to apply color to the mesh.
+        view : dict
+            Dictionary view parameters:
+                pos : 3-tuple of float
+                    Position of the camera
+                up : 3-tuple of float
+                    "Up" vector for the camera
+                focus_pt : 3-tuple of float
+                    Location camera is pointing to
+        """
         import vtk
 
-        grid = self.create_vtk_mesh()
-
+        # create the structured grid object
+        grid = self.create_vtk_mesh(data=data)
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(grid)
+        # TODO: COMMENTS
+        if color_by is not None:
+            grid.GetCellData().SetActiveScalars(color_by)
+            mapper.ScalarVisibilityOn()
+            mapper.SetScalarModeToUseCellData()
+            mapper.SetColorModeToMapScalars()
+            range = grid.GetCellData().GetScalars(color_by).GetRange()
+            mapper.SetScalarRange(range)
+            # add colorbar
+            colorbar = vtk.vtkScalarBarActor()
+            colorbar.SetTitle(color_by)
+
+            lookup_table = vtk.vtkLookupTable()
+            lookup_table.SetTableRange(range)
+
+            lookup_table.Build()
+            mapper.SetLookupTable(lookup_table)
+            colorbar.SetLookupTable(lookup_table)
 
         renderer = vtk.vtkRenderer()
         renderer.SetBackground(background)
+        renderer.GradientBackgroundOn()
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
@@ -353,6 +428,9 @@ class RegularMesh(StructuredMesh):
         actor.GetProperty().SetOpacity(opacity)
         renderer.AddActor(actor)
 
+        if color_by is not None:
+            renderer.AddActor2D(colorbar)
+
         if show_axes:
             grid_axes = vtk.vtkCubeAxesActor()
             grid_axes.SetBounds([b* 1.1 for b in grid.GetBounds()])
@@ -361,18 +439,23 @@ class RegularMesh(StructuredMesh):
 
         render_win = vtk.vtkRenderWindow()
         render_win.AddRenderer(renderer)
+        if window_size is not None:
+            render_win.SetSize(*window_size)
+        else:
+            render_win.SetSize(800, 600)
+
+        render_win.SetWindowName(f'mesh_{self.id}')
 
         # provide a roughly isometric view of the mesh
         if view is None:
             bounds = grid_axes.GetBounds()
             view = {'pos': [5.0 * val for val in bounds[-3:]],
                     'up': (0, 0, 1),
-                    'dist': sum(0.5 * (max - min) for min, max in zip(bounds[:3], bounds[-3:]))
-            }
+                    'focal_pt': [0.5 * (min+max) for min, max in zip(bounds[::2], bounds[1::2])]}
 
         renderer.GetActiveCamera().SetPosition(view['pos'])
         renderer.GetActiveCamera().SetViewUp(view['up'])
-        renderer.GetActiveCamera().SetDistance(view['dist'])
+        renderer.GetActiveCamera().SetFocalPoint(view['focal_pt'])
 
         render_interactor = vtk.vtkRenderWindowInteractor()
         render_interactor.SetRenderWindow(render_win)
@@ -1089,7 +1172,7 @@ class CylindricalMesh(StructuredMesh):
 
         rpz_grids = {'r': self.r_grid,
                      'p': self.phi_grid,
-                     'z': self.z_grid }
+                     'z': self.z_grid}
 
         # meshgrid changes k fastest, then j, then i
         # reverse ordering to make setup easier
@@ -1337,10 +1420,6 @@ class SphericalMesh(StructuredMesh):
             out[..., 2] = z
 
         return out
-
-
-
-
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
