@@ -310,7 +310,12 @@ class RegularMesh(StructuredMesh):
 
         writer.Write()
 
-    def render_vtk_mesh(self, background=(0.5, 0.5, 0.5), axes=True):
+    def render_vtk_mesh(self,
+                        background=(0.5, 0.5, 0.5),
+                        show_axes=True,
+                        opacity=1.0,
+                        line_color=(0.0, 0.0, 0.0),
+                        view=None):
         import vtk
 
         grid = self.create_vtk_mesh()
@@ -318,16 +323,38 @@ class RegularMesh(StructuredMesh):
         mapper = vtk.vtkDataSetMapper()
         mapper.SetInputData(grid)
 
+        renderer = vtk.vtkRenderer()
+        renderer.SetBackground(background)
+
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
-        actor.GetProperty().SetRepresentationToWireframe()
-
-        renderer = vtk.vtkRenderer()
+        actor.GetProperty().SetRepresentationToSurface()
+        if line_color is not None:
+            actor.GetProperty().EdgeVisibilityOn()
+            actor.GetProperty().SetEdgeColor(line_color)
+        actor.GetProperty().SetOpacity(opacity)
         renderer.AddActor(actor)
-        renderer.SetBackground(background)
+
+        if show_axes:
+            grid_axes = vtk.vtkCubeAxesActor()
+            grid_axes.SetBounds([b* 1.1 for b in grid.GetBounds()])
+            grid_axes.SetCamera(renderer.GetActiveCamera())
+            renderer.AddActor(grid_axes)
 
         render_win = vtk.vtkRenderWindow()
         render_win.AddRenderer(renderer)
+
+        # provide a roughly isometric view of the mesh
+        if view is None:
+            bounds = grid_axes.GetBounds()
+            view = {'pos': [5.0 * val for val in bounds[-3:]],
+                    'up': (0, 0, 1),
+                    'dist': sum(0.5 * (max - min) for min, max in zip(bounds[:3], bounds[-3:]))
+            }
+
+        renderer.GetActiveCamera().SetPosition(view['pos'])
+        renderer.GetActiveCamera().SetViewUp(view['up'])
+        renderer.GetActiveCamera().SetDistance(view['dist'])
 
         render_interactor = vtk.vtkRenderWindowInteractor()
         render_interactor.SetRenderWindow(render_win)
@@ -1050,7 +1077,7 @@ class CylindricalMesh(StructuredMesh):
         z = grid[ordering.index('z')]
 
         out = np.vstack((r.ravel(), p.ravel(), z.ravel())).T
-        print(out.shape)
+
         if coords.lower() == 'cartesian':
             x = out[..., 0] * np.cos(out[..., 1])
             y = out[..., 0] * np.sin(out[..., 1])
