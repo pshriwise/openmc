@@ -483,6 +483,8 @@ class RegularMesh(StructuredMesh):
 
     """
 
+    _GRID_ORDER_VALS = ('x', 'y', 'z')
+
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
@@ -490,6 +492,19 @@ class RegularMesh(StructuredMesh):
         self._lower_left = None
         self._upper_right = None
         self._width = None
+
+    def _check_ordering(self, ordering):
+        """
+        Checks that
+        """
+        cv.check_length(f'{type(self).__name__} ordering', ordering, 3, 3)
+
+        for val in self._GRID_ORDER_VALS:
+            if ordering.count(val) != 1:
+                raise ValueError(f'Provided ordering "{ordering}" is '
+                                 f'invalid for mesh type {type(self).__name__}. '
+                                 f'Only some permutation of '
+                                 f'{self._GRID_ORDER_VALS} is allowed.')
 
     def grid_pnts(self, ordering='xyz'):
         """
@@ -505,6 +520,9 @@ class RegularMesh(StructuredMesh):
         -------
             numpy.ndarray : Grid points defining the mesh
         """
+        # ensure the ordering is valid
+        self._check_ordering(ordering)
+
         xyz_grids = {'x': self.x_grid,
                      'y': self.y_grid,
                      'z': self.z_grid}
@@ -1224,6 +1242,8 @@ class CylindricalMesh(StructuredMesh):
 
     """
 
+    _GRID_ORDER_VALS = ('r', 'p', 'z')
+
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
@@ -1290,6 +1310,11 @@ class CylindricalMesh(StructuredMesh):
         arr[..., 1] = y
 
     def grid_pnts(self, ordering='rpz', coords='cartesian'):
+        cv.check_value('Cylindrical mesh grid coordinates',
+                       coords,
+                       ('cylindrical', 'cartesian'))
+        self._check_ordering(ordering)
+
         rpz_grids = {'r': self.r_grid,
                      'p': self.phi_grid,
                      'z': self.z_grid }
@@ -1448,6 +1473,8 @@ class SphericalMesh(StructuredMesh):
 
     """
 
+    _GRID_ORDER_VALS = ('r', 't', 'p')
+
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
@@ -1515,6 +1542,43 @@ class SphericalMesh(StructuredMesh):
         arr[..., 0] = x
         arr[..., 1] = y
         arr[..., 2] = z
+
+    def grid_pnts(self, ordering='rtp', coords='cartesian'):
+        cv.check_value('Spherical mesh grid coordinates',
+                       coords,
+                       ('spherical', 'cartesian'))
+        self._check_ordering(ordering)
+
+        rtp_grids = {'r': self.r_grid,
+                     't': self.theta_grid,
+                     'p': self.phi_grid}
+
+        # meshgrid changes k fastest, then j, then i
+        i_vals = rtp_grids[ordering[2]]
+        j_vals = rtp_grids[ordering[1]]
+        k_vals = rtp_grids[ordering[0]]
+
+        grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')[::-1]
+        r = grid[ordering.index('r')]
+        t = grid[ordering.index('t')]
+        p = grid[ordering.index('p')]
+
+        out = np.vstack((r.ravel(), t.ravel(), p.ravel())).T
+
+        if coords.lower() == 'cartesian':
+            r_xy = out[..., 0] * np.sin(out[..., 1])
+            x = r_xy * np.cos(out[...,2])
+            y = r_xy * np.sin(out[...,2])
+            z = out[..., 0] * np.cos(out[..., 1])
+            out[..., 0] = x
+            out[..., 1] = y
+            out[..., 2] = z
+
+        return out
+
+
+
+
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
