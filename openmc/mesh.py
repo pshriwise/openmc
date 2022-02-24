@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from math import pi
+from multiprocessing.sharedctypes import Value
 from numbers import Real, Integral
+from socket import if_indextoname
+from turtle import back
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -440,7 +443,6 @@ class StructuredMesh(MeshBase):
 
         return grid
 
-
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
 
@@ -488,6 +490,97 @@ class RegularMesh(StructuredMesh):
         self._lower_left = None
         self._upper_right = None
         self._width = None
+
+    def grid_pnts(self, ordering='xyz'):
+        """
+        Return a list of points representing the mesh grid.
+
+        Parameters
+        ----------
+        ordering : str
+            Sequent of x, y, and z characters that indicates which
+            dimension should changes fastest.
+
+        Returns
+        -------
+            numpy.ndarray : Grid points defining the mesh
+        """
+        xyz_grids = {'x': self.x_grid,
+                     'y': self.y_grid,
+                     'z': self.z_grid}
+
+        # meshgrid changes k fastest, then j, then i
+        i_vals = xyz_grids[ordering[2]]
+        j_vals = xyz_grids[ordering[1]]
+        k_vals = xyz_grids[ordering[0]]
+
+        grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')[::-1]
+        x = grid[ordering.index('x')]
+        y = grid[ordering.index('y')]
+        z = grid[ordering.index('z')]
+        # ensure that points are always returned with x,y,z ordering
+        return np.vstack((x.ravel(), y.ravel(), z.ravel())).T
+
+    def create_vtk_mesh(self, tally=None):
+        """
+        Create a VTK representation of the mesh
+        """
+        import vtk
+        from vtk.util import numpy_support as nps
+
+        n_pnts = np.asarray(self.dimension) + 1
+
+        vtk_pnts = vtk.vtkPoints()
+        vtk_pnts.SetData(nps.numpy_to_vtk(self.grid_pnts()))
+
+        grid = vtk.vtkStructuredGrid()
+        grid.SetDimensions(n_pnts)
+        grid.SetPoints(vtk_pnts)
+
+        return grid
+
+    def write_vtk_mesh(self, filename=None):
+        import vtk
+
+        if filename is None:
+            filename = f'mesh_{self.id}.vtk'
+
+        writer = vtk.vtkStructuredGridWriter()
+        writer.SetFileName(filename)
+
+        grid = self.create_vtk_mesh()
+
+        if vtk.VTK_MAJOR_VERSION == 5:
+            grid.update()
+            writer.SetInput(grid)
+        else:
+            writer.SetInputData(grid)
+
+        writer.Write()
+
+    def render_vtk_mesh(self, background=(0.5, 0.5, 0.5), axes=True):
+        import vtk
+
+        grid = self.create_vtk_mesh()
+
+        mapper = vtk.vtkDataSetMapper()
+        mapper.SetInputData(grid)
+
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetRepresentationToWireframe()
+
+        renderer = vtk.vtkRenderer()
+        renderer.AddActor(actor)
+        renderer.SetBackground(background)
+
+        render_win = vtk.vtkRenderWindow()
+        render_win.AddRenderer(renderer)
+
+        render_interactor = vtk.vtkRenderWindowInteractor()
+        render_interactor.SetRenderWindow(render_win)
+        render_interactor.Initialize()
+        render_interactor.Start()
 
     @property
     def dimension(self):
@@ -1195,6 +1288,31 @@ class CylindricalMesh(StructuredMesh):
         y = arr[..., 0] * np.sin(arr[..., 1])
         arr[..., 0] = x
         arr[..., 1] = y
+
+    def grid_pnts(self, ordering='rpz', coords='cartesian'):
+        rpz_grids = {'r': self.r_grid,
+                     'p': self.phi_grid,
+                     'z': self.z_grid }
+
+        # meshgrid changes k fastest, then j, then i
+        # reverse ordering to make setup easier
+        i_vals, j_vals, k_vals = [rpz_grids[i] for i in ordering[::-1]]
+
+        grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')[::-1]
+
+        r = grid[ordering.index('r')]
+        p = grid[ordering.index('p')]
+        z = grid[ordering.index('z')]
+
+        out = np.vstack((r.ravel(), p.ravel(), z.ravel())).T
+        print(out.shape)
+        if coords.lower() == 'cartesian':
+            x = out[..., 0] * np.cos(out[..., 1])
+            y = out[..., 0] * np.sin(out[..., 1])
+            out[..., 0] = x
+            out[..., 1] = y
+
+        return out
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
