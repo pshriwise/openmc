@@ -375,6 +375,7 @@ class RegularMesh(StructuredMesh):
                         window_size=None,
                         data=None,
                         color_by=None,
+                        color_scale='linear',
                         view=None):
         """
         Render mesh in an interactive VTK window.
@@ -399,6 +400,8 @@ class RegularMesh(StructuredMesh):
         color_by : str
             Data values used to apply color to the mesh. Must be one of the keys from
             the data parameter.
+        color_scale : str
+            Color scale to use for the data. One of ('linear', 'log')
         view : dict
             Expected dictionary view parameters:
                 pos : 3-tuple of float
@@ -409,6 +412,8 @@ class RegularMesh(StructuredMesh):
                     Location camera is pointing to
         """
         import vtk
+
+        cv.check_value('VTK color scale', color_scale, ('linear', 'log'))
 
         # create the structured grid object
         grid = self.create_vtk_mesh(data=data)
@@ -441,10 +446,12 @@ class RegularMesh(StructuredMesh):
             colorbar = vtk.vtkScalarBarActor()
             colorbar.SetTitle(color_by)
 
-            # lookuptable to sync colors used on the mesh
+            # lookup table to sync colors used on the mesh
             # and colorbar
             lookup_table = vtk.vtkLookupTable()
             lookup_table.SetTableRange(data_range)
+            if color_scale == 'log':
+                lookup_table.SetScaleToLog10()
             lookup_table.Build()
 
             mapper.SetLookupTable(lookup_table)
