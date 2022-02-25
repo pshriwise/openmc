@@ -4,7 +4,7 @@ from math import pi
 from multiprocessing.sharedctypes import Value
 from numbers import Real, Integral
 from socket import if_indextoname
-from turtle import back
+from turtle import back, color
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -297,10 +297,15 @@ class RegularMesh(StructuredMesh):
 
         Parameters
         ----------
-            data : dict
-                Data to apply to the mesh. A dictionary with dataset names as keys
-                and data arrays as values. The dimensions of the data arrays must
-                match the dimensions of the mesh.
+        data : dict
+            Data to apply to the mesh. A dictionary with dataset names as keys
+            and data arrays as values. The dimensions of the data arrays must
+            match the dimensions of the mesh.
+
+        Returns
+        -------
+        vtk.vtkStructuredData
+            VTK Structured Data object
         """
         import vtk
         from vtk.util import numpy_support as nps
@@ -319,7 +324,7 @@ class RegularMesh(StructuredMesh):
                 if vals.shape != self.dimension:
                     raise ValueError(f'Cannot apply dataset {name} with '
                                      f'shape {vals.shape} to mesh {self.id} '
-                                     f'with dimensions {self.dimensions}')
+                                     f'with dimensions {self.dimension}')
 
                 arr = vtk.vtkDoubleArray()
                 arr.SetName(name)
@@ -332,13 +337,25 @@ class RegularMesh(StructuredMesh):
         return grid
 
     def write_vtk_mesh(self, filename=None, data=None):
+        """
+        Writes a mesh to file in VTK format
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Output filename
+        data : dict
+            Data to apply to the mesh. A dictionary with dataset names as keys
+            and data arrays as values. The dimensions of the data arrays must
+            match the dimensions of the mesh.
+        """
         import vtk
 
         if filename is None:
             filename = f'mesh_{self.id}.vtk'
 
         writer = vtk.vtkStructuredGridWriter()
-        writer.SetFileName(filename)
+        writer.SetFileName(str(filename))
 
         grid = self.create_vtk_mesh(data)
 
@@ -380,9 +397,10 @@ class RegularMesh(StructuredMesh):
             and data arrays as values. The dimensions of the data arrays must
             match the dimensions of the mesh.
         color_by : str
-            Data values used to apply color to the mesh.
+            Data values used to apply color to the mesh. Must be one of the keys from
+            the data parameter.
         view : dict
-            Dictionary view parameters:
+            Expected dictionary view parameters:
                 pos : 3-tuple of float
                     Position of the camera
                 up : 3-tuple of float
@@ -394,49 +412,69 @@ class RegularMesh(StructuredMesh):
 
         # create the structured grid object
         grid = self.create_vtk_mesh(data=data)
-        mapper = vtk.vtkDataSetMapper()
-        mapper.SetInputData(grid)
-        # TODO: COMMENTS
-        if color_by is not None:
-            grid.GetCellData().SetActiveScalars(color_by)
-            mapper.ScalarVisibilityOn()
-            mapper.SetScalarModeToUseCellData()
-            mapper.SetColorModeToMapScalars()
-            range = grid.GetCellData().GetScalars(color_by).GetRange()
-            mapper.SetScalarRange(range)
-            # add colorbar
-            colorbar = vtk.vtkScalarBarActor()
-            colorbar.SetTitle(color_by)
 
-            lookup_table = vtk.vtkLookupTable()
-            lookup_table.SetTableRange(range)
-
-            lookup_table.Build()
-            mapper.SetLookupTable(lookup_table)
-            colorbar.SetLookupTable(lookup_table)
-
+        # create renderer -- used to add actors (objects)
+        # to the rendering
         renderer = vtk.vtkRenderer()
         renderer.SetBackground(background)
         renderer.GradientBackgroundOn()
 
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        actor.GetProperty().SetRepresentationToSurface()
-        if line_color is not None:
-            actor.GetProperty().EdgeVisibilityOn()
-            actor.GetProperty().SetEdgeColor(line_color)
-        actor.GetProperty().SetOpacity(opacity)
-        renderer.AddActor(actor)
+        # mapper used to link the structured grid
+        # to the renderer
+        mapper = vtk.vtkDataSetMapper()
+        mapper.SetInputData(grid)
 
+        # color by specified dataset
         if color_by is not None:
+            if data is None:
+                raise RuntimeError(f'Cannot color by {color_by}. No data '
+                                   'has been applied to the vtk mesh.')
+            data_range = grid.GetCellData().GetScalars(color_by).GetRange()
+            # set the active data set to view
+            grid.GetCellData().SetActiveScalars(color_by)
+            # some settings for cell data and coloring
+            mapper.ScalarVisibilityOn()
+            mapper.SetScalarModeToUseCellData()
+            mapper.SetColorModeToMapScalars()
+            mapper.SetScalarRange(data_range)
+            # add colorbar
+            colorbar = vtk.vtkScalarBarActor()
+            colorbar.SetTitle(color_by)
+
+            # lookuptable to sync colors used on the mesh
+            # and colorbar
+            lookup_table = vtk.vtkLookupTable()
+            lookup_table.SetTableRange(data_range)
+            lookup_table.Build()
+
+            mapper.SetLookupTable(lookup_table)
+            colorbar.SetLookupTable(lookup_table)
             renderer.AddActor2D(colorbar)
 
-        if show_axes:
-            grid_axes = vtk.vtkCubeAxesActor()
-            grid_axes.SetBounds([b* 1.1 for b in grid.GetBounds()])
-            grid_axes.SetCamera(renderer.GetActiveCamera())
-            renderer.AddActor(grid_axes)
 
+        actors = []
+
+        # create actor for the mesh and apply settings
+        grid_actor = vtk.vtkActor()
+        grid_actor.SetMapper(mapper)
+        grid_actor.GetProperty().SetRepresentationToSurface()
+        grid_actor.GetProperty().SetOpacity(opacity)
+        if line_color is not None:
+            grid_actor.GetProperty().EdgeVisibilityOn()
+            grid_actor.GetProperty().SetEdgeColor(line_color)
+        actors.append(grid_actor)
+
+        # display axes
+        if show_axes:
+            axes = vtk.vtkCubeAxesActor()
+            axes.SetBounds([b * 1.1 for b in grid.GetBounds()])
+            axes.SetCamera(renderer.GetActiveCamera())
+            actors.append(axes)
+
+        for actor in actors:
+            renderer.AddActor(actor)
+
+        # setup the rendering window
         render_win = vtk.vtkRenderWindow()
         render_win.AddRenderer(renderer)
         if window_size is not None:
@@ -448,15 +486,17 @@ class RegularMesh(StructuredMesh):
 
         # provide a roughly isometric view of the mesh
         if view is None:
-            bounds = grid_axes.GetBounds()
+            bounds = grid.GetBounds()
             view = {'pos': [5.0 * val for val in bounds[-3:]],
                     'up': (0, 0, 1),
                     'focal_pt': [0.5 * (min+max) for min, max in zip(bounds[::2], bounds[1::2])]}
 
+        # camera settings
         renderer.GetActiveCamera().SetPosition(view['pos'])
         renderer.GetActiveCamera().SetViewUp(view['up'])
         renderer.GetActiveCamera().SetFocalPoint(view['focal_pt'])
 
+        # apply default vtk interactor and start window
         render_interactor = vtk.vtkRenderWindowInteractor()
         render_interactor.SetRenderWindow(render_win)
         render_interactor.Initialize()
@@ -564,7 +604,7 @@ class RegularMesh(StructuredMesh):
 
     def _grid(self, dim):
         if dim > self.n_dimension - 1:
-            return np.empty()
+            return np.asarray([])
         return np.linspace(self.lower_left[dim],
                            self.upper_right[dim],
                            self.dimension[dim] + 1)
