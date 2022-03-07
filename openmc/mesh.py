@@ -264,7 +264,7 @@ class RegularMesh(StructuredMesh):
         # np.meshgrid changes k fastest, then j, then i assign the appropriate
         # grid points to the i,j,k arrays going into meshgrid
         # e.g. For a RegularMesh if the ordering is 'xyz', assign the x points to k,
-        # the y points to j, and the z points to k
+        # the y points to j, and the z points to i
         i_vals, j_vals, k_vals = [grids[i] for i in ordering[::-1]]
 
         grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')[::-1]
