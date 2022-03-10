@@ -449,11 +449,6 @@ class WeightWindows(IDManagerMixin):
             wwinp_fh.write(f'{1:>10}{1:>10}'
                            f'{num_particle_types:>10}{mesh_chars:>10}\n')
 
-            # write number of time bins per particle (nt),
-            # always one entry with '1' for now
-            n_time_bins = 1
-            wwinp_fh.write(f'{n_time_bins:>10}\n')
-
             # number of energy groups per particle (ne)
             n_e_groups = self.energy_bins.size - 1
             wwinp_fh.write(f'{n_e_groups:>10}\n')
@@ -469,7 +464,7 @@ class WeightWindows(IDManagerMixin):
             # coarse mesh divisions (same as fine mesh divisions for simplicity)
             # and geometry type (always 1 for rectilinear mesh)
             mesh_type = 1
-            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}{mesh_type:>13.1f}\n')
+            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}{mesh_type:>14.1f}\n')
 
             # WRITE MESH DIVISONS (Block 2)
             # fine mesh ratio is always 1
@@ -633,7 +628,6 @@ def wwinp_to_wws(path):
     # 2 - cylindrical mesh
     # 3 - spherical mesh
     mesh_type = int(float(next(wwinp)))
-
     if mesh_type != 1:
         # TODO: support additional mesh types
         raise ValueError('Cylindrical and Spherical wwinp meshes '
@@ -653,6 +647,7 @@ def wwinp_to_wws(path):
             # append the fine mesh coordinates for this coarse element
             coords += list(np.linspace(coords[-1], px, sx + 1))[1:]
 
+        # wwinp file contains numbers to 6 decimal places
         return np.asarray(coords)
 
     # read the coordinates for each dimension into a rectilinear mesh
