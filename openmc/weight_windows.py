@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+import io
 from numbers import Real, Integral
 import warnings
 
@@ -84,7 +85,7 @@ class WeightWindows(IDManagerMixin):
         rouletting
     max_lower_bound_ratio: float
         Maximum allowed ratio of a particle's weight to the weight window's
-        lower bound. (Default: 1.0)
+        lower bound (Default: 1.0)
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float
@@ -178,6 +179,10 @@ class WeightWindows(IDManagerMixin):
     def energy_bins(self, bins):
         cv.check_type('Energy bins', bins, Iterable, Real)
         self._energy_bins = np.array(bins)
+
+    @property
+    def n_energy_bins(self):
+        return self.energy_bins.size - 1
 
     @property
     def lower_ww_bounds(self):
@@ -374,6 +379,156 @@ class WeightWindows(IDManagerMixin):
             id=id
         )
 
+    class WWINPEntryWriter(cv.CheckedList):
+        """A convenience class for formatting and writing wwinp arrays
+        """
+
+        def __init__(self, fh):
+            """Manager for writing mesh values to wwinp format
+
+            Parameters
+            ----------
+            fh : open file handle of the wwinp file
+            """
+            self.file_handle = fh
+            self._indent = ''
+            # this class always expects strings
+            super().__init__(str, 'WWINPEntryWriter')
+
+        def append(self, val):
+            super().append(val)
+            if len(self) == 6:
+                self.dump()
+
+        def dump(self):
+            self.file_handle.write(self.indent + ' '.join(self)+'\n')
+            self.clear()
+
+        @property
+        def indent(self):
+            return self._indent
+
+        @indent.setter
+        def indent(self, i):
+            cv.check_type('Indentation', i, str)
+            self._indent = i
+
+        @property
+        def file_handle(self):
+            return self._file_handle
+
+        @file_handle.setter
+        def file_handle(self, fh):
+            cv.check_type('wwinp file handle', fh, io.TextIOWrapper)
+            self._file_handle = fh
+
+    def export_to_wwinp(self, filename='wwinp'):
+        """Write the weight windows in MCNP's wwinp format
+        as documented in LA-UR-17-19981.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the wwinp file
+        """
+
+        # only supporting export of weight windows on rectilinear mesh for now
+        if not isinstance(self.mesh, RectilinearMesh):
+            raise NotImplemented("Export of weight windows to wwinp format"
+                                 "is only supported for RectilinearMesh")
+
+        with open(filename, 'w') as wwinp_fh:
+            # WRITE FILE HEADER (Block 1)
+            # write file type (if), time-dependent indicator (iv)
+            # number of particle types (ni), and mesh type (nr).
+            # No probid is written.
+
+            # only supporting rectilinear mesh for now
+            mesh_chars = 10
+            num_particle_types = 1
+            wwinp_fh.write(f'{1:>10}{1:>10}'
+                           f'{num_particle_types:>10}{mesh_chars:>10}\n')
+
+            # write number of time bins per particle (nt),
+            # always one entry with '1' for now
+            n_time_bins = 1
+            wwinp_fh.write(f'{n_time_bins:>10}\n')
+
+            # number of energy groups per particle (ne)
+            n_e_groups = self.energy_bins.size - 1
+            wwinp_fh.write(f'{n_e_groups:>10}\n')
+
+            # number of bins in each dimension of the mesh
+            mesh = self.mesh
+            nx, ny, nz = mesh.dimension
+            # lower left corner of the mesh
+            lx, ly, lz = (mesh.x_grid[0], mesh.y_grid[0], mesh.z_grid[0])
+            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f} ')
+            wwinp_fh.write(f'{lx:>13.6e} {ly:>13.6e} {lz:>13.6e}\n')
+
+            # coarse mesh divisions (same as fine mesh divisions for simplicity)
+            # and geometry type (always 1 for rectilinear mesh)
+            mesh_type = 1
+            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}{mesh_type:>13.1f}\n')
+
+            # WRITE MESH DIVISONS (Block 2)
+            # fine mesh ratio is always 1
+            fine_mesh_ratio = 1
+            # fine mesh divisions is always 1 because
+            # the number of fine elements matches the number of coarse elements
+            n_fine_mesh = 1
+
+            entry_writer = self.WWINPEntryWriter(wwinp_fh)
+            for grid in (mesh.x_grid, mesh.y_grid, mesh.z_grid):
+                # write first entry
+                entry_writer.append(f'{grid[0]:13.6e}')
+                for val in grid[1:]:
+                    # write two entries per line
+                    entry_writer.append(f'{fine_mesh_ratio:13.6e}')
+                    entry_writer.append(f'{val:13.6e}')
+                    entry_writer.append(f'{n_fine_mesh:13.6e}')
+                # write any remaining values before starting
+                # the next dimension
+                entry_writer.dump()
+
+            # no time bins need to be written; nt always equals 1
+
+            # write energy divisions, ne
+            # (skip the first entry if it is zero)
+
+            # change the indentation of the writer for this section
+            entry_writer.indent = ' '
+            entry_writer.clear()
+            for e in self.energy_bins:
+                # if the lowest bound is zero,
+                # do not write. MCNP will add
+                # this lower bound automatically
+                if e == 0.0:
+                    continue
+                # write energy in MeV
+                entry_writer.append(f'{e/1.0E6:12.6e}')
+            entry_writer.dump()
+
+            # write weight window values, reshape for convenience
+            lower_ww_bounds = self.lower_ww_bounds.reshape((*mesh.dimension, self.n_energy_bins))
+            entry_writer.clear()
+            # indexing order: fastest to slowest time, energy, nx, ny, nz
+            for ijk in self.mesh.indices:
+                # adjust for indexing from 1
+                idx = [v - 1 for v in ijk] + [slice(None)]
+                e_vals = lower_ww_bounds[tuple(idx)]
+                # energy bins go lowest to highest
+                for e in e_vals:
+                    entry_writer.append(f'{e:12.6e}')
+                    # if the first energy boundary is not zero,
+                    # write the first value twice
+                    if e == 0 and self.energy_bins[0] != 0.0:
+                        entry_writer.append(f'{e:12.6e}')
+
+            # end of file newline
+            wwinp_fh.write('\n')
+
+
 def __wwinp_reader(path):
     """
     Generator that returns the next value in a wwinp file.
@@ -404,6 +559,7 @@ def __wwinp_reader(path):
         values = line.strip().split()
         for value in values:
             yield value
+
 
 def wwinp_to_wws(path):
     """Creates WeightWindows classes from a wwinp file
@@ -480,7 +636,8 @@ def wwinp_to_wws(path):
 
     if mesh_type != 1:
         # TODO: support additional mesh types
-        raise ValueError('Cylindrical and Spherical meshes are not currently supported')
+        raise ValueError('Cylindrical and Spherical wwinp meshes '
+                         'are not yet supported')
 
     # internal function for parsing mesh coordinates
     def _read_mesh_coords(wwinp, n_coarse_bins):
