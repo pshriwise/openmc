@@ -446,7 +446,8 @@ class WeightWindows(IDManagerMixin):
 
             # only supporting rectilinear mesh for now
             mesh_chars = 10
-            num_particle_types = 1
+            num_particle_types = 2 if self.particle_type == 'photon' else 1
+
             wwinp_fh.write(f'{1:>10}{1:>10}'
                            f'{num_particle_types:>10}{mesh_chars:>10}\n')
 
