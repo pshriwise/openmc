@@ -5,6 +5,7 @@ import warnings
 
 from xml.etree import ElementTree as ET
 import numpy as np
+from numpy import format_float_scientific as fmt_flt_sci
 
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh
@@ -401,7 +402,7 @@ class WeightWindows(IDManagerMixin):
                 self.dump()
 
         def dump(self):
-            self.file_handle.write(self.indent + ' '.join(self)+'\n')
+            self.file_handle.write(self.indent + ''.join(self)+'\n')
             self.clear()
 
         @property
@@ -458,8 +459,8 @@ class WeightWindows(IDManagerMixin):
             nx, ny, nz = mesh.dimension
             # lower left corner of the mesh
             lx, ly, lz = (mesh.x_grid[0], mesh.y_grid[0], mesh.z_grid[0])
-            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f} ')
-            wwinp_fh.write(f'{lx:>13.6e} {ly:>13.6e} {lz:>13.6e}\n')
+            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}')
+            wwinp_fh.write(f'{lx:>13.5g} {ly:>13.5g} {lz:>13.5g}\n')
 
             # coarse mesh divisions (same as fine mesh divisions for simplicity)
             # and geometry type (always 1 for rectilinear mesh)
@@ -475,24 +476,20 @@ class WeightWindows(IDManagerMixin):
 
             entry_writer = self.WWINPEntryWriter(wwinp_fh)
             for grid in (mesh.x_grid, mesh.y_grid, mesh.z_grid):
-                # write first entry
-                entry_writer.append(f'{grid[0]:13.6e}')
+                # write first coordinate
+                entry_writer.append(f'{grid[0]:13.5g}')
                 for val in grid[1:]:
-                    # write two entries per line
-                    entry_writer.append(f'{fine_mesh_ratio:13.6e}')
-                    entry_writer.append(f'{val:13.6e}')
-                    entry_writer.append(f'{n_fine_mesh:13.6e}')
+                    # fine mesh ration is always one, don't waste characters on it
+                    entry_writer.append(f'{fine_mesh_ratio:13.5g}')
+                    entry_writer.append(f'{val:13.5g}')
+                    entry_writer.append(f'{n_fine_mesh:13.5g}')
                 # write any remaining values before starting
                 # the next dimension
                 entry_writer.dump()
 
             # no time bins need to be written; nt always equals 1
 
-            # write energy divisions, ne
-            # (skip the first entry if it is zero)
-
-            # change the indentation of the writer for this section
-            entry_writer.indent = ' '
+            # WRITE ENERGY BOUNDARIES AND WEIGHT WINDOW VALUES (Block 3)
             entry_writer.clear()
             for e in self.energy_bins:
                 # if the lowest bound is zero,
@@ -501,7 +498,7 @@ class WeightWindows(IDManagerMixin):
                 if e == 0.0:
                     continue
                 # write energy in MeV
-                entry_writer.append(f'{e/1.0E6:12.6e}')
+                entry_writer.append(f'{e/1.0E6:13.5g}')
             entry_writer.dump()
 
             # write weight window values, reshape for convenience
@@ -514,11 +511,11 @@ class WeightWindows(IDManagerMixin):
                 e_vals = lower_ww_bounds[tuple(idx)]
                 # energy bins go lowest to highest
                 for e in e_vals:
-                    entry_writer.append(f'{e:12.6e}')
+                    entry_writer.append(f'{e:13.5g}')
                     # if the first energy boundary is not zero,
                     # write the first value twice
                     if e == 0 and self.energy_bins[0] != 0.0:
-                        entry_writer.append(f'{e:12.6e}')
+                        entry_writer.append(f'{e:13.5g}')
 
             # end of file newline
             wwinp_fh.write('\n')
@@ -636,7 +633,6 @@ def wwinp_to_wws(path):
     # internal function for parsing mesh coordinates
     def _read_mesh_coords(wwinp, n_coarse_bins):
         coords = [float(next(wwinp))]
-
         for _ in range(n_coarse_bins):
             # number of fine mesh elements in this coarse element, sx
             sx = int(float(next(wwinp)))
