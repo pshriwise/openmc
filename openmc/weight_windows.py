@@ -466,12 +466,12 @@ class WeightWindows(IDManagerMixin):
             # lower left corner of the mesh
             lx, ly, lz = (mesh.x_grid[0], mesh.y_grid[0], mesh.z_grid[0])
             wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}')
-            wwinp_fh.write(f'{lx:>13.5g} {ly:>13.5g} {lz:>13.5g}\n')
+            wwinp_fh.write(f'{lx:>13.5E}{ly:>13.5E}{lz:>13.5E}\n')
 
             # coarse mesh divisions (same as fine mesh divisions for simplicity)
             # and geometry type (always 1 for rectilinear mesh)
             mesh_type = 1
-            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}{mesh_type:>14.1f}\n')
+            wwinp_fh.write(f'{nx:>13.1f}{ny:>13.1f}{nz:>13.1f}{mesh_type:>13.1f}\n')
 
             # WRITE MESH DIVISONS (Block 2)
             # fine mesh ratio is always 1
@@ -483,12 +483,12 @@ class WeightWindows(IDManagerMixin):
             entry_writer = self.WWINPEntryWriter(wwinp_fh)
             for grid in (mesh.x_grid, mesh.y_grid, mesh.z_grid):
                 # write first coordinate
-                entry_writer.append(f'{grid[0]:13.5g}')
+                entry_writer.append(f'{grid[0]:13.5E}')
                 for val in grid[1:]:
                     # fine mesh ration is always one, don't waste characters on it
-                    entry_writer.append(f'{fine_mesh_ratio:13.5g}')
-                    entry_writer.append(f'{val:13.5g}')
-                    entry_writer.append(f'{n_fine_mesh:13.5g}')
+                    entry_writer.append(f'{fine_mesh_ratio:13.5E}')
+                    entry_writer.append(f'{val:13.5E}')
+                    entry_writer.append(f'{n_fine_mesh:13.5E}')
                 # write any remaining values before starting
                 # the next dimension
                 entry_writer.dump()
@@ -504,7 +504,7 @@ class WeightWindows(IDManagerMixin):
                 if e == 0.0:
                     continue
                 # write energy in MeV
-                entry_writer.append(f'{e/1.0E6:13.5g}')
+                entry_writer.append(f'{e/1.0E6:13.5E}')
             entry_writer.dump()
 
             # write weight window values, reshape for convenience
@@ -517,11 +517,11 @@ class WeightWindows(IDManagerMixin):
                 e_vals = lower_ww_bounds[tuple(idx)]
                 # energy bins go lowest to highest
                 for e in e_vals:
-                    entry_writer.append(f'{e:13.5g}')
+                    entry_writer.append(f'{e:13.5E}')
                     # if the first energy boundary is not zero,
                     # write the first value twice
                     if e == 0 and self.energy_bins[0] != 0.0:
-                        entry_writer.append(f'{e:13.5g}')
+                        entry_writer.append(f'{e:13.5E}')
 
             # end of file newline
             wwinp_fh.write('\n')
