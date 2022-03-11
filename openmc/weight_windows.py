@@ -450,6 +450,11 @@ class WeightWindows(IDManagerMixin):
             wwinp_fh.write(f'{1:>10}{1:>10}'
                            f'{num_particle_types:>10}{mesh_chars:>10}\n')
 
+            # if particle type is photon, include a zero entry
+            # for neutron energy groups
+            if self.particle_type == 'photon':
+                wwinp_fh.write(f'{0:>10}')
+
             # number of energy groups per particle (ne)
             n_e_groups = self.energy_bins.size - 1
             wwinp_fh.write(f'{n_e_groups:>10}\n')
