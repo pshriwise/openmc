@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from heapq import merge
 from math import pi
 from multiprocessing.sharedctypes import Value
 from numbers import Real, Integral
@@ -277,7 +278,6 @@ class RegularMesh(StructuredMesh):
         # stack the arrays and transpose to get the desired shape (N, 3)
         return np.vstack((d1.ravel(), d2.ravel(), d3.ravel())).T
 
-
     def grid_pnts(self, ordering='xyz'):
         """
         Return the structured series of points representing the vertices of the
@@ -322,19 +322,75 @@ class RegularMesh(StructuredMesh):
             VTK Structured Data object
 
         """
-
         import vtk
         from vtk.util import numpy_support as nps
 
-        n_pnts = np.asarray(self.dimension) + 1
+        n_elem = np.asarray(self.dimension)
+        n_pnts = n_elem + 1
 
         vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.grid_pnts()))
 
-        grid = vtk.vtkStructuredGrid()
-        grid.SetDimensions(n_pnts)
-        grid.SetPoints(vtk_pnts)
+        # if the mesh is rectilinear or regular,
+        # create a simple structured grid
+        if isinstance(self, (RectilinearMesh, RegularMesh)):
+            grid = vtk.vtkStructuredGrid()
+            # add points
+            vtk_pnts.SetData(nps.numpy_to_vtk(self.grid_pnts()))
+            # set the grid dimension
+            n_pnts = np.asarray(self.dimension) + 1
+            grid.SetDimensions(n_pnts)
+            grid.SetPoints(vtk_pnts)
+        else:
+            grid = vtk.vtkUnstructuredGrid()
+            grid.SetPoints(vtk_pnts)
 
+            id_table = []
+            # create locator to handle coincident points
+            locator = vtk.vtkPointLocator()
+            locator.SetDataSet(grid)
+            locator.AutomaticOn()
+            locator.InitPointInsertion(vtk_pnts, vtk_pnts.GetBounds())
+
+            def _insert_point(pnt):
+                if locator.IsInsertedPoint(pnt) == -1:
+                    point_id = vtk_pnts.InsertNextPoint(pnt)
+                    locator.InsertPoint(point_id, pnt)
+                else:
+                    point_id = locator.IsInsertedPoint(pnt)
+                return point_id
+
+            for pnt in self.grid_pnts():
+                id_table.append(_insert_point(pnt))
+
+            # lower k connectivity
+            CORNER_CONN = ((0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0))
+            CORNER_CONN += ((0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1))
+
+            for i, j, k in self.indices:
+                # handle 1 indexing of indices
+                i -= 1
+                j -= 1
+                k -= 1
+
+                hex = vtk.vtkHexahedron()
+
+                for n, (di, dj, dk) in enumerate(CORNER_CONN):
+                    flat_idx = (i + di) + (j + dj) * n_pnts[0] + (k + dk) * n_pnts[0] * n_pnts[1]
+                    hex.GetPointIds().SetId(n, id_table[flat_idx])
+
+                grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
+
+            # writer = vtk.vtkUnstructuredGridWriter()
+            # writer.SetFileName("cyl.vtk")
+            # if vtk.VTK_MAJOR_VERSION == 5:
+            #     grid.update()
+            #     writer.SetInput(grid)
+            # else:
+            #     writer.SetInputData(grid)
+
+            # writer.Write()
+
+        # add data to the grid if provided
         if data is not None:
             for name, vals in data.items():
                 if vals.shape != self.dimension:
@@ -371,10 +427,15 @@ class RegularMesh(StructuredMesh):
         if filename is None:
             filename = f'mesh_{self.id}.vtk'
 
-        writer = vtk.vtkStructuredGridWriter()
+        grid = self._create_vtk_mesh(data)
+
+        if isinstance(self, (RectilinearMesh, RegularMesh)):
+            writer = vtk.vtkStructuredGridWriter()
+        else:
+            writer = vtk.vtkUnstructuredGridWriter()
+
         writer.SetFileName(str(filename))
 
-        grid = self._create_vtk_mesh(data)
 
         if vtk.VTK_MAJOR_VERSION == 5:
             grid.update()
