@@ -1,6 +1,7 @@
 import difflib
 import filecmp
 import numpy as np
+from pathlib import Path
 
 import openmc
 import pytest
@@ -9,6 +10,8 @@ from tests.regression_tests import config
 
 pytest.importorskip('vtk')
 
+def full_path(f):
+    return Path(__file__).parent.absolute() / f
 
 def diff_file(file1, file2):
     with open(file1) as fh:
@@ -50,7 +53,7 @@ if config['update']:
     reg_mesh.write_vtk_mesh('regular.vtk')
     rect_mesh.write_vtk_mesh('rectilinear.vtk')
     cyl_mesh.write_vtk_mesh('cylindrical-linear.vtk', curvilinear=False)
-    cyl_mesh.write_vtk_mesh('cylindrical-curvilienar.vtk')
+    cyl_mesh.write_vtk_mesh('cylindrical-curvilinear.vtk')
     sphere_mesh.write_vtk_mesh('spherical-linear.vtk', curvilinear=False)
     sphere_mesh.write_vtk_mesh('spherical-curvilinear.vtk')
 
@@ -68,10 +71,10 @@ test_data = ((reg_mesh, False, 'regular'),
 @pytest.mark.parametrize('mesh_params',
                          test_data,
                          ids=lambda params: params[2])
-def test_mesh_write_vtk(mesh_params):
+def test_mesh_write_vtk(mesh_params, run_in_tmpdir):
     mesh, curvilinear, filename = mesh_params
 
-    test_data = filename + ".vtk"
+    test_data = full_path(filename + ".vtk")
     filename = filename + "-actual.vtk"
     # write the mesh file and compare to the expected version
     mesh.write_vtk_mesh(filename, curvilinear=curvilinear)
@@ -83,11 +86,11 @@ def test_mesh_write_vtk(mesh_params):
         raise e(diff)
 
 # check data writing
-def test_mesh_write_vtk_data():
+def test_mesh_write_vtk_data(run_in_tmpdir):
 
     data = {'ascending_data': mesh_data(cyl_mesh.dimension)}
+    filename_expected = full_path('cyl-data.vtk')
     filename_actual = 'cyl-data-actual.vtk'
-    filename_expected = 'cyl-data.vtk'
     cyl_mesh.write_vtk_mesh(filename_actual, data=data)
 
     try:
