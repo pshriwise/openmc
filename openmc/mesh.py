@@ -278,6 +278,29 @@ class RegularMesh(StructuredMesh):
         # stack the arrays and transpose to get the desired shape (N, 3)
         return np.vstack((d1.ravel(), d2.ravel(), d3.ravel())).T
 
+    @staticmethod
+    def _generate_edge_midpoints(grids):
+        # we'll have an entry for each dimension
+        edge_grids = []
+        for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
+            mid_vals = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
+
+            coords = [mid_vals, grids[dims[1]], grids[dims[2]]]
+
+            dim_mapping = [dims.index(i) for i in range(3)]
+
+            # generate a grid from these coordinates
+            i_vals, j_vals, k_vals = [coords[i] for i in dim_mapping]
+
+            midpoint_grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')
+
+            pnts = np.vstack([arr.ravel() for arr in midpoint_grid]).T
+
+            shape = list(map(lambda i: coords[i].size, dim_mapping)) + [3]
+            edge_grids.append(pnts.reshape(shape))
+
+        return edge_grids
+
     def grid_pnts(self, ordering='xyz'):
         """
         Return the structured series of points representing the vertices of the
@@ -305,7 +328,7 @@ class RegularMesh(StructuredMesh):
 
         return self._generate_grid_pnts(xyz_grids, ordering)
 
-    def _create_vtk_mesh(self, data=None):
+    def _create_vtk_mesh(self, data, curvilinear):
         """
         Create a VTK representation of the mesh
 
@@ -351,6 +374,8 @@ class RegularMesh(StructuredMesh):
             locator.AutomaticOn()
             locator.InitPointInsertion(vtk_pnts, vtk_pnts.GetBounds())
 
+            # function to ensure only one reference to points on a
+            # periodic boundary
             def _insert_point(pnt):
                 if locator.IsInsertedPoint(pnt) == -1:
                     point_id = vtk_pnts.InsertNextPoint(pnt)
@@ -359,36 +384,57 @@ class RegularMesh(StructuredMesh):
                     point_id = locator.IsInsertedPoint(pnt)
                 return point_id
 
-            for pnt in self.grid_pnts():
+            grid_pnts, edge_grid_pnts = self.grid_pnts()
+            for pnt in grid_pnts:
                 id_table.append(_insert_point(pnt))
 
-            # lower k connectivity
+            if curvilinear:
+                hex_type = vtk.vtkQuadraticHexahedron
+            else:
+                hex_type = vtk.vtkHexahedron
+
+            # insert points for curvilinear elements
+            if curvilinear:
+                for edge_grid in edge_grid_pnts:
+                    for pnt in edge_grid.reshape(-1, 3):
+                        id_table.append(_insert_point(pnt))
+
+            # lower-k connectivity offsets
             CORNER_CONN = ((0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0))
+            # upper-k connectivity offsets
             CORNER_CONN += ((0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1))
 
+            # lower-k connectivity offsets
+            EDGE_CONN = ((0, (0, 0, 0)), (1, (1, 0, 0)), (0, (0, 1, 0)), (1, (0, 0, 0)))
+            # upper-k connectivity offsets
+            EDGE_CONN += ((0, (0, 0, 1)), (1, (1, 0, 1)), (0, (0, 1, 1)), (1, (0, 0, 1)))
+            # mid-plane k connectivity
+            EDGE_CONN += ((2, (0, 0, 0)), (2, (1, 0, 0)), (2, (1, 1, 0)), (2, (0, 1, 0)))
+
             for i, j, k in self.indices:
-                # handle 1 indexing of indices
+                # handle one-indexing of indices
                 i -= 1
                 j -= 1
                 k -= 1
 
-                hex = vtk.vtkHexahedron()
+                # create a new vtk hex
+                hex = hex_type()
 
                 for n, (di, dj, dk) in enumerate(CORNER_CONN):
                     flat_idx = (i + di) + (j + dj) * n_pnts[0] + (k + dk) * n_pnts[0] * n_pnts[1]
                     hex.GetPointIds().SetId(n, id_table[flat_idx])
 
+                if curvilinear:
+                    id_offset = len(CORNER_CONN)
+                    for n, (dim, (di, dj, dk)) in enumerate(EDGE_CONN):
+                        flat_idx = grid_pnts.shape[0]
+                        for d in range(dim):
+                            flat_idx += edge_grid_pnts[d].size // 3
+                        idi, idj, idk = (i + di, j + dj, k + dk)
+                        flat_idx += np.ravel_multi_index((idi, idj, idk), edge_grid_pnts[dim].shape[:-1])
+                        hex.GetPointIds().SetId(id_offset + n, id_table[flat_idx])
+
                 grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
-
-            # writer = vtk.vtkUnstructuredGridWriter()
-            # writer.SetFileName("cyl.vtk")
-            # if vtk.VTK_MAJOR_VERSION == 5:
-            #     grid.update()
-            #     writer.SetInput(grid)
-            # else:
-            #     writer.SetInputData(grid)
-
-            # writer.Write()
 
         # add data to the grid if provided
         if data is not None:
@@ -408,7 +454,7 @@ class RegularMesh(StructuredMesh):
 
         return grid
 
-    def write_vtk_mesh(self, filename=None, data=None):
+    def write_vtk_mesh(self, filename=None, curvilinear=True, data=None):
         """
         Writes a mesh to file in VTK format
 
@@ -416,6 +462,9 @@ class RegularMesh(StructuredMesh):
         ----------
         filename : str or pathlib.Path
             Output filename
+        curvilinear : bool
+            Indicates whether or not curvilinear elements should be defined.
+            Only applicable to CylindricalMesh and SphericalMesh.
         data : dict
             Data to apply to the mesh. A dictionary with dataset names as keys
             and data arrays as values. The dimensions of the data arrays must
@@ -427,7 +476,7 @@ class RegularMesh(StructuredMesh):
         if filename is None:
             filename = f'mesh_{self.id}.vtk'
 
-        grid = self._create_vtk_mesh(data)
+        grid = self._create_vtk_mesh(data, curvilinear)
 
         if isinstance(self, (RectilinearMesh, RegularMesh)):
             writer = vtk.vtkStructuredGridWriter()
@@ -1190,7 +1239,14 @@ class CylindricalMesh(StructuredMesh):
         cv.check_type('mesh z_grid', grid, Iterable, Real)
         self._z_grid = np.asarray(grid)
 
-    def grid_pnts(self, ordering='rpz', coords='cartesian'):
+    @staticmethod
+    def _convert_to_cartesian(arr):
+        x = arr[..., 0] * np.cos(arr[..., 1])
+        y = arr[..., 0] * np.sin(arr[..., 1])
+        arr[..., 0] = x
+        arr[..., 1] = y
+
+    def grid_pnts(self, ordering='rpz', coords='cartesian', curvilinear=True):
         cv.check_value('Cylindrical mesh grid coordinates',
                        coords,
                        ('cylindrical', 'cartesian'))
@@ -1204,12 +1260,18 @@ class CylindricalMesh(StructuredMesh):
 
         # translate the polar coordinates to Cartesian values
         if coords.lower() == 'cartesian':
-            x = grid[..., 0] * np.cos(grid[..., 1])
-            y = grid[..., 0] * np.sin(grid[..., 1])
-            grid[..., 0] = x
-            grid[..., 1] = y
+            self._convert_to_cartesian(grid)
 
-        return grid
+        if not curvilinear:
+            return grid
+
+        # generate edge midpoints needed for curvilinear element definition
+        edge_grids = self._generate_edge_midpoints([self.r_grid, self.phi_grid, self.z_grid])
+
+        for edge_grid in edge_grids:
+            self._convert_to_cartesian(edge_grid)
+
+        return grid, edge_grids
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
@@ -1405,7 +1467,17 @@ class SphericalMesh(StructuredMesh):
         cv.check_type('mesh phi_grid', grid, Iterable, Real)
         self._phi_grid = np.asarray(grid)
 
-    def grid_pnts(self, ordering='rtp', coords='cartesian'):
+    @staticmethod
+    def _convert_to_cartesian(arr):
+        r_xy = arr[..., 0] * np.sin(arr[..., 1])
+        x = r_xy * np.cos(arr[...,2])
+        y = r_xy * np.sin(arr[...,2])
+        z = arr[..., 0] * np.cos(arr[..., 1])
+        arr[..., 0] = x
+        arr[..., 1] = y
+        arr[..., 2] = z
+
+    def grid_pnts(self, ordering='rtp', coords='cartesian', curvilinear=True):
         cv.check_value('Spherical mesh grid coordinates',
                        coords,
                        ('spherical', 'cartesian'))
@@ -1418,15 +1490,18 @@ class SphericalMesh(StructuredMesh):
         grid = self._generate_grid_pnts(rtp_grids, ordering)
 
         if coords.lower() == 'cartesian':
-            r_xy = grid[..., 0] * np.sin(grid[..., 1])
-            x = r_xy * np.cos(grid[...,2])
-            y = r_xy * np.sin(grid[...,2])
-            z = grid[..., 0] * np.cos(grid[..., 1])
-            grid[..., 0] = x
-            grid[..., 1] = y
-            grid[..., 2] = z
+            self._convert_to_cartesian(grid)
 
-        return grid
+        if not curvilinear:
+            return grid
+
+        # generate edge midpoints needed for curvilinear element definition
+        edge_grids = self._generate_edge_midpoints([self.r_grid, self.theta_grid, self.phi_grid])
+
+        for edge_grid in edge_grids:
+            self._convert_to_cartesian(edge_grid)
+
+        return grid, edge_grids
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
