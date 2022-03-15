@@ -910,7 +910,7 @@ class MeshUniverse(UniverseBase):
         xml_element.append(univ_element)
 
     @classmethod
-    def from_xml_element(self, elem):
+    def from_xml_element(cls, elem, **kwargs):
         """Generate MeshUniverse object from XML element
 
         Parameters
@@ -918,3 +918,17 @@ class MeshUniverse(UniverseBase):
         elem : xml.etree.ElementTree.Element
             `<mesh_universe>` element
         """
+        univ_id = int(get_text(elem, 'id'))
+        mesh_id = int(get_text(elem, 'mesh'))
+        mesh = kwargs['meshes'][mesh_id]
+        name = get_text(elem, 'name', default='')
+        # create a new MeshUniverse instance
+        u = cls(mesh, id=univ_id, name=name)
+
+        u.fills = [int(f) for f in get_text(elem, 'fills').split()]
+
+        outer = int(get_text(elem, 'outer'))
+        if outer is not None:
+            u.outer = outer
+
+        return u
