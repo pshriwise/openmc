@@ -153,7 +153,6 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 
     cell->type_ = Fill::MATERIAL;
     cell->material_.push_back(fill);
-    std::cout << "New cell id: " << next_cell_id << std::endl;
     cell->id_ = next_cell_id++;
     // set universe ID, this will be updated later by another loop in
     // geometry_aux
