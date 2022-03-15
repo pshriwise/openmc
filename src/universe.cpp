@@ -106,18 +106,16 @@ MeshUniverse::MeshUniverse(pugi::xml_node node)
     fatal_error(fmt::format("No mesh specified on mesh universe {}", id_));
   }
 
-  if (check_for_node(node, "fills")) {
-    auto fill_strs = get_node_array<std::string>(node, "fills");
-    create_cells(fill_strs);
-  }
-
-  if (check_for_node(node, "outer")) {
-    outer() = std::stoi(get_node_value(node, "outer"));
-  }
+  create_cells(node);
 }
 
-void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
+void MeshUniverse::create_cells(pugi::xml_node node)
 {
+  vector<std::string> cell_fills;
+  if (check_for_node(node, "fills")) {
+    cell_fills = get_node_array<std::string>(node, "fills");
+  }
+
   int n_bins = model::meshes[mesh_]->n_bins();
   if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
     fatal_error(fmt::format("Invalid number of cell fills provided for mesh "
@@ -134,7 +132,6 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
   next_cell_id++;
 
   // create cells to fill the mesh elements
-  // TODO: extend beyond material fills
   int32_t fill = std::stoi(cell_fills[0]);
   for (int i = 0; i < n_bins; i++) {
     // if more than one cell fill is provided, assume that each mesh
@@ -160,6 +157,24 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
     model::cell_map[cell->id_] = model::cells.size() - 1;
     cells_[i] = model::cells.size() - 1;
   }
+
+  // create a cell for the exterior of the mesh
+  int32_t outer_material = MATERIAL_VOID;
+  if (check_for_node(node, "outer")) {
+    // get id of outer material
+    outer_material = std::stoi(get_node_value(node, "outer"));
+  }
+  // negative one indicates that this cell is the exterior of the mesh
+  model::cells.push_back(std::make_unique<MeshCell>(mesh_, -1));
+  const auto& cell = model::cells.back();
+
+  cell->type_ = Fill::MATERIAL;
+  cell->material_.push_back(outer_material);
+  cell->id_ = next_cell_id;
+  cell->universe_ = id_;
+
+  model::cell_map[cell->id_] = model::cells.size() - 1;
+  outer() = model::cell_map[cell->id_];
 }
 
 bool MeshUniverse::find_cell(Particle& p) const
@@ -170,8 +185,9 @@ bool MeshUniverse::find_cell(Particle& p) const
   if (mesh_bin == -1) {
     if (outer() == C_NONE)
       return false;
-    p.coord(p.n_coord() - 1).universe = outer();
-    return model::universes[outer()]->find_cell(p);
+    p.coord(p.n_coord() - 1).mesh_cell_index() = -1;
+    p.coord(p.n_coord() - 1).cell = outer();
+    return true;
   }
 
   p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
@@ -188,8 +204,15 @@ void MeshUniverse::next_cell(Particle& p) const
   // of the mesh cell it will enter next
   int32_t next_mesh_idx =
     mesh->get_bin_from_indices(p.boundary().lattice_translation);
-  int32_t next_cell_idx = cells_[next_mesh_idx];
+  int32_t next_cell_idx {C_NONE};
+  if (next_mesh_idx >= 0) {
+    next_cell_idx = cells_[next_mesh_idx];
+  } else {
+    next_mesh_idx = C_NONE;
+    next_cell_idx = outer_;
+  }
 
+  // reset the lattice_translation for the boundary crossing
   p.boundary().lattice_translation[0] = 0;
   p.boundary().lattice_translation[1] = 0;
   p.boundary().lattice_translation[2] = 0;

@@ -276,6 +276,10 @@ int StructuredMesh::get_bin_from_indices(const MeshIndex& ijk) const
 
 StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
 {
+  if (bin == C_NONE) {
+    return {-1, -1, -1};
+  }
+
   MeshIndex ijk;
   if (n_dimension_ == 1) {
     ijk[0] = bin + 1;
@@ -563,9 +567,13 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   }
 
   if (idx == C_NONE) {
-    fatal_error(
-      fmt::format("Could not find next mesh cell. Mesh distances: {}, {}, {}",
-        distances[0].distance, distances[1].distance, distances[2].distance));
+    // if the particle didn't start outside of the mesh, error
+    if (bin != C_NONE) {
+      fatal_error(
+        fmt::format("Could not find next mesh cell. Mesh distances: {}, {}, {}",
+          distances[0].distance, distances[1].distance, distances[2].distance));
+    }
+    return {INFTY, {-1, -1, -1}};
   }
 
   const auto& dist_out = distances[idx];
