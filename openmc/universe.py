@@ -843,7 +843,7 @@ class MeshUniverse(UniverseBase):
 
     @outer.setter
     def outer(self, u):
-        cv.check_type('Outer universe', u, openmc.UniverseBase)
+        cv.check_type('Outer universe', u, openmc.Material)
         self._outer = u
 
     def get_all_cells(self, memo=None):
@@ -864,10 +864,7 @@ class MeshUniverse(UniverseBase):
         universes : collections.OrderedDict
             Always an empty OrderedDict for MeshUniverses.
         """
-        if self.outer is not None:
-            return OrderedDict({self.outer.id : self.outer})
-        else:
-            return OrderedDict()
+        return OrderedDict()
 
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the universe xml representation to an incoming xml element
@@ -902,8 +899,6 @@ class MeshUniverse(UniverseBase):
         fill_subelement.text = ' '.join(map(lambda f: str(f.id), self.fills))
 
         if self._outer is not None:
-            for cell in self.outer.get_all_cells().values():
-                xml_element.append(cell.create_xml_subelement(xml_element))
             outer_subelement = ET.SubElement(univ_element, 'outer')
             outer_subelement.text = str(self.outer.id)
 

@@ -61,7 +61,7 @@ public:
   virtual void next_cell(Particle& p) const override;
 
   // setup cell instances for the mesh geometry
-  void create_cells(const vector<std::string>& cell_fills);
+  void create_cells(pugi::xml_node node);
 
   // accessors
   int32_t& mesh() { return mesh_; }
