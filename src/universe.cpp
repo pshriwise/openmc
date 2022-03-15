@@ -127,7 +127,7 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 
   cells_.reserve(n_bins);
   // find the available cell id
-  int32_t next_cell_id;
+  int32_t next_cell_id {-1};
   for (const auto& c : model::cells) {
     next_cell_id = std::max(next_cell_id, c->id_);
   }
@@ -153,6 +153,7 @@ void MeshUniverse::create_cells(const vector<std::string>& cell_fills)
 
     cell->type_ = Fill::MATERIAL;
     cell->material_.push_back(fill);
+    std::cout << "New cell id: " << next_cell_id << std::endl;
     cell->id_ = next_cell_id++;
     // set universe ID, this will be updated later by another loop in
     // geometry_aux
