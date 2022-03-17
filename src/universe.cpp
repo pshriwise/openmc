@@ -51,7 +51,7 @@ bool Universe::find_cell(Particle& p) const
     if (model::cells[i_cell]->universe_ != i_univ)
       continue;
 
-    // Check if this cell contains the particle;
+    // Check if this cell contains the particle
     Position r {p.r_local()};
     Direction u {p.u_local()};
     auto surf = p.surface();
@@ -180,12 +180,14 @@ void MeshUniverse::create_cells(pugi::xml_node node)
 bool MeshUniverse::find_cell(Particle& p) const
 {
   Position r {p.r_local()};
+  const auto& mesh = model::meshes[mesh_];
+  bool in_mesh;
+  int mesh_bin = mesh->get_bin(r);
 
-  int mesh_bin = model::meshes[mesh_]->get_bin(r);
-  if (mesh_bin == -1) {
+  if (mesh_bin == C_NONE) {
     if (outer() == C_NONE)
       return false;
-    p.coord(p.n_coord() - 1).mesh_cell_index() = -1;
+    p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
     p.coord(p.n_coord() - 1).cell = outer();
     return true;
   }
@@ -200,12 +202,10 @@ void MeshUniverse::next_cell(Particle& p) const
   auto& coord = p.coord(p.n_coord() - 1);
   const auto mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_].get());
 
-  // the particle's surface attributte should contain the flat index
-  // of the mesh cell it will enter next
   int32_t next_mesh_idx =
     mesh->get_bin_from_indices(p.boundary().lattice_translation);
   int32_t next_cell_idx {C_NONE};
-  if (next_mesh_idx >= 0) {
+  if (mesh->ijk_is_valid(p.boundary().lattice_translation)) {
     next_cell_idx = cells_[next_mesh_idx];
   } else {
     next_mesh_idx = C_NONE;
@@ -222,7 +222,7 @@ void MeshUniverse::next_cell(Particle& p) const
   // set new cell value
   p.coord(p.n_coord() - 1).mesh_cell_index() = next_mesh_idx;
   p.coord(p.n_coord() - 1).cell = next_cell_idx;
-  p.coord(p.n_coord() - 1).lattice_i = p.boundary().lattice_translation;
+  p.coord(p.n_coord() - 1).mesh_index() = p.boundary().lattice_translation;
   const auto& cell = model::cells.at(next_cell_idx);
   // TODO: Support multiple cell instances
   p.cell_instance() = 0;
