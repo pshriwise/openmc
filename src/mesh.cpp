@@ -556,6 +556,27 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
     distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
   }
 
+  // if we're outside the mesh,
+  // compute the distance to entry
+  if (bin == C_NONE) {
+    int idx = C_NONE;
+    double dist_max {0.0};
+    for (int i = 0; i < n_dimension_; i++) {
+      if ((ijk[i] < 1 || ijk[i] > shape_[i])) {
+        dist_max = std::max(dist_max, distances[i].distance);
+      }
+    }
+
+    bool in_mesh;
+    ijk = get_indices(r + dist_max + TINY_BIT * u, in_mesh);
+
+    if (!in_mesh) {
+      return {INFTY, {-1, -1, -1}};
+    }
+
+    return {dist_max, ijk};
+  }
+
   int idx = C_NONE;
   double min_dist = INFTY;
   for (int i = 0; i < n_dimension_; i++) {
@@ -568,12 +589,9 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
 
   if (idx == C_NONE) {
     // if the particle didn't start outside of the mesh, error
-    if (bin != C_NONE) {
-      fatal_error(
-        fmt::format("Could not find next mesh cell. Mesh distances: {}, {}, {}",
-          distances[0].distance, distances[1].distance, distances[2].distance));
-    }
-    return {INFTY, {-1, -1, -1}};
+    fatal_error(
+      fmt::format("Could not find next mesh cell. Mesh distances: {}, {}, {}",
+        distances[0].distance, distances[1].distance, distances[2].distance));
   }
 
   const auto& dist_out = distances[idx];
