@@ -312,8 +312,8 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
   if (settings::verbosity >= 10 || p.trace()) {
     write_message(
       fmt::format("    Crossing lattice {}. Current position ({},{},{}). r={}",
-        lat.id_, coord.lattice_index()[0], coord.lattice_index()[1], coord.lattice_index()[2],
-        p.r()),
+        lat.id_, coord.lattice_index()[0], coord.lattice_index()[1],
+        coord.lattice_index()[2], p.r()),
       1);
   }
 
