@@ -46,7 +46,7 @@ void DistribcellFilter::get_all_bins(
       offset += c.offset_[distribcell_index];
     } else if (c.type_ == Fill::LATTICE) {
       auto& lat {*model::lattices[p.coord(i + 1).lattice()]};
-      const auto& i_xyz {p.coord(i + 1).lattice_i};
+      const auto& i_xyz {p.coord(i + 1).lattice_index()};
       if (lat.are_valid_indices(i_xyz)) {
         offset += lat.offset(distribcell_index, i_xyz);
       }
