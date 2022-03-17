@@ -276,10 +276,6 @@ int StructuredMesh::get_bin_from_indices(const MeshIndex& ijk) const
 
 StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
 {
-  if (bin == C_NONE) {
-    return {-1, -1, -1};
-  }
-
   MeshIndex ijk;
   if (n_dimension_ == 1) {
     ijk[0] = bin + 1;
@@ -292,6 +288,20 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
   return ijk;
+}
+
+bool StructuredMesh::bin_is_valid(int bin) const
+{
+  return bin >= 0 && bin < n_bins() - 1;
+}
+
+bool StructuredMesh::ijk_is_valid(const MeshIndex& ijk) const
+{
+  for (int i = 0; i < n_dimension_; ++i) {
+    if (ijk[i] < 1 || ijk[i] > shape_[i])
+      return false;
+  }
+  return true;
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -547,8 +557,17 @@ void StructuredMesh::surface_bins_crossed(
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   int bin, Position r, const Direction& u) const
 {
-  // start in the specified mesh bin
-  MeshIndex ijk = get_indices_from_bin(bin);
+  MeshIndex ijk;
+  int idx = C_NONE;
+  bool in_mesh {true};
+
+  if (bin == C_NONE) {
+    // lookup what bin the particle is in
+    ijk = get_indices(r, in_mesh);
+  } else {
+    // start in the specified mesh bin
+    ijk = get_indices_from_bin(bin);
+  }
 
   // compute next distance in each direction
   std::array<MeshDistance, 3> distances;
@@ -556,9 +575,9 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
     distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
   }
 
-  // if we're outside the mesh,
+  // if the particle is outside the mesh,
   // compute the distance to entry
-  if (bin == C_NONE) {
+  if (!in_mesh) {
     int idx = C_NONE;
     double dist_max {0.0};
     for (int i = 0; i < n_dimension_; i++) {
@@ -567,17 +586,12 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
       }
     }
 
-    bool in_mesh;
     ijk = get_indices(r + dist_max + TINY_BIT * u, in_mesh);
-
-    if (!in_mesh) {
-      return {INFTY, {-1, -1, -1}};
-    }
-
     return {dist_max, ijk};
   }
 
-  int idx = C_NONE;
+  // find exiting intersections with the current element
+  // in each dimension
   double min_dist = INFTY;
   for (int i = 0; i < n_dimension_; i++) {
     const auto& dist = distances[i];
@@ -600,6 +614,7 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
     fmt::format("\tStructured mesh distance: {}, Next cell: {}, {}, {}",
       dist_out.distance, ijk[0], ijk[1], ijk[2]),
     10);
+
   return {dist_out.distance, ijk};
 }
 
@@ -704,11 +719,13 @@ std::string RegularMesh::get_mesh_type() const
 
 double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
 {
-  return lower_left_[i] + ijk[i] * width_[i];
+  int ijk_val = std::max(1, std::min(ijk[i], shape_[i]));
+  return lower_left_[i] + ijk_val * width_[i];
 }
 
 double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
 {
+  int ijk_val = std::max(1, std::min(ijk[i] - 1, shape_[i]));
   return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 

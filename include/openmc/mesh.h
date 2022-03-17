@@ -111,6 +111,9 @@ public:
   //! Set the mesh ID
   void set_id(int32_t id = -1);
 
+  //! Indicate if a bin value is valid
+  virtual bool bin_is_valid(int bin) const = 0;
+
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
@@ -213,6 +216,18 @@ public:
   //! \param[in] bin Mesh bin
   //! \return ijk Mesh indices
   virtual MeshIndex get_indices_from_bin(int bin) const;
+
+  //! Indicate whether or not the bin is valid for the mesh
+  //
+  //! \param[in] bin Mesh bin
+  //! \return True if bin is valid, False if not
+  bool bin_is_valid(int bin) const override;
+
+  //! Indicate whether or not the bin is valid for the mesh
+  //
+  //! \param[in] ijk Mesh indices
+  //! \return True if indices are valid, False if not
+  bool ijk_is_valid(const MeshIndex& ijk) const;
 
   //! Get mesh index in a particular direction
   //!
