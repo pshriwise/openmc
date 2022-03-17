@@ -293,10 +293,6 @@ int32_t find_root_universe()
   for (const auto& univ : model::universes) {
     if (univ->geom_type() == GeometryType::MESH) {
       auto mesh_univ = dynamic_cast<MeshUniverse*>(univ.get());
-      if (mesh_univ->outer() == C_NONE)
-        continue;
-      const auto& outer_univ = model::universes[mesh_univ->outer()];
-      fill_univ_ids.insert(outer_univ->id_);
     }
   }
 
