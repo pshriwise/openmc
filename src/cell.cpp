@@ -1145,7 +1145,7 @@ vector<ParentCell> Cell::find_parent_cells(
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
       lattice_idx = model::lattices[next_coord.lattice()]->get_flat_index(
-        next_coord.lattice_i);
+        next_coord.lattice_index());
     }
     stack.push(coord.universe, {coord.cell, lattice_idx});
   }
