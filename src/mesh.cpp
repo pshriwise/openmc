@@ -726,7 +726,7 @@ double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
 double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
 {
   int ijk_val = std::max(1, std::min(ijk[i] - 1, shape_[i]));
-  return lower_left_[i] + (ijk[i] - 1) * width_[i];
+  return lower_left_[i] + ijk_val * width_[i];
 }
 
 StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
