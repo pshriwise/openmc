@@ -298,10 +298,15 @@ bool StructuredMesh::bin_is_valid(int bin) const
 bool StructuredMesh::ijk_is_valid(const MeshIndex& ijk) const
 {
   for (int i = 0; i < n_dimension_; ++i) {
-    if (ijk[i] < 1 || ijk[i] > shape_[i])
+    if (!index_is_valid(ijk[i], i))
       return false;
   }
   return true;
+}
+
+bool StructuredMesh::index_is_valid(int idx, int dim) const
+{
+  return idx >= 1 && idx <= shape_[dim];
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -554,6 +559,54 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
+std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh_i(
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
+{
+  // distance is zero if already in the mesh
+  // in this dimension
+  if (index_is_valid(ijk[i], i))
+    return {0.0, ijk};
+
+  if (std::abs(u[i]) < FP_PRECISION)
+    return {INFTY, ijk};
+
+  double dist;
+  // "above" grid and moving toward it
+  if (ijk[i] > shape_[i] && u[i] < 0.0) {
+    dist = upper_right_[i] - r[i] / u[i];
+    // "below" and moving toward it
+  } else if (ijk[i] < 1 && u[i] > 0.0) {
+    dist = lower_left_[i] - r[i] / u[i];
+    // moving away from the grid
+  } else {
+    return {INFTY, ijk};
+  }
+
+  bool in_mesh;
+  return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
+}
+
+std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh(
+  int bin, const Position& r, const Direction& u) const
+{
+  MeshIndex ijk = get_indices_from_bin(bin);
+  std::array<std::pair<double, MeshIndex>, 3> distances;
+  for (int i = 0; i < n_dimension_; ++i) {
+    distances[i] = distance_to_mesh_i(ijk, i, r, u);
+  }
+
+  int idx = C_NONE;
+  double dist_out {FP_PRECISION};
+  for (int i = 0; i < n_dimension_; ++i) {
+    const auto& dist = distances[i];
+    if (ijk_is_valid(dist.second) && dist.first > dist_out) {
+      dist_out = dist.first;
+      idx = i;
+    }
+  }
+  return distances[idx];
+}
+
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   int bin, Position r, const Direction& u) const
 {
@@ -569,29 +622,20 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
     ijk = get_indices_from_bin(bin);
   }
 
+  // if the particle is outside the mesh,
+  // compute the distance to entry
+  if (!in_mesh) {
+    return distance_to_mesh(get_bin_from_indices(ijk), r, u);
+  }
+
+  // find exiting intersections with the current element
+  // in each dimension
   // compute next distance in each direction
   std::array<MeshDistance, 3> distances;
   for (int i = 0; i < n_dimension_; i++) {
     distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
   }
 
-  // if the particle is outside the mesh,
-  // compute the distance to entry
-  if (!in_mesh) {
-    int idx = C_NONE;
-    double dist_max {0.0};
-    for (int i = 0; i < n_dimension_; i++) {
-      if ((ijk[i] < 1 || ijk[i] > shape_[i])) {
-        dist_max = std::max(dist_max, distances[i].distance);
-      }
-    }
-
-    ijk = get_indices(r + dist_max + TINY_BIT * u, in_mesh);
-    return {dist_max, ijk};
-  }
-
-  // find exiting intersections with the current element
-  // in each dimension
   double min_dist = INFTY;
   for (int i = 0; i < n_dimension_; i++) {
     const auto& dist = distances[i];
@@ -725,7 +769,7 @@ double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
 
 double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
 {
-  int ijk_val = std::max(1, std::min(ijk[i] - 1, shape_[i]));
+  int ijk_val = std::max(0, std::min(ijk[i] - 1, shape_[i] - 1));
   return lower_left_[i] + ijk_val * width_[i];
 }
 
@@ -1033,6 +1077,13 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
+std::pair<double, std::array<int, 3>> CylindricalMesh::distance_to_mesh(
+  int bin, const Position& r, const Direction& u) const
+{
+  // TODO: Implement external crossings
+  return {INFTY, {-1, -1, -1}};
+}
+
 double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
@@ -1265,6 +1316,13 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   idx[2] = sanitize_phi(idx[2]);
 
   return idx;
+}
+
+std::pair<double, std::array<int, 3>> SphericalMesh::distance_to_mesh(
+  int bin, const Position& r, const Direction& u) const
+{
+  // TODO: Implement external crossings
+  return {INFTY, {-1, -1, -1}};
 }
 
 double SphericalMesh::find_r_crossing(

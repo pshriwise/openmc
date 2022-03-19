@@ -94,7 +94,16 @@ public:
   //! \param[in] u Particle direction
   //! \returns distance and the ijk index to the next mesh cell
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int idx, Position r, const Direction& u) const = 0;
+    int bin, Position r, const Direction& u) const = 0;
+
+  //! Determine the distance to a point in the mesh
+  //
+  //! \param[in] index ijk value of the current mesh
+  //! \param[in] r Current position of the particle
+  //! \param[in] u Particle direction
+  //! \returns distance to mesh entry and bin entered
+  virtual std::pair<double, std::array<int, 3>> distance_to_mesh(
+    int bin, const Position& r, const Direction& u) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -180,6 +189,12 @@ public:
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
     int bin, Position r, const Direction& u) const override;
 
+  virtual std::pair<double, std::array<int, 3>> distance_to_mesh(
+    int bin, const Position& r, const Direction& u) const override;
+
+  std::pair<double, std::array<int, 3>> distance_to_mesh_i(
+    const MeshIndex& ijk, int i, const Position& r, const Direction& u) const;
+
   //! Determine which cell or surface bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
@@ -223,11 +238,18 @@ public:
   //! \return True if bin is valid, False if not
   bool bin_is_valid(int bin) const override;
 
-  //! Indicate whether or not the bin is valid for the mesh
+  //! Indicate whether the indices are valid
   //
   //! \param[in] ijk Mesh indices
   //! \return True if indices are valid, False if not
   bool ijk_is_valid(const MeshIndex& ijk) const;
+
+  //! Indicate whether an index is valid for a given dimension
+  //
+  //! \param[in] ijk Mesh indices
+  //! \param[in] dim dimension to check
+  //! \return True if index is valid, False if not
+  bool index_is_valid(int idx, int dim) const;
 
   //! Get mesh index in a particular direction
   //!
@@ -373,6 +395,9 @@ public:
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
 
+  std::pair<double, std::array<int, 3>> distance_to_mesh(
+    int bin, const Position& r, const Direction& u) const override;
+
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
@@ -426,6 +451,9 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
+
+  std::pair<double, std::array<int, 3>> distance_to_mesh(
+    int bin, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
