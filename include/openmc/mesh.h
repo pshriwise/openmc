@@ -103,7 +103,8 @@ public:
   //! \param[in] u Particle direction
   //! \returns distance to mesh entry and bin entered
   virtual std::pair<double, std::array<int, 3>> distance_to_mesh(
-    int bin, const Position& r, const Direction& u) const = 0;
+    const std::array<int, 3>& ijk, const Position& r,
+    const Direction& u) const = 0;
 
   //! Get bin at a given position in space
   //
@@ -190,7 +191,7 @@ public:
     int bin, Position r, const Direction& u) const override;
 
   virtual std::pair<double, std::array<int, 3>> distance_to_mesh(
-    int bin, const Position& r, const Direction& u) const override;
+    const MeshIndex& ijk, const Position& r, const Direction& u) const override;
 
   std::pair<double, std::array<int, 3>> distance_to_mesh_i(
     const MeshIndex& ijk, int i, const Position& r, const Direction& u) const;
@@ -396,7 +397,7 @@ public:
     const Position& r0, const Direction& u, double l) const override;
 
   std::pair<double, std::array<int, 3>> distance_to_mesh(
-    int bin, const Position& r, const Direction& u) const override;
+    const MeshIndex& ijk, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -453,7 +454,7 @@ public:
     const Position& r0, const Direction& u, double l) const override;
 
   std::pair<double, std::array<int, 3>> distance_to_mesh(
-    int bin, const Position& r, const Direction& u) const override;
+    const MeshIndex& ijk, const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
