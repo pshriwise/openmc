@@ -192,7 +192,7 @@ public:
   virtual std::pair<double, int> distance_to_mesh(
     const Position& r, const Direction& u) const override;
 
-  std::pair<double, std::array<int, 3>> distance_to_mesh_i(
+  virtual std::pair<double, std::array<int, 3>> distance_to_mesh_i(
     const MeshIndex& ijk, int i, const Position& r, const Direction& u) const;
 
   //! Determine which cell or surface bins were crossed by a particle
@@ -395,7 +395,7 @@ public:
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
 
-  std::pair<double, int> distance_to_mesh(
+  std::pair<double, MeshIndex> distance_to_mesh_i(const MeshIndex& ijk, int i,
     const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
@@ -451,9 +451,6 @@ public:
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const override;
-
-  std::pair<double, int> distance_to_mesh(
-    const Position& r, const Direction& u) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;

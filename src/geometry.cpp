@@ -391,7 +391,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
         info.distance = mesh_dist.first;
         info.lattice_translation = mesh_dist.second;
         info.surface_index = 0;
-        info.coord_level = i + i;
+        info.coord_level = i + 1;
       }
       return info;
     }

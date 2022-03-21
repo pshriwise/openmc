@@ -559,7 +559,7 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
-std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh_i(
+std::pair<double, StructuredMesh::MeshIndex> StructuredMesh::distance_to_mesh_i(
   const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
 {
   // distance is zero if already in the mesh
@@ -612,7 +612,7 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
 
   const auto& out = distances[idx];
   if (!ijk_is_valid(out.second)) {
-    return {INFTY, 1};
+    return {INFTY, -1};
   }
   return {out.first, get_bin_from_indices(out.second)};
 }
@@ -769,14 +769,12 @@ std::string RegularMesh::get_mesh_type() const
 
 double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
 {
-  int ijk_val = std::max(1, std::min(ijk[i], shape_[i]));
-  return lower_left_[i] + ijk_val * width_[i];
+  return lower_left_[i] + ijk[i] * width_[i];
 }
 
 double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
 {
-  int ijk_val = std::max(0, std::min(ijk[i] - 1, shape_[i] - 1));
-  return lower_left_[i] + ijk_val * width_[i];
+  return lower_left_[i] + (ijk[i] - 1) * width_[i];
 }
 
 StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
@@ -1083,21 +1081,34 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
-std::pair<double, int> CylindricalMesh::distance_to_mesh(
-  const Position& r, const Direction& u) const
+std::pair<double, StructuredMesh::MeshIndex>
+CylindricalMesh::distance_to_mesh_i(
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
 {
-  // TODO: Implement external crossings
-  return {INFTY, -1};
+  double dist;
+  if (i == 0) {
+    dist = find_r_crossing(r, u, 0.0, ijk[0]);
+  } else if (i == 1) {
+    // particle will always cross an r or z boundary
+    // to get into the mesh
+    return {0.0, ijk};
+  } else if (i == 2) {
+    return StructuredMesh::distance_to_mesh_i(ijk, 2, r, u);
+  } else {
+    fatal_error("Invalid dimension passed for cylindrical mesh");
+  }
+
+  bool in_mesh;
+  return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
 }
 
 double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
 
-  if ((shell < 0) || (shell >= shape_[0]))
-    return INFTY;
+  shell = std::min(shape_[0], std::max(0, shell));
 
-  // solve r.x^2 + r.y^2 == r0^2
+  // solve r.x^2 + r.y^2 = r0^2
   // x^2 + 2*s*u*x + s^2*u^2 + s^2*v^2+2*s*v*y + y^2 -r0^2 = 0
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
@@ -1322,13 +1333,6 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   idx[2] = sanitize_phi(idx[2]);
 
   return idx;
-}
-
-std::pair<double, int> SphericalMesh::distance_to_mesh(
-  const Position& r, const Direction& u) const
-{
-  // TODO: Implement external crossings
-  return {INFTY, -1};
 }
 
 double SphericalMesh::find_r_crossing(
