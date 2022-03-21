@@ -587,8 +587,14 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh_i(
 }
 
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh(
-  const MeshIndex& ijk, const Position& r, const Direction& u) const
+  const Position& r, const Direction& u) const
 {
+  bool in_mesh;
+  MeshIndex ijk = get_indices(r, in_mesh);
+
+  if (in_mesh)
+    return {0.0, ijk};
+
   std::array<std::pair<double, MeshIndex>, 3> distances;
   for (int i = 0; i < n_dimension_; ++i) {
     distances[i] = distance_to_mesh_i(ijk, i, r, u);
@@ -610,23 +616,15 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh(
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   int bin, Position r, const Direction& u) const
 {
-  MeshIndex ijk;
-  int idx = C_NONE;
-  bool in_mesh {true};
 
+  // if the particle is outside of the mesh,
+  // determine the distance to the mesh
   if (bin == C_NONE) {
-    // lookup what bin the particle is in
-    ijk = get_indices(r, in_mesh);
-  } else {
-    // start in the specified mesh bin
-    ijk = get_indices_from_bin(bin);
+    return distance_to_mesh(r, u);
   }
 
-  // if the particle is outside the mesh,
-  // compute the distance to entry
-  if (!in_mesh) {
-    return distance_to_mesh(ijk, r, u);
-  }
+  // start in the specified mesh bin
+  MeshIndex ijk = get_indices_from_bin(bin);
 
   // find exiting intersections with the current element
   // in each dimension
@@ -636,7 +634,10 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
     distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
   }
 
+  // use minimum distance to determine which crossing
+  // and next mesh bin to use
   double min_dist = INFTY;
+  int idx = C_NONE;
   for (int i = 0; i < n_dimension_; i++) {
     const auto& dist = distances[i];
     if (dist.distance > FP_COINCIDENT && dist.distance < min_dist) {
@@ -1078,7 +1079,7 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
 }
 
 std::pair<double, std::array<int, 3>> CylindricalMesh::distance_to_mesh(
-  const MeshIndex& ijk, const Position& r, const Direction& u) const
+  const Position& r, const Direction& u) const
 {
   // TODO: Implement external crossings
   return {INFTY, {-1, -1, -1}};
@@ -1319,7 +1320,7 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
 }
 
 std::pair<double, std::array<int, 3>> SphericalMesh::distance_to_mesh(
-  const MeshIndex& ijk, const Position& r, const Direction& u) const
+  const Position& r, const Direction& u) const
 {
   // TODO: Implement external crossings
   return {INFTY, {-1, -1, -1}};
