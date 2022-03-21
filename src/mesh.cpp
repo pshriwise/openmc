@@ -586,14 +586,14 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh_i(
   return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
 }
 
-std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh(
+std::pair<double, int> StructuredMesh::distance_to_mesh(
   const Position& r, const Direction& u) const
 {
   bool in_mesh;
   MeshIndex ijk = get_indices(r, in_mesh);
 
   if (in_mesh)
-    return {0.0, ijk};
+    return {0.0, get_bin_from_indices(ijk)};
 
   std::array<std::pair<double, MeshIndex>, 3> distances;
   for (int i = 0; i < n_dimension_; ++i) {
@@ -610,7 +610,11 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_mesh(
     }
   }
 
-  return distances[idx];
+  const auto& out = distances[idx];
+  if (!ijk_is_valid(out.second)) {
+    return {INFTY, 1};
+  }
+  return {out.first, get_bin_from_indices(out.second)};
 }
 
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
@@ -620,7 +624,8 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   // if the particle is outside of the mesh,
   // determine the distance to the mesh
   if (bin == C_NONE) {
-    return distance_to_mesh(r, u);
+    auto dist_to_mesh = distance_to_mesh(r, u);
+    return {dist_to_mesh.first, get_indices_from_bin(dist_to_mesh.second)};
   }
 
   // start in the specified mesh bin
@@ -1078,11 +1083,11 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
-std::pair<double, std::array<int, 3>> CylindricalMesh::distance_to_mesh(
+std::pair<double, int> CylindricalMesh::distance_to_mesh(
   const Position& r, const Direction& u) const
 {
   // TODO: Implement external crossings
-  return {INFTY, {-1, -1, -1}};
+  return {INFTY, -1};
 }
 
 double CylindricalMesh::find_r_crossing(
@@ -1319,11 +1324,11 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   return idx;
 }
 
-std::pair<double, std::array<int, 3>> SphericalMesh::distance_to_mesh(
+std::pair<double, int> SphericalMesh::distance_to_mesh(
   const Position& r, const Direction& u) const
 {
   // TODO: Implement external crossings
-  return {INFTY, {-1, -1, -1}};
+  return {INFTY, -1};
 }
 
 double SphericalMesh::find_r_crossing(
