@@ -236,8 +236,6 @@ class RegularMesh(StructuredMesh):
 
     """
 
-    _GRID_ORDER_VALS = ('x', 'y', 'z')
-
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
@@ -260,20 +258,11 @@ class RegularMesh(StructuredMesh):
                                  f'{self._GRID_ORDER_VALS} is allowed.')
 
     @staticmethod
-    def _generate_grid_pnts(grids, ordering):
+    def _generate_grid_pnts(x_grid, y_grid, z_grid):
 
         # np.meshgrid changes k fastest, then j, then i assign the appropriate
         # grid points to the i,j,k arrays going into meshgrid
-        # e.g. For a RegularMesh if the ordering is 'xyz', assign the x points to k,
-        # the y points to j, and the z points to i
-        i_vals, j_vals, k_vals = [grids[i] for i in ordering[::-1]]
-
-        grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')[::-1]
-
-        # retrieve the grid points according to the canonical ordering for the
-        # coordinate system used. In other words, make sure that the points
-        # coming out of the function as x,y,z; r,phi,z; or r,phi,theta as needed
-        d1, d2, d3 = [grid[ordering.index(i)] for i in grids.keys()]
+        d3, d2, d1 = np.meshgrid(z_grid, y_grid, x_grid, indexing='ij')
 
         # stack the arrays and transpose to get the desired shape (N, 3)
         return np.vstack((d1.ravel(), d2.ravel(), d3.ravel())).T
@@ -301,32 +290,21 @@ class RegularMesh(StructuredMesh):
 
         return edge_grids
 
-    def grid_pnts(self, ordering='xyz'):
+    def grid_pnts(self):
         """
         Return the structured series of points representing the vertices of the
         mesh.
 
-        Parameters
-        ----------
-        ordering : str
-            Sequence of x, y, and z characters that indicates which dimension
-            should change fastest. The first entry will change fastest.
-
         Returns
         -------
         numpy.ndarray
-            (N, 3) array of grid points defining the mesh
+            (N, 3) array of grid points defining the mesh with x, y, z values
+            changing fastest to slowest
 
         """
-
-        # ensure the ordering is valid
-        self._check_ordering(ordering)
-
-        xyz_grids = {'x': self.x_grid,
-                     'y': self.y_grid,
-                     'z': self.z_grid}
-
-        return self._generate_grid_pnts(xyz_grids, ordering)
+        return self._generate_grid_pnts(self.x_grid,
+                                        self.y_grid,
+                                        self.z_grid)
 
     def _create_vtk_mesh(self, data, curvilinear):
         """
@@ -1179,8 +1157,6 @@ class CylindricalMesh(StructuredMesh):
 
     """
 
-    _GRID_ORDER_VALS = ('r', 'p', 'z')
-
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
@@ -1246,17 +1222,14 @@ class CylindricalMesh(StructuredMesh):
         arr[..., 0] = x
         arr[..., 1] = y
 
-    def grid_pnts(self, ordering='rpz', coords='cartesian', curvilinear=True):
+    def grid_pnts(self, coords='cartesian', curvilinear=True):
         cv.check_value('Cylindrical mesh grid coordinates',
                        coords,
                        ('cylindrical', 'cartesian'))
-        self._check_ordering(ordering)
 
-        rpz_grids = {'r': self.r_grid,
-                     'p': self.phi_grid,
-                     'z': self.z_grid}
-
-        grid = self._generate_grid_pnts(rpz_grids, ordering)
+        grid = self._generate_grid_pnts(self.r_grid,
+                                        self.phi_grid,
+                                        self.z_grid)
 
         # translate the polar coordinates to Cartesian values
         if coords.lower() == 'cartesian':
@@ -1407,8 +1380,6 @@ class SphericalMesh(StructuredMesh):
 
     """
 
-    _GRID_ORDER_VALS = ('r', 't', 'p')
-
     def __init__(self, mesh_id=None, name=''):
         super().__init__(mesh_id, name)
 
@@ -1477,17 +1448,13 @@ class SphericalMesh(StructuredMesh):
         arr[..., 1] = y
         arr[..., 2] = z
 
-    def grid_pnts(self, ordering='rtp', coords='cartesian', curvilinear=True):
+    def grid_pnts(self, coords='cartesian', curvilinear=True):
         cv.check_value('Spherical mesh grid coordinates',
                        coords,
                        ('spherical', 'cartesian'))
-        self._check_ordering(ordering)
-
-        rtp_grids = {'r': self.r_grid,
-                     't': self.theta_grid,
-                     'p': self.phi_grid}
-
-        grid = self._generate_grid_pnts(rtp_grids, ordering)
+        grid = self._generate_grid_pnts(self.r_grid,
+                                        self.theta_grid,
+                                        self.phi_grid)
 
         if coords.lower() == 'cartesian':
             self._convert_to_cartesian(grid)
