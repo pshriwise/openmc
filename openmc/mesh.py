@@ -254,7 +254,7 @@ class RegularMesh(StructuredMesh):
                                  f'{self._GRID_ORDER_VALS} is allowed.')
 
     @staticmethod
-    def _generate_grid_pnts(x_grid, y_grid, z_grid):
+    def _generate_vertices(x_grid, y_grid, z_grid):
 
         # np.meshgrid changes k fastest, then j, then i assign the appropriate
         # grid points to the i,j,k arrays going into meshgrid
@@ -286,7 +286,7 @@ class RegularMesh(StructuredMesh):
 
         return edge_grids
 
-    def grid_pnts(self):
+    def vertices(self):
         """
         Return the structured series of points representing the vertices of the
         mesh.
@@ -298,7 +298,7 @@ class RegularMesh(StructuredMesh):
             changing fastest to slowest
 
         """
-        return self._generate_grid_pnts(self.x_grid,
+        return self._generate_vertices(self.x_grid,
                                         self.y_grid,
                                         self.z_grid)
 
@@ -332,7 +332,7 @@ class RegularMesh(StructuredMesh):
         if isinstance(self, (RectilinearMesh, RegularMesh)):
             grid = vtk.vtkStructuredGrid()
             # add points
-            vtk_pnts.SetData(nps.numpy_to_vtk(self.grid_pnts()))
+            vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices()))
             # set the grid dimension
             n_pnts = np.asarray(self.dimension) + 1
             grid.SetDimensions(n_pnts)
@@ -358,8 +358,8 @@ class RegularMesh(StructuredMesh):
                     point_id = locator.IsInsertedPoint(pnt)
                 return point_id
 
-            grid_pnts, edge_grid_pnts = self.grid_pnts()
-            for pnt in grid_pnts:
+            vertices, edge_vertices = self.vertices()
+            for pnt in vertices:
                 id_table.append(_insert_point(pnt))
 
             if curvilinear:
@@ -369,24 +369,39 @@ class RegularMesh(StructuredMesh):
 
             # insert points for curvilinear elements
             if curvilinear:
-                for edge_grid in edge_grid_pnts:
+                for edge_grid in edge_vertices:
                     for pnt in edge_grid.reshape(-1, 3):
                         id_table.append(_insert_point(pnt))
 
             # lower-k connectivity offsets
-            CORNER_CONN = ((0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0))
+            CORNER_CONN = ((0, 0, 0),
+                           (1, 0, 0),
+                           (1, 1, 0),
+                           (0, 1, 0))
             # upper-k connectivity offsets
-            CORNER_CONN += ((0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1))
+            CORNER_CONN += ((0, 0, 1),
+                            (1, 0, 1),
+                            (1, 1, 1),
+                            (0, 1, 1))
 
             # lower-k connectivity offsets
-            EDGE_CONN = ((0, (0, 0, 0)), (1, (1, 0, 0)), (0, (0, 1, 0)), (1, (0, 0, 0)))
+            EDGE_CONN = ((0, (0, 0, 0)),
+                         (1, (1, 0, 0)),
+                         (0, (0, 1, 0)),
+                         (1, (0, 0, 0)))
             # upper-k connectivity offsets
-            EDGE_CONN += ((0, (0, 0, 1)), (1, (1, 0, 1)), (0, (0, 1, 1)), (1, (0, 0, 1)))
+            EDGE_CONN += ((0, (0, 0, 1)),
+                          (1, (1, 0, 1)),
+                          (0, (0, 1, 1)),
+                          (1, (0, 0, 1)))
             # mid-plane k connectivity
-            EDGE_CONN += ((2, (0, 0, 0)), (2, (1, 0, 0)), (2, (1, 1, 0)), (2, (0, 1, 0)))
+            EDGE_CONN += ((2, (0, 0, 0)),
+                          (2, (1, 0, 0)),
+                          (2, (1, 1, 0)),
+                          (2, (0, 1, 0)))
 
             for i, j, k in self.indices:
-                # handle one-indexing of indices
+                # handle indices indexed from one
                 i -= 1
                 j -= 1
                 k -= 1
@@ -401,11 +416,12 @@ class RegularMesh(StructuredMesh):
                 if curvilinear:
                     id_offset = len(CORNER_CONN)
                     for n, (dim, (di, dj, dk)) in enumerate(EDGE_CONN):
-                        flat_idx = grid_pnts.shape[0]
+                        flat_idx = vertices.shape[0]
                         for d in range(dim):
-                            flat_idx += edge_grid_pnts[d].size // 3
+                            flat_idx += edge_vertices[d].size // 3
                         idi, idj, idk = (i + di, j + dj, k + dk)
-                        flat_idx += np.ravel_multi_index((idi, idj, idk), edge_grid_pnts[dim].shape[:-1])
+                        flat_idx += np.ravel_multi_index((idi, idj, idk),
+                                                          edge_vertices[dim].shape[:-1])
                         hex.GetPointIds().SetId(id_offset + n, id_table[flat_idx])
 
                 grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
@@ -458,7 +474,6 @@ class RegularMesh(StructuredMesh):
             writer = vtk.vtkUnstructuredGridWriter()
 
         writer.SetFileName(str(filename))
-
 
         if vtk.VTK_MAJOR_VERSION == 5:
             grid.update()
@@ -1218,12 +1233,12 @@ class CylindricalMesh(StructuredMesh):
         arr[..., 0] = x
         arr[..., 1] = y
 
-    def grid_pnts(self, coords='cartesian', curvilinear=True):
+    def vertices(self, coords='cartesian', curvilinear=True):
         cv.check_value('Cylindrical mesh grid coordinates',
                        coords,
                        ('cylindrical', 'cartesian'))
 
-        grid = self._generate_grid_pnts(self.r_grid,
+        grid = self._generate_vertices(self.r_grid,
                                         self.phi_grid,
                                         self.z_grid)
 
@@ -1444,11 +1459,11 @@ class SphericalMesh(StructuredMesh):
         arr[..., 1] = y
         arr[..., 2] = z
 
-    def grid_pnts(self, coords='cartesian', curvilinear=True):
+    def vertices(self, coords='cartesian', curvilinear=True):
         cv.check_value('Spherical mesh grid coordinates',
                        coords,
                        ('spherical', 'cartesian'))
-        grid = self._generate_grid_pnts(self.r_grid,
+        grid = self._generate_vertices(self.r_grid,
                                         self.theta_grid,
                                         self.phi_grid)
 
