@@ -1788,7 +1788,7 @@ class UnstructuredMesh(MeshBase):
             # create a point for each centroid
             point_id = points.InsertNextPoint(centroid * self.length_multiplier)
             # create a cell of type "Vertex" for each point
-            cell_id = vertices.InsertNextCell(cell_dim, (point_id,))
+            vertices.InsertNextCell(cell_dim, (point_id,))
 
         # create a VTK data object
         poly_data = vtk.vtkPolyData()
