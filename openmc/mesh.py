@@ -1,11 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from heapq import merge
 from math import pi
-from multiprocessing.sharedctypes import Value
 from numbers import Real, Integral
-from socket import if_indextoname
-from turtle import back, color
 import warnings
 from xml.etree import ElementTree as ET
 
