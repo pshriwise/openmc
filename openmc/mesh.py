@@ -224,7 +224,7 @@ class RegularMesh(StructuredMesh):
     upper_right : Iterable of float
         The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
-    width : Iterable of float
+    width : Iterable of flabstracoat
         The width of mesh cells in each direction.
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
@@ -265,7 +265,7 @@ class RegularMesh(StructuredMesh):
 
     @staticmethod
     def _generate_edge_midpoints(grids):
-        # we'll have an entry for each dimension
+        # generate a set of edge midpoints for each dimension
         edge_grids = []
         for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
             mid_vals = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
@@ -299,8 +299,8 @@ class RegularMesh(StructuredMesh):
 
         """
         return self._generate_vertices(self.x_grid,
-                                        self.y_grid,
-                                        self.z_grid)
+                                       self.y_grid,
+                                       self.z_grid)
 
     def _create_vtk_mesh(self, data, curvilinear):
         """
@@ -315,9 +315,8 @@ class RegularMesh(StructuredMesh):
 
         Returns
         -------
-        vtk.vtkStructuredData
-            VTK Structured Data object
-
+        vtk.vtkStructuredGrid or vtk.vtkUnstructuredGrid
+            VTK grid object
         """
         import vtk
         from vtk.util import numpy_support as nps
@@ -373,33 +372,6 @@ class RegularMesh(StructuredMesh):
                     for pnt in edge_grid.reshape(-1, 3):
                         id_table.append(_insert_point(pnt))
 
-            # lower-k connectivity offsets
-            CORNER_CONN = ((0, 0, 0),
-                           (1, 0, 0),
-                           (1, 1, 0),
-                           (0, 1, 0))
-            # upper-k connectivity offsets
-            CORNER_CONN += ((0, 0, 1),
-                            (1, 0, 1),
-                            (1, 1, 1),
-                            (0, 1, 1))
-
-            # lower-k connectivity offsets
-            EDGE_CONN = ((0, (0, 0, 0)),
-                         (1, (1, 0, 0)),
-                         (0, (0, 1, 0)),
-                         (1, (0, 0, 0)))
-            # upper-k connectivity offsets
-            EDGE_CONN += ((0, (0, 0, 1)),
-                          (1, (1, 0, 1)),
-                          (0, (0, 1, 1)),
-                          (1, (0, 0, 1)))
-            # mid-plane k connectivity
-            EDGE_CONN += ((2, (0, 0, 0)),
-                          (2, (1, 0, 0)),
-                          (2, (1, 1, 0)),
-                          (2, (0, 1, 0)))
-
             for i, j, k in self.indices:
                 # handle indices indexed from one
                 i -= 1
@@ -409,20 +381,20 @@ class RegularMesh(StructuredMesh):
                 # create a new vtk hex
                 hex = hex_type()
 
-                for n, (di, dj, dk) in enumerate(CORNER_CONN):
-                    flat_idx = (i + di) + (j + dj) * n_pnts[0] + (k + dk) * n_pnts[0] * n_pnts[1]
+                for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
+                    flat_idx = (i + di) + (j + dj) * n_pnts[0] + \
+                         (k + dk) * n_pnts[0] * n_pnts[1]
                     hex.GetPointIds().SetId(n, id_table[flat_idx])
 
                 if curvilinear:
-                    id_offset = len(CORNER_CONN)
-                    for n, (dim, (di, dj, dk)) in enumerate(EDGE_CONN):
+                    for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
                         flat_idx = vertices.shape[0]
                         for d in range(dim):
                             flat_idx += edge_vertices[d].size // 3
                         idi, idj, idk = (i + di, j + dj, k + dk)
                         flat_idx += np.ravel_multi_index((idi, idj, idk),
                                                           edge_vertices[dim].shape[:-1])
-                        hex.GetPointIds().SetId(id_offset + n, id_table[flat_idx])
+                        hex.GetPointIds().SetId(_N_HEX_VERTICES + n, id_table[flat_idx])
 
                 grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
 
@@ -433,13 +405,12 @@ class RegularMesh(StructuredMesh):
                     raise ValueError(f'Cannot apply dataset {name} with '
                                      f'shape {vals.shape} to mesh {self.id} '
                                      f'with dimensions {self.dimension}')
-
                 arr = vtk.vtkDoubleArray()
                 arr.SetName(name)
                 arr.SetNumberOfTuples(vals.size)
+
                 for i in range(vals.size):
                     arr.SetTuple1(i, vals.flat[i])
-
                 grid.GetCellData().AddArray(arr)
 
         return grid
@@ -1887,3 +1858,37 @@ class UnstructuredMesh(MeshBase):
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
 
         return cls(filename, library, mesh_id, '', length_multiplier)
+
+
+# some connectivity constants for VTK mesh output
+# from the VTK repository: https://tinyurl.com/bdp87vcc
+
+# hexahedron element connectivity
+# lower-k connectivity offsets
+_HEX_VERTEX_CONN = ((0, 0, 0),
+                    (1, 0, 0),
+                    (1, 1, 0),
+                    (0, 1, 0))
+# upper-k connectivity offsets
+_HEX_VERTEX_CONN += ((0, 0, 1),
+                     (1, 0, 1),
+                     (1, 1, 1),
+                     (0, 1, 1))
+
+_N_HEX_VERTICES = 8
+
+# lower-k connectivity offsets
+_HEX_MIDPOINT_CONN = ((0, (0, 0, 0)),
+                      (1, (1, 0, 0)),
+                      (0, (0, 1, 0)),
+                      (1, (0, 0, 0)))
+# upper-k connectivity offsets
+_HEX_MIDPOINT_CONN += ((0, (0, 0, 1)),
+                       (1, (1, 0, 1)),
+                       (0, (0, 1, 1)),
+                       (1, (0, 0, 1)))
+# mid-plane k connectivity
+_HEX_MIDPOINT_CONN += ((2, (0, 0, 0)),
+                       (2, (1, 0, 0)),
+                       (2, (1, 1, 0)),
+                       (2, (0, 1, 0)))
