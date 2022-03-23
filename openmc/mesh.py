@@ -333,7 +333,6 @@ class RegularMesh(StructuredMesh):
             # add points
             vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices()))
             # set the grid dimension
-            n_pnts = np.asarray(self.dimension) + 1
             grid.SetDimensions(n_pnts)
             grid.SetPoints(vtk_pnts)
         else:
@@ -389,6 +388,7 @@ class RegularMesh(StructuredMesh):
                 for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
                     # compute flat index into the point ID list based on i, j, k
                     # of the vertex
+                    flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts)
                     flat_idx = (i + di) + (j + dj) * n_pnts[0] + \
                          (k + dk) * n_pnts[0] * n_pnts[1]
                     hex.GetPointIds().SetId(n, pnt_ids[flat_idx])
