@@ -388,9 +388,7 @@ class RegularMesh(StructuredMesh):
                 for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
                     # compute flat index into the point ID list based on i, j, k
                     # of the vertex
-                    flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts)
-                    flat_idx = (i + di) + (j + dj) * n_pnts[0] + \
-                         (k + dk) * n_pnts[0] * n_pnts[1]
+                    flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts, order='F')
                     hex.GetPointIds().SetId(n, pnt_ids[flat_idx])
 
                 if curvilinear:
