@@ -254,37 +254,34 @@ class RegularMesh(StructuredMesh):
                                  f'{self._GRID_ORDER_VALS} is allowed.')
 
     @staticmethod
-    def _generate_vertices(x_grid, y_grid, z_grid):
+    def _generate_vertices(i_grid, j_grid, k_grid):
 
         # np.meshgrid changes k fastest, then j, then i assign the appropriate
         # grid points to the i,j,k arrays going into meshgrid
-        d3, d2, d1 = np.meshgrid(z_grid, y_grid, x_grid, indexing='ij')
+        grid_pnts = np.meshgrid(k_grid, j_grid, i_grid, indexing='ij')[::-1]
 
-        # stack the arrays and transpose to get the desired shape (N, 3)
-        return np.vstack((d1.ravel(), d2.ravel(), d3.ravel())).T
+        # stack the raveled arrays and transpose to get the desired shape (N, 3)
+        return np.vstack(map(np.ndarray.ravel, grid_pnts)).T
 
     @staticmethod
     def _generate_edge_midpoints(grids):
         # generate a set of edge midpoints for each dimension
-        edge_grids = []
+        midpoint_grids = []
         for dims in ((0, 1, 2), (1, 0, 2), (2, 0, 1)):
-            mid_vals = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
+            midpoints = grids[dims[0]][:-1] + 0.5 * np.diff(grids[dims[0]])
+            coords = (midpoints, grids[dims[1]], grids[dims[2]])
 
-            coords = [mid_vals, grids[dims[1]], grids[dims[2]]]
+            i_grid, j_grid, k_grid = [coords[dims.index(i)] for i in range(3)]
 
-            dim_mapping = [dims.index(i) for i in range(3)]
+            # generate vertices from the new grids
+            mesh_grid = np.meshgrid(i_grid, j_grid, k_grid, indexing='ij')
+            midpoint_grid = np.vstack(map(np.ndarray.ravel, mesh_grid)).T
 
-            # generate a grid from these coordinates
-            i_vals, j_vals, k_vals = [coords[i] for i in dim_mapping]
+            # reshape so points can be indexed as (i, j, k, xyz)
+            shape = (i_grid.size, j_grid.size, k_grid.size, 3)
+            midpoint_grids.append(midpoint_grid.reshape(shape))
 
-            midpoint_grid = np.meshgrid(i_vals, j_vals, k_vals, indexing='ij')
-
-            pnts = np.vstack([arr.ravel() for arr in midpoint_grid]).T
-
-            shape = list(map(lambda i: coords[i].size, dim_mapping)) + [3]
-            edge_grids.append(pnts.reshape(shape))
-
-        return edge_grids
+        return midpoint_grids
 
     def vertices(self):
         """
@@ -302,12 +299,15 @@ class RegularMesh(StructuredMesh):
                                        self.y_grid,
                                        self.z_grid)
 
-    def _create_vtk_mesh(self, data, curvilinear):
+    def _create_vtk_mesh(self, curvilinear, data):
         """
         Create a VTK representation of the mesh
 
         Parameters
         ----------
+        curvilinear : bool
+            If True, generate curvilinear elements for Cylindrical and Spherical
+            meshes
         data : dict
             Data to apply to the mesh. A dictionary with dataset names as keys
             and data arrays as values. The dimensions of the data arrays must
@@ -340,15 +340,19 @@ class RegularMesh(StructuredMesh):
             grid = vtk.vtkUnstructuredGrid()
             grid.SetPoints(vtk_pnts)
 
-            id_table = []
+            # flat array storing the point IDs for a
+            # given vertex in the grid
+            pnt_ids = []
+
             # create locator to handle coincident points
             locator = vtk.vtkPointLocator()
             locator.SetDataSet(grid)
             locator.AutomaticOn()
             locator.InitPointInsertion(vtk_pnts, vtk_pnts.GetBounds())
 
-            # function to ensure only one reference to points on a
-            # periodic boundary
+            # this function ensures coincident points are not
+            # re-created in the VTK mesh. It will return an existing
+            # point ID if the point already exists.
             def _insert_point(pnt):
                 if locator.IsInsertedPoint(pnt) == -1:
                     point_id = vtk_pnts.InsertNextPoint(pnt)
@@ -359,7 +363,7 @@ class RegularMesh(StructuredMesh):
 
             vertices, edge_vertices = self.vertices()
             for pnt in vertices:
-                id_table.append(_insert_point(pnt))
+                pnt_ids.append(_insert_point(pnt))
 
             if curvilinear:
                 hex_type = vtk.vtkQuadraticHexahedron
@@ -370,7 +374,7 @@ class RegularMesh(StructuredMesh):
             if curvilinear:
                 for edge_grid in edge_vertices:
                     for pnt in edge_grid.reshape(-1, 3):
-                        id_table.append(_insert_point(pnt))
+                        pnt_ids.append(_insert_point(pnt))
 
             for i, j, k in self.indices:
                 # handle indices indexed from one
@@ -381,10 +385,13 @@ class RegularMesh(StructuredMesh):
                 # create a new vtk hex
                 hex = hex_type()
 
+                # set connectivity of the hex
                 for n, (di, dj, dk) in enumerate(_HEX_VERTEX_CONN):
+                    # compute flat index into the point ID list based on i, j, k
+                    # of the vertex
                     flat_idx = (i + di) + (j + dj) * n_pnts[0] + \
                          (k + dk) * n_pnts[0] * n_pnts[1]
-                    hex.GetPointIds().SetId(n, id_table[flat_idx])
+                    hex.GetPointIds().SetId(n, pnt_ids[flat_idx])
 
                 if curvilinear:
                     for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
@@ -394,7 +401,7 @@ class RegularMesh(StructuredMesh):
                         idi, idj, idk = (i + di, j + dj, k + dk)
                         flat_idx += np.ravel_multi_index((idi, idj, idk),
                                                           edge_vertices[dim].shape[:-1])
-                        hex.GetPointIds().SetId(_N_HEX_VERTICES + n, id_table[flat_idx])
+                        hex.GetPointIds().SetId(_N_HEX_VERTICES + n, pnt_ids[flat_idx])
 
                 grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
 
@@ -437,7 +444,7 @@ class RegularMesh(StructuredMesh):
         if filename is None:
             filename = f'mesh_{self.id}.vtk'
 
-        grid = self._create_vtk_mesh(data, curvilinear)
+        grid = self._create_vtk_mesh(curvilinear, data)
 
         if isinstance(self, (RectilinearMesh, RegularMesh)):
             writer = vtk.vtkStructuredGridWriter()
