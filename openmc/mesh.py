@@ -274,8 +274,7 @@ class RegularMesh(StructuredMesh):
             i_grid, j_grid, k_grid = [coords[dims.index(i)] for i in range(3)]
 
             # generate vertices from the new grids
-            mesh_grid = np.meshgrid(i_grid, j_grid, k_grid, indexing='ij')
-            midpoint_grid = np.vstack(map(np.ndarray.ravel, mesh_grid)).T
+            midpoint_grid = StructuredMesh._generate_vertices(i_grid, j_grid, k_grid)
 
             # reshape so points can be indexed as (i, j, k, xyz)
             shape = (i_grid.size, j_grid.size, k_grid.size, 3)
@@ -398,7 +397,8 @@ class RegularMesh(StructuredMesh):
                             flat_idx += edge_vertices[d].size // 3
                         idi, idj, idk = (i + di, j + dj, k + dk)
                         flat_idx += np.ravel_multi_index((idi, idj, idk),
-                                                          edge_vertices[dim].shape[:-1])
+                                                          edge_vertices[dim].shape[:-1],
+                                                          order='F')
                         hex.GetPointIds().SetId(_N_HEX_VERTICES + n, pnt_ids[flat_idx])
 
                 grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
