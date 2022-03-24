@@ -282,6 +282,7 @@ class RegularMesh(StructuredMesh):
 
         return midpoint_grids
 
+    @property
     def vertices(self):
         """
         Return the structured series of points representing the vertices of the
@@ -294,9 +295,25 @@ class RegularMesh(StructuredMesh):
             changing fastest to slowest
 
         """
-        return self._generate_vertices(self.x_grid,
-                                       self.y_grid,
-                                       self.z_grid)
+        vertices = self._generate_vertices(*self._grids)
+
+        # translate the polar coordinates to Cartesian values
+        self._convert_to_cartesian(vertices)
+
+        return vertices
+
+    @property
+    def midpoint_vertices(self):
+        # generate edge midpoints needed for curvilinear element definition
+        midpoint_vertices = self._generate_edge_midpoints(self._grids)
+
+        for vertices in midpoint_vertices:
+            self._convert_to_cartesian(vertices)
+
+        return midpoint_vertices
+
+    def _convert_to_cartesian(self, arr):
+        pass
 
     def _create_vtk_mesh(self, curvilinear, data):
         """
@@ -330,7 +347,7 @@ class RegularMesh(StructuredMesh):
         if isinstance(self, (RectilinearMesh, RegularMesh)):
             grid = vtk.vtkStructuredGrid()
             # add points
-            vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices()))
+            vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
             # set the grid dimension
             grid.SetDimensions(n_pnts)
             grid.SetPoints(vtk_pnts)
@@ -359,21 +376,22 @@ class RegularMesh(StructuredMesh):
                     point_id = locator.IsInsertedPoint(pnt)
                 return point_id
 
-            vertices, edge_vertices = self.vertices()
+            # get vertex locations for the mesh
+            vertices = self.vertices
+
+            # add element corner vertices to array
             for pnt in vertices:
                 pnt_ids.append(_insert_point(pnt))
 
+            # set the hexahedron type to use
             if curvilinear:
                 hex_type = vtk.vtkQuadraticHexahedron
             else:
                 hex_type = vtk.vtkHexahedron
 
-            # insert points for curvilinear elements
-            if curvilinear:
-                for edge_grid in edge_vertices:
-                    for pnt in edge_grid.reshape(-1, 3):
-                        pnt_ids.append(_insert_point(pnt))
-
+            # create hexes and set points for corner
+            # vertices
+            hexes = []
             for i, j, k in self.indices:
                 # handle indices indexed from one
                 i -= 1
@@ -390,17 +408,40 @@ class RegularMesh(StructuredMesh):
                     flat_idx = np.ravel_multi_index((i+di, j+dj, k+dk), n_pnts, order='F')
                     hex.GetPointIds().SetId(n, pnt_ids[flat_idx])
 
-                if curvilinear:
+                hexes.append(hex)
+
+            # if making curvilinear elements, add midpoint
+            # vertices to the hexes
+            if curvilinear:
+                # get edge midpoints and add them to the
+                # list of point IDs
+                midpoint_vertices = self.midpoint_vertices
+                for edge_grid in midpoint_vertices:
+                    for pnt in edge_grid.reshape(-1, 3):
+                        pnt_ids.append(_insert_point(pnt))
+
+                # set connectivity of midpoints on hexes
+                for hex_id, (i, j, k) in enumerate(self.indices):
+                    # handle indices indexed from one
+                    i -= 1
+                    j -= 1
+                    k -= 1
+
+                    hex = hexes[hex_id]
+                    n_midpoint_vertices = [mv.size // 3 for mv in midpoint_vertices]
                     for n, (dim, (di, dj, dk)) in enumerate(_HEX_MIDPOINT_CONN):
-                        flat_idx = vertices.shape[0]
-                        for d in range(dim):
-                            flat_idx += edge_vertices[d].size // 3
+                        # initial offset for corner vertices and midpoint dimension
+                        flat_idx = vertices.shape[0] + sum(n_midpoint_vertices[:dim])
+                        # generate a flat index into the table of point IDs
                         idi, idj, idk = (i + di, j + dj, k + dk)
                         flat_idx += np.ravel_multi_index((idi, idj, idk),
-                                                          edge_vertices[dim].shape[:-1],
-                                                          order='F')
+                                                       midpoint_vertices[dim].shape[:-1],
+                                                       order='F')
+                        # set hex midpoint connectivity
                         hex.GetPointIds().SetId(_N_HEX_VERTICES + n, pnt_ids[flat_idx])
 
+            # add all hexes to the grid
+            for hex in hexes:
                 grid.InsertNextCell(hex.GetCellType(), hex.GetPointIds())
 
         # add data to the grid if provided
@@ -491,6 +532,12 @@ class RegularMesh(StructuredMesh):
     indices : Iterable of tuple
         An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
         (2, 1, 1), ...]
+    x_grid : numpy.ndarray
+        1-D array of mesh boundary points along the x-axis.
+    y_grid : numpy.ndarray
+        1-D array of mesh boundary points along the y-axis.
+    z_grid : numpy.ndarray
+        1-D array of mesh boundary points along the z-axis.
 
     """
 
@@ -620,6 +667,10 @@ class RegularMesh(StructuredMesh):
     @property
     def z_grid(self):
         return self._grid(2)
+
+    @property
+    def _grids(self):
+        return (self.x_grid, self.y_grid, self.z_grid)
 
     @dimension.setter
     def dimension(self, dimension):
@@ -1209,30 +1260,6 @@ class CylindricalMesh(StructuredMesh):
         arr[..., 0] = x
         arr[..., 1] = y
 
-    def vertices(self, coords='cartesian', curvilinear=True):
-        cv.check_value('Cylindrical mesh grid coordinates',
-                       coords,
-                       ('cylindrical', 'cartesian'))
-
-        grid = self._generate_vertices(self.r_grid,
-                                        self.phi_grid,
-                                        self.z_grid)
-
-        # translate the polar coordinates to Cartesian values
-        if coords.lower() == 'cartesian':
-            self._convert_to_cartesian(grid)
-
-        if not curvilinear:
-            return grid
-
-        # generate edge midpoints needed for curvilinear element definition
-        edge_grids = self._generate_edge_midpoints([self.r_grid, self.phi_grid, self.z_grid])
-
-        for edge_grid in edge_grids:
-            self._convert_to_cartesian(edge_grid)
-
-        return grid, edge_grids
-
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
         string = super().__repr__()
@@ -1434,28 +1461,6 @@ class SphericalMesh(StructuredMesh):
         arr[..., 0] = x
         arr[..., 1] = y
         arr[..., 2] = z
-
-    def vertices(self, coords='cartesian', curvilinear=True):
-        cv.check_value('Spherical mesh grid coordinates',
-                       coords,
-                       ('spherical', 'cartesian'))
-        grid = self._generate_vertices(self.r_grid,
-                                        self.theta_grid,
-                                        self.phi_grid)
-
-        if coords.lower() == 'cartesian':
-            self._convert_to_cartesian(grid)
-
-        if not curvilinear:
-            return grid
-
-        # generate edge midpoints needed for curvilinear element definition
-        edge_grids = self._generate_edge_midpoints([self.r_grid, self.theta_grid, self.phi_grid])
-
-        for edge_grid in edge_grids:
-            self._convert_to_cartesian(edge_grid)
-
-        return grid, edge_grids
 
     def __repr__(self):
         fmt = '{0: <16}{1}{2}\n'
