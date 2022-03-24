@@ -42,6 +42,7 @@ sphere_mesh.r_grid = np.linspace(0, 5, 3)
 sphere_mesh.theta_grid = np.linspace(0, 0.5 * np.pi, 4)
 sphere_mesh.phi_grid = np.linspace(0, 2*np.pi, 8)
 
+
 def mesh_data(mesh_dims):
     data = 100 * np.arange(np.prod(mesh_dims))
     return data.reshape(*mesh_dims)
@@ -52,6 +53,7 @@ test_data = ((reg_mesh, False, 'regular'),
              (cyl_mesh, True, 'cylindrical-curvilinear'),
              (sphere_mesh, False, 'spherical-linear'),
              (sphere_mesh, True, 'spherical-curvilinear'))
+
 
 @pytest.mark.parametrize('mesh_params',
                          test_data,
@@ -72,6 +74,7 @@ def test_mesh_write_vtk(mesh_params, run_in_tmpdir):
     except AssertionError as e:
         diff = diff_file(test_data, filename)
         raise AssertionError(diff) from e
+
 
 # check data writing
 def test_mesh_write_vtk_data(run_in_tmpdir):
