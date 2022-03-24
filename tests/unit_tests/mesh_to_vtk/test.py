@@ -41,25 +41,10 @@ sphere_mesh = openmc.SphericalMesh()
 sphere_mesh.r_grid = np.linspace(0, 5, 3)
 sphere_mesh.theta_grid = np.linspace(0, 0.5 * np.pi, 4)
 sphere_mesh.phi_grid = np.linspace(0, 2*np.pi, 8)
-sphere_mesh.write_vtk_mesh("spherical-curvilinear.vtk")
-sphere_mesh.write_vtk_mesh("spherical-linear.vtk", curvilinear=False)
 
 def mesh_data(mesh_dims):
     data = 100 * np.arange(np.prod(mesh_dims))
     return data.reshape(*mesh_dims)
-
-# update mesh files if needed
-if config['update']:
-    reg_mesh.write_vtk_mesh('regular.vtk')
-    rect_mesh.write_vtk_mesh('rectilinear.vtk')
-    cyl_mesh.write_vtk_mesh('cylindrical-linear.vtk', curvilinear=False)
-    cyl_mesh.write_vtk_mesh('cylindrical-curvilinear.vtk')
-    sphere_mesh.write_vtk_mesh('spherical-linear.vtk', curvilinear=False)
-    sphere_mesh.write_vtk_mesh('spherical-curvilinear.vtk')
-
-    data = {'ascending_data': mesh_data(cyl_mesh.dimension)}
-    cyl_mesh.write_vtk_mesh('cyl-data.vtk', data=data)
-
 
 test_data = ((reg_mesh, False, 'regular'),
              (rect_mesh, False, 'rectilinear'),
@@ -75,6 +60,9 @@ def test_mesh_write_vtk(mesh_params, run_in_tmpdir):
     mesh, curvilinear, filename = mesh_params
 
     test_data = full_path(filename + ".vtk")
+    # update the test file if requested
+    if config['update']:
+        mesh.write_vtk_mesh(test_data, curvilinear=curvilinear)
     filename = filename + "-actual.vtk"
     # write the mesh file and compare to the expected version
     mesh.write_vtk_mesh(filename, curvilinear=curvilinear)
@@ -90,6 +78,9 @@ def test_mesh_write_vtk_data(run_in_tmpdir):
 
     data = {'ascending_data': mesh_data(cyl_mesh.dimension)}
     filename_expected = full_path('cyl-data.vtk')
+    # update the test file if requested
+    if config['update']:
+        cyl_mesh.write_vtk_mesh(filename_expected, data=data)
     filename_actual = 'cyl-data-actual.vtk'
     cyl_mesh.write_vtk_mesh(filename_actual, data=data)
 
