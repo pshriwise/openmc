@@ -1089,9 +1089,9 @@ CylindricalMesh::distance_to_mesh_i(
   if (i == 0) {
     dist = find_r_crossing(r, u, 0.0, ijk[0]);
   } else if (i == 1) {
-    // particle will always cross an r or z boundary
-    // to get into the mesh
-    return {0.0, ijk};
+    if (full_phi_)
+      return {0.0, ijk};
+    dist = find_phi_crossing(r, u, 0.0, ijk[1]);
   } else if (i == 2) {
     return StructuredMesh::distance_to_mesh_i(ijk, 2, r, u);
   } else {
