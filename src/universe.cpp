@@ -204,10 +204,37 @@ void MeshUniverse::next_cell(Particle& p) const
 
   int32_t next_mesh_idx =
     mesh->get_bin_from_indices(p.boundary().lattice_translation);
+
+    write_message(
+      fmt::format("\tNext structured mesh cell: {} {} {}",
+                  p.boundary().lattice_translation[0],
+                  p.boundary().lattice_translation[1],
+                  p.boundary().lattice_translation[2]),
+      10
+    );
   int32_t next_cell_idx {C_NONE};
   if (mesh->ijk_is_valid(p.boundary().lattice_translation)) {
     next_cell_idx = cells_[next_mesh_idx];
+
+    // bool in_mesh;
+    // auto ijk = mesh->get_indices(p.r(), in_mesh);
+    // if (!in_mesh) {
+    //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+    // }
   } else {
+    write_message(
+      fmt::format("\tParticle {} moving out of the mesh. Position: {} {} {}",
+                  p.id(),
+                  p.r()[0],
+                  p.r()[1],
+                  p.r()[2]),
+      10
+    );
+    bool in_mesh;
+    auto ijk = mesh->get_indices(p.r(), in_mesh);
+    if (in_mesh) {
+      warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+    }
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_;
   }

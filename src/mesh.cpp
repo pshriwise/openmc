@@ -592,8 +592,8 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
   bool in_mesh;
   MeshIndex ijk = get_indices(r, in_mesh);
 
-  if (in_mesh)
-    return {0.0, get_bin_from_indices(ijk)};
+  // if (in_mesh)
+  //   return {0.0, get_bin_from_indices(ijk)};
 
   std::array<std::pair<double, MeshIndex>, 3> distances;
   for (int i = 0; i < n_dimension_; ++i) {
@@ -646,6 +646,16 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   for (int i = 0; i < n_dimension_; i++) {
     const auto& dist = distances[i];
     if (dist.distance > FP_COINCIDENT && dist.distance < min_dist) {
+      min_dist = dist.distance;
+      idx = i;
+    }
+
+    if (dist.distance < FP_COINCIDENT && dist.distance < min_dist && dist.max_surface && dist.next_index > ijk[i]) {
+      min_dist = dist.distance;
+      idx = i;
+    }
+
+    if (dist.distance < FP_COINCIDENT && dist.distance < min_dist && !dist.max_surface && ijk[i] > dist.next_index) {
       min_dist = dist.distance;
       idx = i;
     }
