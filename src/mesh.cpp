@@ -614,6 +614,15 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
   if (!ijk_is_valid(out.second)) {
     return {INFTY, -1};
   }
+
+  write_message(
+    fmt::format("\tDistance to mesh entry: {}, Next cell: {}, {}, {}",
+                out.first,
+                out.second[0],
+                out.second[1],
+                out.second[2]),
+    10
+    );
   return {out.first, get_bin_from_indices(out.second)};
 }
 
@@ -1123,30 +1132,38 @@ double CylindricalMesh::find_r_crossing(
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
   const double r0 = grid_[0][shell];
-  const double denominator = u.x * u.x + u.y * u.y;
+  const double a = 1.0 - u.z * u.z;
 
-  // Direction of flight is in z-direction. Will never intersect r.
-  if (std::abs(denominator) < FP_PRECISION)
+  if (a == 0.0)
     return INFTY;
 
   // inverse of dominator to help the compiler to speed things up
-  const double inv_denominator = 1.0 / denominator;
+  const double inv_denominator = 1.0 / a;
 
-  const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
-  double D = p * p + (r0 * r0 - r.x * r.x - r.y * r.y) * inv_denominator;
+  double k = u.x * r.x + u.y * r.y;
+  double c = r.x * r.x + r.y * r.y - r0 * r0;
+  double quad = k * k - a * c;
+  // double quad = k * k + (r0 * r0 - r.x * r.x - r.y * r.y);
 
-  if (D < 0.0)
+  if (quad < 0.0)
     return INFTY;
 
-  D = std::sqrt(D);
-
-  // the solution -p - D is always smaller as -p + D : Check this one first
-  if (-p - D > l)
-    return -p - D;
-  if (-p + D > l)
-    return -p + D;
-
-  return INFTY;
+  if (std::abs(c) < FP_COINCIDENT) {
+    // on cyl
+    if (k >= 0.0)
+      return INFTY;
+    else
+      return (-k + sqrt(quad)) / a;
+  } else if (c < 0.0) {
+    // inside cyl
+    return (-k + sqrt(quad)) / a;
+  } else {
+    // outside cyl
+    const double d = (-k - sqrt(quad)) / a;
+    if (d < 0.0)
+      return INFTY;
+    return d;
+  }
 }
 
 double CylindricalMesh::find_phi_crossing(
@@ -1208,19 +1225,36 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   double l) const
 {
 
+  // auto r_norm = norm(r0);
   if (i == 0) {
+    // bool max_surf = r_norm.x * u.x + r_norm.y * u.y >= 0.0;
+    // int idx = ijk[i];
+    // if (max_surf) idx++;
+    // else idx--;
+    // return MeshDistance(idx, max_surf, find_r_crossing(r0, u, l, idx));
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i] + 1)),
       MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
+    // int idx = ijk[i];
+    // double dot_prod = -r_norm.y * u.x + r_norm.x * u.y > 0.0;
+    // if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
 
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
+    // bool max_surf = dot_prod > 0.0;
+    // if (max_surf) idx++;
+    // else idx--;
+    // auto dist_out = MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r0, u, l, idx));
+
+    auto dist_out = std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
                       find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
         find_phi_crossing(r0, u, l, ijk[i] - 1)));
-
+    // if (full_phi_) {
+    //   dist_out.next_index = std::max(1, std::min(shape_[i], dist_out.next_index));
+    // }
+    return dist_out;
   } else {
     return find_z_crossing(r0, u, l, ijk[i]);
   }
