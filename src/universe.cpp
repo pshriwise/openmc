@@ -222,7 +222,7 @@ void MeshUniverse::next_cell(Particle& p) const
   // set new cell value
   p.coord(p.n_coord() - 1).mesh_cell_index() = next_mesh_idx;
   p.coord(p.n_coord() - 1).cell = next_cell_idx;
-  p.coord(p.n_coord() - 1).lattice_i = p.boundary().lattice_translation;
+  p.coord(p.n_coord() - 1).lattice_index() = p.boundary().lattice_translation;
   const auto& cell = model::cells.at(next_cell_idx);
   // TODO: Support multiple cell instances
   p.cell_instance() = 0;
