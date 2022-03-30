@@ -1255,23 +1255,14 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
       MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
-    // int idx = ijk[i];
-    // double dot_prod = -r_norm.y * u.x + r_norm.x * u.y > 0.0;
-    // if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
+    int idx = ijk[i];
+    double dot_prod = -r_norm.y * u.x + r_norm.x * u.y > 0.0;
+    if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
 
-    // bool max_surf = dot_prod > 0.0;
-    // if (max_surf) idx++;
-    // else idx--;
-    // auto dist_out = MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r0, u, l, idx));
-
-    auto dist_out = std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
-    // if (full_phi_) {
-    //   dist_out.next_index = std::max(1, std::min(shape_[i], dist_out.next_index));
-    // }
-    return dist_out;
+    bool max_surf = dot_prod > 0.0;
+    if (max_surf) idx++;
+    else idx--;
+    return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r0, u, l, idx));
   } else {
     return find_z_crossing(r0, u, l, ijk[i]);
   }
