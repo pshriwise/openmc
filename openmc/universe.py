@@ -866,6 +866,31 @@ class MeshUniverse(UniverseBase):
         """
         return OrderedDict()
 
+    def get_all_materials(self, memo=None):
+        """Return all materials within the mesh universe.
+
+        Returns
+        -------
+        collections.OrderedDict
+            Dictionary mapping material IDs to :class:`openmc.Material`
+            instances
+
+        """
+        materials = OrderedDict()
+
+        if memo and self in memo:
+            return materials
+
+        if memo is not None:
+            memo.add(self)
+
+        materials.update({m.id : m for m in self.fills})
+
+        if self.outer is not None:
+            materials[self.outer.id] = self.outer
+
+        return materials
+
     def create_xml_subelement(self, xml_element, memo=None):
         """Add the universe xml representation to an incoming xml element
 

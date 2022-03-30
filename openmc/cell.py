@@ -457,6 +457,8 @@ class Cell(IDManagerMixin):
             for m in self.fill:
                 if m is not None:
                     materials[m.id] = m
+        elif self.fill_type == 'universe' and isinstance(self.fill, openmc.MeshUniverse):
+            materials.update(self.fill.get_all_materials(memo))
         else:
             # Append all Cells in each Cell in the Universe to the dictionary
             cells = self.get_all_cells(memo)
