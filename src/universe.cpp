@@ -214,27 +214,40 @@ void MeshUniverse::next_cell(Particle& p) const
     );
   int32_t next_cell_idx {C_NONE};
   if (mesh->ijk_is_valid(p.boundary().lattice_translation)) {
-    next_cell_idx = cells_[next_mesh_idx];
+    if (p.coord(p.n_coord() -1).mesh_cell_index() == C_NONE) {
+      write_message(
+        fmt::format("\tParticle {} moving into the mesh. \n\tPosition: {} {} {}",
+        p.id(),
+        p.r()[0],
+        p.r()[1],
+        p.r()[2]),
+      10
+      );
+      // bool in_mesh;
+      // auto ijk = mesh->get_indices(p.r() + p.u() * 0.01, in_mesh);
+      // if (!in_mesh) {
+      //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+      // }
+    }
 
-    // bool in_mesh;
-    // auto ijk = mesh->get_indices(p.r(), in_mesh);
-    // if (!in_mesh) {
-    //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
-    // }
+    next_cell_idx = cells_[next_mesh_idx];
   } else {
     write_message(
-      fmt::format("\tParticle {} moving out of the mesh. Position: {} {} {}",
+      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} {} \n\tDirection: {} {} {}",
                   p.id(),
                   p.r()[0],
                   p.r()[1],
-                  p.r()[2]),
+                  p.r()[2],
+                  p.u()[0],
+                  p.u()[1],
+                  p.u()[2]),
       10
     );
-    bool in_mesh;
-    auto ijk = mesh->get_indices(p.r(), in_mesh);
-    if (in_mesh) {
-      warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
-    }
+    // bool in_mesh;
+    // auto ijk = mesh->get_indices(p.r() + p.u() * 0.01, in_mesh);
+    // if (in_mesh) {
+    //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+    // }
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_;
   }

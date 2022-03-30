@@ -200,6 +200,10 @@ inline bool operator!=(Position a, Position b)
   return a.x != b.x || a.y != b.y || a.z != b.z;
 }
 
+inline Position norm(const Position& a) {
+  return a / a.norm();
+}
+
 std::ostream& operator<<(std::ostream& os, Position a);
 
 //==============================================================================

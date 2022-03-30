@@ -677,6 +677,19 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
         distances[0].distance, distances[1].distance, distances[2].distance));
   }
 
+  if (distances[idx].distance > 100) {
+    warning(
+      fmt::format("Returned distance too high for particle in the mesh.")
+    );
+    // find exiting intersections with the current element
+    // in each dimension
+    // compute next distance in each direction
+    std::array<MeshDistance, 3> distances;
+    for (int i = 0; i < n_dimension_; i++) {
+      distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
+    }
+  }
+
   const auto& dist_out = distances[idx];
   ijk[idx] = dist_out.next_index;
   write_message(
@@ -1106,6 +1119,10 @@ CylindricalMesh::distance_to_mesh_i(
 {
   double dist;
   if (i == 0) {
+    auto r_norm = norm(r);
+    // check direction orthogonal to position vector
+    if (std::abs(r_norm.x * u.x + r_norm.y * u.y) < FP_PRECISION)
+      return {INFTY, ijk};
     dist = find_r_crossing(r, u, 0.0, ijk[0]);
   } else if (i == 1) {
     if (full_phi_)
@@ -1150,9 +1167,9 @@ double CylindricalMesh::find_r_crossing(
 
   if (std::abs(c) < FP_COINCIDENT) {
     // on cyl
-    if (k >= 0.0)
-      return INFTY;
-    else
+    // if (k >= 0.0)
+    //   return INFTY;
+    // else
       return (-k + sqrt(quad)) / a;
   } else if (c < 0.0) {
     // inside cyl
@@ -1225,7 +1242,7 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   double l) const
 {
 
-  // auto r_norm = norm(r0);
+  auto r_norm = norm(r0);
   if (i == 0) {
     // bool max_surf = r_norm.x * u.x + r_norm.y * u.y >= 0.0;
     // int idx = ijk[i];
