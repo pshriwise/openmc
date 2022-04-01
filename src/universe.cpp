@@ -204,7 +204,6 @@ void MeshUniverse::next_cell(Particle& p) const
 
   int32_t next_mesh_idx =
     mesh->get_bin_from_indices(p.boundary().lattice_translation);
-
     write_message(
       fmt::format("\tNext structured mesh cell: {} {} {}",
                   p.boundary().lattice_translation[0],
@@ -244,7 +243,7 @@ void MeshUniverse::next_cell(Particle& p) const
       10
     );
     // bool in_mesh;
-    // auto ijk = mesh->get_indices(p.r() + p.u() * 0.01, in_mesh);
+    // auto ijk = mesh->get_indices(p.r() + p.u() * 0.1, in_mesh);
     // if (in_mesh) {
     //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
     // }
@@ -259,7 +258,7 @@ void MeshUniverse::next_cell(Particle& p) const
   // update material and temperature
   p.material_last() = p.material();
   p.sqrtkT_last() = p.sqrtkT();
-  // set new cell value
+  // set previous bin
   p.coord(p.n_coord() - 1).mesh_cell_index() = next_mesh_idx;
   p.coord(p.n_coord() - 1).cell = next_cell_idx;
   p.coord(p.n_coord() - 1).mesh_index() = p.boundary().lattice_translation;
