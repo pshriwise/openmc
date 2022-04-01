@@ -592,8 +592,8 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
   bool in_mesh;
   MeshIndex ijk = get_indices(r, in_mesh);
 
-  if (in_mesh)
-    return {0.0, get_bin_from_indices(ijk)};
+  // if (in_mesh)
+  //   return {0.0, get_bin_from_indices(ijk)};
 
   std::array<std::pair<double, MeshIndex>, 3> distances;
   for (int i = 0; i < n_dimension_; ++i) {
@@ -629,7 +629,7 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
 }
 
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
-  int bin, Position r, const Direction& u) const
+  int bin, int prev_bin, Position r, const Direction& u) const
 {
 
   // if the particle is outside of the mesh,
@@ -640,14 +640,16 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   }
 
   // start in the specified mesh bin
-  bool in_mesh;
-  MeshIndex ijk = get_indices(r + u * TINY_BIT, in_mesh);
-  // MeshIndex ijk = get_indices_from_bin(bin);
-
+  MeshIndex ijk = get_indices_from_bin(bin);
+  MeshIndex prev_ijk = get_indices_from_bin(prev_bin);
   // find exiting intersections with the current element
   // in each dimension
   // compute next distance in each direction
   std::array<MeshDistance, 3> distances;
+
+  // determine the direction of travel for each mesh dimension
+  // MeshIndex dir_ijk = ijk - prev_ijk;
+
   for (int i = 0; i < n_dimension_; i++) {
     distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
   }
@@ -793,18 +795,13 @@ std::string RegularMesh::get_mesh_type() const
   return mesh_type;
 }
 
-double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
+double RegularMesh::grid_boundary(int idx, int i) const
 {
-  return lower_left_[i] + ijk[i] * width_[i];
-}
-
-double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
-{
-  return lower_left_[i] + (ijk[i] - 1) * width_[i];
+  return lower_left_[i] + idx * width_[i];
 }
 
 StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
   MeshDistance d;
@@ -815,14 +812,20 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   d.max_surface = (u[i] > 0);
   if (d.max_surface && (ijk[i] <= shape_[i])) {
     d.next_index++;
-    d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i], i, r, u, l);
   } else if (!d.max_surface && (ijk[i] >= 1)) {
     d.next_index--;
-    d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, l);
   }
 
   return d;
 }
+
+double RegularMesh::distance_to_grid_boundary_i(
+  int idx, int i, const Position& r, const Direction& u, double l) const {
+    return (grid_boundary(idx, i) - r[i]) / u[i];
+}
+
 
 std::pair<vector<double>, vector<double>> RegularMesh::plot(
   Position plot_ll, Position plot_ur) const
@@ -957,20 +960,12 @@ std::string RectilinearMesh::get_mesh_type() const
   return mesh_type;
 }
 
-double RectilinearMesh::positive_grid_boundary(
-  const MeshIndex& ijk, int i) const
-{
-  return grid_[i][ijk[i]];
-}
-
-double RectilinearMesh::negative_grid_boundary(
-  const MeshIndex& ijk, int i) const
-{
-  return grid_[i][ijk[i] - 1];
+double RectilinearMesh::grid_boundary(int idx, int i) const {
+  return grid_[i][idx];
 }
 
 StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
   MeshDistance d;
@@ -981,12 +976,17 @@ StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
   d.max_surface = (u[i] > 0);
   if (d.max_surface && (ijk[i] <= shape_[i])) {
     d.next_index++;
-    d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i], i, r, u, l);
   } else if (!d.max_surface && (ijk[i] > 0)) {
     d.next_index--;
-    d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, l);
   }
   return d;
+}
+
+double RectilinearMesh::distance_to_grid_boundary_i(
+  int idx, int i, const Position& r, const Direction& u, double l) const {
+    return (grid_boundary(idx, i) - r[i]) / u[i];
 }
 
 int RectilinearMesh::set_grid()
@@ -1212,37 +1212,28 @@ double CylindricalMesh::find_phi_crossing(
   return INFTY;
 }
 
-StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
+double CylindricalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  MeshDistance d;
-  d.next_index = shell;
-
-  // Direction of flight is within xy-plane. Will never intersect z.
   if (std::abs(u.z) < FP_PRECISION)
-    return d;
+    return INFTY;
 
-  d.max_surface = (u.z > 0.0);
-  if (d.max_surface && (shell <= shape_[2])) {
-    d.next_index += 1;
-    d.distance = (grid_[2][shell] - r.z) / u.z;
-  } else if (!d.max_surface && (shell > 0)) {
-    d.next_index -= 1;
-    d.distance = (grid_[2][shell - 1] - r.z) / u.z;
-  }
-  return d;
+  return (grid_boundary(shell, 2) - r.z) / u.z;
+}
+
+double CylindricalMesh::grid_boundary(int idx, int i) const {
+  return grid_[i][idx];
 }
 
 StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
-
-  auto r_norm = norm(r0);
+  auto r_norm = norm(r);
   if (i == 0) {
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i] + 1)),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i] + 1)),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
   } else if (i == 1) {
     int idx = ijk[i];
     double dot_prod = -r_norm.y * u.x + r_norm.x * u.y > 0.0;
@@ -1251,10 +1242,27 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
     bool max_surf = dot_prod > 0.0;
     if (max_surf) idx++;
     else idx--;
-    return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r0, u, l, idx));
+    return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r, u, l, idx));
   } else {
-    return find_z_crossing(r0, u, l, ijk[i]);
+      MeshDistance d;
+      d.max_surface = (u.z > 0);
+      if (d.max_surface) d.next_index += 1;
+      else d.next_index -=1;
+      int idx = d.max_surface ? ijk[i] : ijk[i] - 1;
+      d.distance = find_z_crossing(r, u, l, idx);
+      return d;
   }
+}
+
+double CylindricalMesh::distance_to_grid_boundary_i(
+  int idx, int i, const Position& r, const Direction&u, double l) const {
+    if (i == 0) {
+      return find_r_crossing(r, u, l, idx);
+    } else if (i == 1) {
+      return find_phi_crossing(r, u, l, idx);
+    } else {
+      return find_z_crossing(r, u, l, idx);
+    }
 }
 
 int CylindricalMesh::set_grid()
@@ -1495,32 +1503,49 @@ double SphericalMesh::find_phi_crossing(
   return INFTY;
 }
 
+double SphericalMesh::grid_boundary(int idx, int i) const {
+  return grid_[i][idx];
+}
+
 StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
 
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
-                      find_theta_crossing(r0, u, l, ijk[i])),
+                      find_theta_crossing(r, u, l, ijk[i])),
       MeshDistance(sanitize_theta(ijk[i] - 1), false,
-        find_theta_crossing(r0, u, l, ijk[i] - 1)));
+        find_theta_crossing(r, u, l, ijk[i] - 1)));
 
   } else {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
+                      find_phi_crossing(r, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
+        find_phi_crossing(r, u, l, ijk[i] - 1)));
   }
 }
+
+double SphericalMesh::distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const {
+    if (i == 0) {
+      return find_r_crossing(r, u, l, idx);
+    } else if (i == 1) {
+      return find_theta_crossing(r, u, l, idx);
+    } else {
+      return find_phi_crossing(r, u, l, idx);
+    }
+}
+
+
 
 int SphericalMesh::set_grid()
 {

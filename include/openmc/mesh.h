@@ -94,7 +94,7 @@ public:
   //! \param[in] u Particle direction
   //! \returns distance and the ijk index to the next mesh cell
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, Position r, const Direction& u) const = 0;
+    int bin, int prev_bin, Position r, const Direction& u) const = 0;
 
   //! Determine the distance to a point in the mesh
   //
@@ -180,20 +180,26 @@ public:
 
   int n_surface_bins() const override;
 
+  virtual double grid_boundary(int idx, int i) const = 0;
+
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
+
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, Position r, const Direction& u) const override;
+    int bin, int prev_bin, Position r, const Direction& u) const override;
 
   virtual std::pair<double, int> distance_to_mesh(
     const Position& r, const Direction& u) const override;
 
   virtual std::pair<double, std::array<int, 3>> distance_to_mesh_i(
     const MeshIndex& ijk, int i, const Position& r, const Direction& u) const;
+
+  virtual double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const = 0;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -271,7 +277,7 @@ public:
   //! \return MeshDistance struct with closest distance, next cell index in
   //! i-direction and min/max surface indicator
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const = 0;
+    const Position& r, const Direction& u, double l) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -305,25 +311,21 @@ public:
   static const std::string mesh_type;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
-  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //! Get the coordinate for the mesh grid boundary at the specified index
   //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+  //! \param[in] idx Index of grid boundary
+  //! \param[in] i Direction
+  double grid_boundary(int idx, int i) const override;
 
-  //! Get the coordinate for the mesh grid boundary in the negative direction
-  //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -352,25 +354,21 @@ public:
   static const std::string mesh_type;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
+
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
-  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //! Get the coordinate for the mesh grid boundary at the specified index
   //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
-
-  //! Get the coordinate for the mesh grid boundary in the negative direction
-  //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  //! \param[in] idx Index of grid boundary
+  //! \param[in] i Direction
+  double grid_boundary(int idx, int i) const override;
 
   array<vector<double>, 3> grid_;
 
@@ -393,10 +391,15 @@ public:
   static const std::string mesh_type;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
 
   std::pair<double, MeshIndex> distance_to_mesh_i(const MeshIndex& ijk, int i,
     const Position& r, const Direction& u) const override;
+
+  double grid_boundary(int idx, int i) const;
+
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -412,7 +415,7 @@ private:
     const Position& r, const Direction& u, double l, int shell) const;
   double find_phi_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
-  StructuredMesh::MeshDistance find_z_crossing(
+  double find_z_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
 
   bool full_phi_ {false};
@@ -449,8 +452,13 @@ public:
 
   static const std::string mesh_type;
 
+  double grid_boundary(int idx, int i) const override;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
+
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -584,7 +592,7 @@ public:
     vector<int>& bins, vector<double>& lengths) const override;
 
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, Position r, const Direction& u) const override;
+    int bin, int prev_bin, Position r, const Direction& u) const override;
 
   int get_bin(Position r) const override;
 
@@ -735,7 +743,7 @@ public:
     vector<int>& bins, vector<double>& lengths) const override;
 
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, Position r, const Direction& u) const override;
+    int bin, int prev_bin, Position r, const Direction& u) const override;
 
   int get_bin(Position r) const override;
 
