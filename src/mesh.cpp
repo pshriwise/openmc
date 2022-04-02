@@ -651,7 +651,13 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   // MeshIndex dir_ijk = ijk - prev_ijk;
 
   for (int i = 0; i < n_dimension_; i++) {
-    distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
+    if (ijk[i] - prev_ijk[i] == 0 || prev_bin == -1) {
+      distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
+    } else if (ijk[i] - prev_ijk[i] > 0) {
+      distances[i] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, 0.0));
+    } else {
+      distances[i] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, 0.0));
+    }
   }
 
   // use minimum distance to determine which crossing
@@ -1115,14 +1121,9 @@ CylindricalMesh::distance_to_mesh_i(
   double dist;
   if (i == 0) {
     auto r_norm = norm(r);
-    // check direction orthogonal to position vector
-    if (std::abs(r_norm.x * u.x + r_norm.y * u.y) < FP_PRECISION)
-      return {INFTY, ijk};
-    // dist = find_r_crossing(r, u, 0.0, ijk[0]);
     dist = std::min(find_r_crossing(r, u, 0.0, 0), find_r_crossing(r, u, 0.0, shape_[0]));
   } else if (i == 1) {
-    if (full_phi_)
-      return {0.0, ijk};
+    if (full_phi_) return {0.0, ijk};
     dist = find_phi_crossing(r, u, 0.0, ijk[1]);
   } else if (i == 2) {
     return StructuredMesh::distance_to_mesh_i(ijk, 2, r, u);
@@ -1232,7 +1233,7 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   auto r_norm = norm(r);
   if (i == 0) {
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i] + 1)),
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
       MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
   } else if (i == 1) {
     int idx = ijk[i];
@@ -1245,6 +1246,7 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
     return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r, u, l, idx));
   } else {
       MeshDistance d;
+      d.next_index = ijk[i];
       d.max_surface = (u.z > 0);
       if (d.max_surface) d.next_index += 1;
       else d.next_index -=1;

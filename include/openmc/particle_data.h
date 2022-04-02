@@ -76,7 +76,7 @@ public:
   int universe {-1};
   int lattice_or_mesh_bin {-1};
   array<int, 3> lattice_or_mesh_idx {{-1, -1, -1}};
-  int prev_mesh_bin;
+  int prev_mesh_bin {-1};
   bool rotated {false}; //!< Is the level rotated?
 
   int& mesh_cell_index() { return lattice_or_mesh_bin; }
