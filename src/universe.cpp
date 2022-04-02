@@ -242,11 +242,11 @@ void MeshUniverse::next_cell(Particle& p) const
                   p.u()[2]),
       10
     );
-    // bool in_mesh;
-    // auto ijk = mesh->get_indices(p.r() + p.u() * 0.1, in_mesh);
-    // if (in_mesh) {
-    //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
-    // }
+    bool in_mesh;
+    auto ijk = mesh->get_indices(p.r() + p.u() * 0.1, in_mesh);
+    if (in_mesh) {
+      warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+    }
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_;
   }

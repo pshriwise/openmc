@@ -180,6 +180,8 @@ public:
 
   int n_surface_bins() const override;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const = 0;
+
   virtual double grid_boundary(int idx, int i) const = 0;
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
@@ -310,6 +312,8 @@ public:
 
   static const std::string mesh_type;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const override {};
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r, const Direction& u, double l) const override;
 
@@ -353,6 +357,8 @@ public:
 
   static const std::string mesh_type;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const override {};
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r, const Direction& u, double l) const override;
 
@@ -389,6 +395,8 @@ public:
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
+
+  virtual void sanitize_indices(MeshIndex& ijk) const override;
 
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
     const Position& r, const Direction& u, double l) const override;
@@ -451,6 +459,8 @@ public:
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
+
+  virtual void sanitize_indices(MeshIndex& ijk) const override;
 
   double grid_boundary(int idx, int i) const override;
 

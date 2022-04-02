@@ -699,6 +699,8 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
       dist_out.distance, ijk[0], ijk[1], ijk[2]),
     10);
 
+  sanitize_indices(ijk);
+
   return {dist_out.distance, ijk};
 }
 
@@ -1092,6 +1094,15 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+void CylindricalMesh::sanitize_indices(MeshIndex& ijk) const {
+  if (!full_phi_) return;
+
+  if (!index_is_valid(ijk[1], 1)) {
+    if (ijk[1] < 1) ijk[1] += shape_[1];
+    if (ijk[1] > shape_[1]) ijk[1] -= shape_[1];
+  }
+}
+
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -1237,7 +1248,7 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
       MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
   } else if (i == 1) {
     int idx = ijk[i];
-    double dot_prod = -r_norm.y * u.x + r_norm.x * u.y > 0.0;
+    double dot_prod = -r_norm.y * u.x + r_norm.x * u.y;
     if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
 
     bool max_surf = dot_prod > 0.0;
@@ -1361,6 +1372,22 @@ std::string SphericalMesh::get_mesh_type() const
 {
   return mesh_type;
 }
+
+
+ void SphericalMesh::sanitize_indices(MeshIndex& ijk) const {
+  if(!full_theta_ && !full_phi_) return;
+
+  if (full_theta_ && !index_is_valid(ijk[1], 1)) {
+   if (ijk[1] < 1) ijk[1] += shape_[1];
+   if (ijk[1] > shape_[1]) ijk[1] -= shape_[1];
+  }
+
+  if (full_phi_ && !index_is_valid(ijk[2], 2)) {
+   if (ijk[2] < 2) ijk[2] += shape_[2];
+   if (ijk[2] > shape_[2]) ijk[2] -= shape_[2];
+  }
+}
+
 
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
