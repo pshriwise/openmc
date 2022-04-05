@@ -1208,6 +1208,8 @@ double CylindricalMesh::find_phi_crossing(
   // Check if direction of flight is not parallel to phi surface
   if (std::abs(denominator) > FP_PRECISION) {
     const double s = -(r.x * s0 - r.y * c0) / denominator;
+
+    if (s < FP_PRECISION) return INFTY;
     // Check if solution is in positive direction of flight and crosses the
     // correct phi surface (not -phi)
     if ((s > l) && ((c0 * (r.x + s * u.x) + s0 * (r.y + s * u.y)) > 0.0))
