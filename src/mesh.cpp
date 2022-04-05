@@ -642,29 +642,23 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   // start in the specified mesh bin
   MeshIndex ijk = get_indices_from_bin(bin);
   MeshIndex prev_ijk = get_indices_from_bin(prev_bin);
-  // find exiting intersections with the current element
-  // in each dimension
-  // compute next distance in each direction
-  std::array<MeshDistance, 3> distances;
 
-  // determine the direction of travel for each mesh dimension
-  // MeshIndex dir_ijk = ijk - prev_ijk;
-
+  // compute next distane in either direction for each dimension
+  std::array<MeshDistance, 6> distances;
   for (int i = 0; i < n_dimension_; i++) {
-    if (ijk[i] - prev_ijk[i] == 0 || prev_bin == -1) {
-      distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
-    } else if (ijk[i] - prev_ijk[i] > 0) {
-      distances[i] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, 0.0));
-    } else {
-      distances[i] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, 0.0));
-    }
+    int idx = 2*i;
+    distances[idx] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, 0.0));
+    distances[idx+1] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, 0.0));
+
+    if (distances[idx].distance <= 0.0) { distances[idx].distance = INFTY; }
+    if (distances[idx+1].distance <= 0.0) { distances[idx+1].distance = INFTY; }
   }
 
   // use minimum distance to determine which crossing
   // and next mesh bin to use
   double min_dist = INFTY;
   int idx = C_NONE;
-  for (int i = 0; i < n_dimension_; i++) {
+  for (int i = 0; i < 2 * n_dimension_; i++) {
     const auto& dist = distances[i];
     if (dist.distance < min_dist && dist.distance > 0.0) {
       min_dist = dist.distance;
@@ -693,7 +687,7 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   // }
 
   const auto& dist_out = distances[idx];
-  ijk[idx] = dist_out.next_index;
+  ijk[idx / 2] = dist_out.next_index;
   write_message(
     fmt::format("\tStructured mesh distance: {}, Next cell: {}, {}, {}",
       dist_out.distance, ijk[0], ijk[1], ijk[2]),
@@ -1131,7 +1125,6 @@ CylindricalMesh::distance_to_mesh_i(
 {
   double dist;
   if (i == 0) {
-    auto r_norm = norm(r);
     dist = std::min(find_r_crossing(r, u, 0.0, 0), find_r_crossing(r, u, 0.0, shape_[0]));
   } else if (i == 1) {
     if (full_phi_) return {0.0, ijk};
@@ -1175,9 +1168,9 @@ double CylindricalMesh::find_r_crossing(
 
   if (std::abs(c) < FP_COINCIDENT) {
     // on cyl
-    // if (k >= 0.0)
-    //   return INFTY;
-    // else
+    if (k >= 0.0)
+      return INFTY;
+    else
       return (-k + sqrt(quad)) / a;
   } else if (c < 0.0) {
     // inside cyl
