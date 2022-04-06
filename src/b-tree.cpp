@@ -15,12 +15,15 @@
 // Windows:
 // #include "memoryapi.h"
 
+#define _CMP_GT_OQ    0x1e
 
 typedef __m256i reg;
+typedef __m256d dreg;
 
 const int N = (1<<16), Q = (1<<22); // <- change these
 
-const int B = 16, INF = std::numeric_limits<int>::max();
+const int B = 16;
+const double INF = std::numeric_limits<double>::max();
 
 constexpr int blocks(int n) {
     return (n + B - 1) / B;
@@ -45,24 +48,22 @@ constexpr int offset(int h) {
 
 const int H = height(N), S = offset(H);
 
-int *btree;
+double *btree;
 
-void permute(int *node) {
+void permute(double *node) {
     const reg perm_mask = _mm256_set_epi32(3, 2, 1, 0, 7, 6, 5, 4);
-    reg* middle = (reg*) (node + 4);
-    reg x = _mm256_loadu_si256(middle);
-    x = _mm256_permutevar8x32_epi32(x, perm_mask);
-    _mm256_storeu_si256(middle, x);
+    double* middle = node + 4;
+    dreg x = _mm256_loadu_pd(middle);
+    x = _mm256_permutevar_pd(x, perm_mask);
+    _mm256_storeu_pd(middle, x);
 }
 
-void prepare(int *a) {
+void prepare(double *a) {
     const int P = 1 << 21, T = (4 * S + P - 1) / P * P;
-    btree = (int*) std::aligned_alloc(P, T);
+    btree = (double*) std::aligned_alloc(P, T);
     #ifdef __linux__
     madvise(btree, T, MADV_HUGEPAGE);
     #endif
-    // Windows:
-    // btree = (int*) VirtualAlloc(NULL, T, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
     for (int i = N; i < S; i++)
         btree[i] = INF;
@@ -84,15 +85,15 @@ void prepare(int *a) {
         permute(btree + i);
 }
 
-unsigned direct_rank(reg x, int* y) {
-    reg a = _mm256_load_si256((reg*) y);
-    reg b = _mm256_load_si256((reg*) (y + 8));
+unsigned direct_rank(dreg x, double* y) {
+    dreg a = _mm256_load_pd(y);
+    dreg b = _mm256_load_pd(y + 8);
 
-    reg ca = _mm256_cmpgt_epi32(a, x);
-    reg cb = _mm256_cmpgt_epi32(b, x);
+    dreg ca = _mm256_cmp_pd(a, x, _CMP_GT_OQ);
+    dreg cb = _mm256_cmp_pd(b, x, _CMP_GT_OQ);
 
-    int mb = _mm256_movemask_ps((__m256) cb);
-    int ma = _mm256_movemask_ps((__m256) ca);
+    int mb = _mm256_movemask_pd((__m256d) cb);
+    int ma = _mm256_movemask_pd((__m256d) ca);
 
     unsigned mask = (1 << 16);
     mask |= mb << 8;
@@ -101,22 +102,22 @@ unsigned direct_rank(reg x, int* y) {
     return __tzcnt_u32(mask);
 }
 
-unsigned permuted_rank(reg x, int* y) {
-    reg a = _mm256_load_si256((reg*) y);
-    reg b = _mm256_load_si256((reg*) (y + 8));
+unsigned permuted_rank(dreg x, double* y) {
+    dreg a = _mm256_load_pd(y);
+    dreg b = _mm256_load_pd(y + 8);
 
-    reg ca = _mm256_cmpgt_epi32(a, x);
-    reg cb = _mm256_cmpgt_epi32(b, x);
+    dreg ca = _mm256_cmp_pd(a, x, _CMP_GT_OQ);
+    dreg cb = _mm256_cmp_pd(b, x, _CMP_GT_OQ);
 
-    reg c = _mm256_packs_epi32(ca, cb);
-    unsigned mask = _mm256_movemask_epi8(c);
+    dreg c = (dreg) _mm256_packs_epi32((reg)ca, (reg)cb);
+    unsigned mask = _mm256_movemask_pd(c);
 
     return __tzcnt_u32(mask);
 }
 
-int lower_bound(int _x) {
+int lower_bound(double _x) {
     unsigned k = 0;
-    reg x = _mm256_set1_epi32(_x - 1);
+    dreg x = _mm256_set1_pd(_x - 1);
     for (int h = H - 1; h > 0; h--) {
         unsigned i = permuted_rank(x, btree + offset(h) + k);
         k = k * (B + 1) + (i << 3);
@@ -127,45 +128,45 @@ int lower_bound(int _x) {
 
 int a[N], q[Q];
 
-int baseline(int x) {
-    return *std::lower_bound(a, a + N, x);
-}
+// int baseline(int x) {
+//     return *std::lower_bound(a, a + N, x);
+// }
 
-double timeit(int (*f)(int)) {
-    clock_t start = clock();
+// double timeit(int (*f)(int)) {
+//     clock_t start = clock();
 
-    int checksum = 0;
+//     int checksum = 0;
 
-    for (int i = 0; i < Q; i++)
-        checksum ^= f(q[i]);
+//     for (int i = 0; i < Q; i++)
+//         checksum ^= f(q[i]);
 
-    double seconds = double(clock() - start) / CLOCKS_PER_SEC;
-    printf("Checksum: %d\n", checksum);
+//     double seconds = double(clock() - start) / CLOCKS_PER_SEC;
+//     printf("Checksum: %d\n", checksum);
 
-    return 1e9 * seconds / Q;
-}
+//     return 1e9 * seconds / Q;
+// }
 
-int main() {
-    printf("N = %d, Q = %d\n", N, Q);
+// int main() {
+//     printf("N = %d, Q = %d\n", N, Q);
 
-    std::mt19937 rng(0);
+//     std::mt19937 rng(0);
 
-    for (int i = 0; i < N; i++)
-        a[i] = rng() % (1 << 30);
-    for (int i = 0; i < Q; i++)
-        q[i] = rng() % (1 << 30);
+//     for (int i = 0; i < N; i++)
+//         a[i] = rng() % (1 << 30);
+//     for (int i = 0; i < Q; i++)
+//         q[i] = rng() % (1 << 30);
 
-    a[0] = INF;
-    std::sort(a, a + N);
-    prepare(a);
+//     a[0] = INF;
+//     std::sort(a, a + N);
+//     prepare(a);
 
-    double x = timeit(baseline);
-    double y = timeit(lower_bound);
+//     double x = timeit(baseline);
+//     double y = timeit(lower_bound);
 
-    printf("std::lower_bound: %.2f\n", x);
-    printf("S+ tree: %.2f\n", y);
+//     printf("std::lower_bound: %.2f\n", x);
+//     printf("S+ tree: %.2f\n", y);
 
-    printf("Speedup: %.2f\n", x / y);
+//     printf("Speedup: %.2f\n", x / y);
 
-    return 0;
-}
+//     return 0;
+// }
