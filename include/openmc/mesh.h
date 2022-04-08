@@ -174,6 +174,9 @@ public:
     }
   };
 
+
+  virtual Direction normal(int idx, int dim, const Position& r, const Direction& u) const;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -389,6 +392,8 @@ public:
 
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  virtual Direction normal(int idx, int dim, const Position& r, const Direction& u) const override;
 
   int get_index_in_direction(double r, int i) const override;
 

@@ -628,6 +628,13 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
   return {out.first, get_bin_from_indices(out.second)};
 }
 
+Direction StructuredMesh::normal(int idx, int dim, const Position& r, const Direction& u) const {
+  // planar cases
+  Direction normal {0.0, 0.0, 0.0};
+  normal[dim] = 1.0;
+  return normal;
+}
+
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   int bin, int prev_bin, Position r, const Direction& u) const
 {
@@ -649,6 +656,9 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
     int idx = 2*i;
     distances[idx] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, 0.0));
     distances[idx+1] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, 0.0));
+
+    if (u.dot(-normal(ijk[i] - 1, i, r + u * distances[idx].distance, u)) <= 0.0) { distances[idx].distance = INFTY; }
+    if (u.dot(normal(ijk[i], i, r + u * distances[idx+1].distance, u)) <= 0.0) { distances[idx+1].distance = INFTY; }
 
     if (distances[idx].distance <= 0.0) { distances[idx].distance = INFTY; }
     if (distances[idx+1].distance <= 0.0) { distances[idx+1].distance = INFTY; }
@@ -1315,6 +1325,22 @@ int CylindricalMesh::set_grid()
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 
   return 0;
+}
+
+Direction CylindricalMesh::normal(int idx, int dim, const Position& r, const Direction& u) const {
+  Ensures(dim >= 0 && dim <= 2);
+  if (dim == 0) {
+    // radial - use position to generate normal at nearest point on the surface
+    Direction normal = r;
+    normal[2] = 0.0;
+    return normal / normal.norm();
+  } else if (dim == 1) {
+    // phi - return CCW facing normal of the surface
+    const double phi = grid_[1][idx];
+    return {-sin(phi), cos(phi), 0.0};
+  } else if (dim == 2) {
+    return StructuredMesh::normal(idx, dim, r, u);
+  }
 }
 
 int CylindricalMesh::get_index_in_direction(double r, int i) const
