@@ -601,10 +601,10 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
   }
 
   int idx = C_NONE;
-  double dist_out {0.0};
+  double dist_out {INFTY};
   for (int i = 0; i < n_dimension_; ++i) {
     const auto& dist = distances[i];
-    if (dist.first > dist_out) {
+    if (dist.first < dist_out) {
       dist_out = dist.first;
       idx = i;
     }
@@ -1133,14 +1133,24 @@ std::pair<double, StructuredMesh::MeshIndex>
 CylindricalMesh::distance_to_mesh_i(
   const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
 {
-  double dist;
+  double dist = INFTY;
   if (i == 0) {
-    dist = std::min(find_r_crossing(r, u, 0.0, 0), find_r_crossing(r, u, 0.0, shape_[0]));
+    auto min = find_r_crossing(r, u, 0.0, 0);
+    auto max = find_r_crossing(r, u, 0.0, shape_[0]);
+    // use the entering intersection only
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 0, r + u * min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[0], 0, r + u * max, u)) < 0.0) dist = max;
   } else if (i == 1) {
     if (full_phi_) return {0.0, ijk};
-    dist = find_phi_crossing(r, u, 0.0, ijk[1]);
+    auto min = find_phi_crossing(r, u, 0.0, 0);
+    auto max = find_phi_crossing(r, u, 0.0, shape_[1]);
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 1, r + u * min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[1], 1, r + u * max, u)) < 0.0) dist = max;
   } else if (i == 2) {
-    return StructuredMesh::distance_to_mesh_i(ijk, 2, r, u);
+    auto min = find_z_crossing(r, u, 0.0, 0);
+    auto max = find_z_crossing(r, u, 0.0, shape_[2]);
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 2, r + u * min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[2], 2, r + u * max, u)) < 0.0) dist = max;
   } else {
     fatal_error("Invalid dimension passed for cylindrical mesh");
   }
