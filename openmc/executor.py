@@ -83,9 +83,9 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     return args
 
 
-def _run(args, output, cwd):
+def _run(args, output, wd):
     # Launch a subprocess
-    p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
+    p = subprocess.Popen(args, cwd=wd, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, universal_newlines=True)
 
     # Capture and re-print OpenMC output in real-time
@@ -116,7 +116,7 @@ def _run(args, output, cwd):
         raise RuntimeError(error_msg)
 
 
-def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
+def plot_geometry(output=True, openmc_exec='openmc', wd='.'):
     """Run OpenMC in plotting mode
 
     Parameters
@@ -125,7 +125,7 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         Capture OpenMC output from standard out
     openmc_exec : str, optional
         Path to OpenMC executable
-    cwd : str, optional
+    wd : str, optional
         Path to working directory to run in
 
     Raises
@@ -134,10 +134,10 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         If the `openmc` executable returns a non-zero status
 
     """
-    _run([openmc_exec, '-p'], output, cwd)
+    _run([openmc_exec, '-p'], output, wd)
 
 
-def plot_inline(plots, openmc_exec='openmc', cwd='.'):
+def plot_inline(plots, openmc_exec='openmc', wd='.'):
     """Display plots inline in a Jupyter notebook.
 
     .. versionchanged:: 0.13.0
@@ -151,7 +151,7 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
         Plots to display
     openmc_exec : str
         Path to OpenMC executable
-    cwd : str, optional
+    wd : str, optional
         Path to working directory to run in
 
     Raises
@@ -166,17 +166,17 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.'):
         plots = [plots]
 
     # Create plots.xml
-    openmc.Plots(plots).export_to_xml(cwd)
+    openmc.Plots(plots).export_to_xml(wd)
 
     # Run OpenMC in geometry plotting mode
-    plot_geometry(False, openmc_exec, cwd)
+    plot_geometry(False, openmc_exec, wd)
 
     if plots is not None:
-        images = [_get_plot_image(p, cwd) for p in plots]
+        images = [_get_plot_image(p, wd) for p in plots]
         display(*images)
 
 
-def calculate_volumes(threads=None, output=True, cwd='.',
+def calculate_volumes(threads=None, output=True, wd='.',
                       openmc_exec='openmc', mpi_args=None):
     """Run stochastic volume calculations in OpenMC.
 
@@ -205,7 +205,7 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     mpi_args : list of str, optional
         MPI execute command and any additional MPI arguments to pass,
         e.g. ['mpiexec', '-n', '8'].
-    cwd : str, optional
+    wd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
 
@@ -223,11 +223,11 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     args = _process_CLI_arguments(volume=True, threads=threads,
                                   openmc_exec=openmc_exec, mpi_args=mpi_args)
 
-    _run(args, output, cwd)
+    _run(args, output, wd)
 
 
 def run(particles=None, threads=None, geometry_debug=False,
-        restart_file=None, tracks=False, output=True, cwd='.',
+        restart_file=None, tracks=False, output=True, wd='.',
         openmc_exec='openmc', mpi_args=None, event_based=False):
     """Run an OpenMC simulation.
 
@@ -248,7 +248,7 @@ def run(particles=None, threads=None, geometry_debug=False,
         Write tracks for all particles. Defaults to False.
     output : bool
         Capture OpenMC output from standard out
-    cwd : str, optional
+    wd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
     openmc_exec : str, optional
@@ -273,4 +273,4 @@ def run(particles=None, threads=None, geometry_debug=False,
         restart_file=restart_file, threads=threads, tracks=tracks,
         event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args)
 
-    _run(args, output, cwd)
+    _run(args, output, wd)
