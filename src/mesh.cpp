@@ -604,7 +604,7 @@ std::pair<double, int> StructuredMesh::distance_to_mesh(
   double dist_out {INFTY};
   for (int i = 0; i < n_dimension_; ++i) {
     const auto& dist = distances[i];
-    if (dist.first < dist_out) {
+    if (dist.first < dist_out && ijk_is_valid(dist.second)) {
       dist_out = dist.first;
       idx = i;
     }
