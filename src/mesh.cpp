@@ -1141,7 +1141,8 @@ CylindricalMesh::distance_to_mesh_i(
     if (min > 0.0 && min < INFTY && u.dot(-normal(0, 0, r + u * min, u)) < 0.0) dist = min;
     else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[0], 0, r + u * max, u)) < 0.0) dist = max;
   } else if (i == 1) {
-    if (full_phi_) return {0.0, ijk};
+    // always in the radial bins, they should not determine mesh exit/entry
+    if (full_phi_) return {INFTY, ijk};
     auto min = find_phi_crossing(r, u, 0.0, 0);
     auto max = find_phi_crossing(r, u, 0.0, shape_[1]);
     if (min > 0.0 && min < INFTY && u.dot(-normal(0, 1, r + u * min, u)) < 0.0) dist = min;
