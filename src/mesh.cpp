@@ -1420,22 +1420,10 @@ std::string SphericalMesh::get_mesh_type() const
   }
 }
 
-
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
-
-  mapped_r[0] = r.norm();
-  if (mapped_r[0] < FP_PRECISION) {
-    mapped_r[1] = 0.0;
-    mapped_r[2] = 0.0;
-  } else {
-    mapped_r[1] = std::acos(r.z / mapped_r.x);
-    mapped_r[2] = std::atan2(r.y, r.x);
-    if (mapped_r[2] < 0)
-      mapped_r[2] += 2 * M_PI;
-  }
+  Position mapped_r{to_rtp(r)};
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
@@ -1444,6 +1432,82 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
 
   return idx;
 }
+
+Position
+SphericalMesh::to_rtp(const Position& xyz) const {
+
+  Position rtp;
+
+  rtp[0] = xyz.norm();
+  if (rtp[0] < FP_PRECISION) {
+    rtp[1] = 0.0;
+    rtp[2] = 0.0;
+  } else {
+    rtp[1] = std::acos(xyz.z / rtp.x);
+    rtp[2] = std::atan2(xyz.y, xyz.x);
+    if (rtp[2] < 0) {
+      rtp[2] += 2.0 * M_PI;
+    }
+  }
+
+  return rtp;
+}
+
+Position
+SphericalMesh::to_xyz(const Position& rtp) const {
+  Position xyz;
+
+  double rsin = rtp[0] * std::sin(rtp[1]);
+
+  xyz[0] = rsin * std::cos(rtp[2]);
+  xyz[1] = rsin * std::sin(rtp[2]);
+  xyz[2] = rtp[0] * std::cos(rtp[1]);
+
+  return xyz;
+}
+
+Direction
+SphericalMesh::normal(int idx, int dim, const Position& r, const Direction& u) const
+{
+  if (dim == 0) {
+    return r / r.norm();
+  } else if (dim == 1) {
+    Position rtp = to_rtp(r);
+    rtp[1] += 0.5 * M_PI;
+    rtp[2] -= M_PI;
+    if (rtp[2] < 0.0) rtp[2] += 2.0 * M_PI;
+    return to_xyz(rtp);
+  } else if (dim == 2) {
+    // phi - return CCW facing normal of the surface
+    const double phi = grid_[1][idx];
+    return {-sin(phi), cos(phi), 0.0};
+  }
+}
+
+std::pair<double, StructuredMesh::MeshIndex>
+SphericalMesh::distance_to_mesh_i(const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
+{
+  double dist = INFTY;
+  if (i == 0) {
+    auto min = find_r_crossing(r, u, 0.0, 0);
+    auto max = find_r_crossing(r, u, 0.0, shape_[0]);
+    // use the entering intersection only
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 0, r+u*min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[0], 0, r + u * max, u)) < 0.0) dist = max;
+  } else if (i == 1) {
+    // theta dir
+  } else if (i == 2) {
+    // phi dir
+  } else {
+    fatal_error("Invalid dimension passed for spherical mesh");
+  }
+
+  bool in_mesh;
+  return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
+}
+
+
+
 
 double SphericalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const

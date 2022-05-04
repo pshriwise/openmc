@@ -459,6 +459,15 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
+  Position to_rtp(const Position& xy) const;
+
+  Position to_xyz(const Position& rtp) const;
+
+  virtual Direction normal(int idx, int dim, const Position& r, const Direction& u) const override;
+
+  virtual std::pair<double, StructuredMesh::MeshIndex>
+  distance_to_mesh_i(const MeshIndex& ijk, int i, const Position& r, const Direction& u) const override;
+
   int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
