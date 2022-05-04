@@ -1474,8 +1474,8 @@ SphericalMesh::normal(int idx, int dim, const Position& r, const Direction& u) c
   } else if (dim == 1) {
     Position rtp = to_rtp(r);
     rtp[1] += 0.5 * M_PI;
-    rtp[2] -= M_PI;
-    if (rtp[2] < 0.0) rtp[2] += 2.0 * M_PI;
+    // rtp[2] -= M_PI;
+    // if (rtp[2] < 0.0) rtp[2] += 2.0 * M_PI;
     return to_xyz(rtp);
   } else if (dim == 2) {
     // phi - return CCW facing normal of the surface
@@ -1506,7 +1506,38 @@ SphericalMesh::distance_to_mesh_i(const MeshIndex& ijk, int i, const Position& r
   return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
 }
 
+StructuredMesh::MeshDistance
+SphericalMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u, double l) const
+{
+  auto r_norm = r / r.norm();
 
+  if (i == 0) {
+    return std::min (
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
+  } else if (i == 1) {
+    int idx = ijk[i];
+    auto n = normal(idx, i, r, u);
+    double dot_prod = n.dot(u);
+
+    if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
+
+    bool max_surf = dot_prod > 0.0;
+    if (max_surf) idx++;
+    else idx--;
+    return MeshDistance(sanitize_phi(idx), max_surf, find_theta_crossing(r, u, l, idx));
+  } else if (i == 2) {
+    int idx = ijk[i];
+    double dot_prod = -r_norm.y * u.x + r_norm.x * u.y;
+    if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
+
+    bool max_surf = dot_prod > 0.0;
+    if (max_surf) idx++;
+    else idx--;
+    return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r, u, l, idx));
+  }
+}
 
 
 double SphericalMesh::find_r_crossing(
@@ -1632,32 +1663,32 @@ double SphericalMesh::grid_boundary(int idx, int i) const {
   return grid_[i][idx];
 }
 
-StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
-  double l) const
-{
+// StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
+//   const MeshIndex& ijk, int i, const Position& r, const Direction& u,
+//   double l) const
+// {
 
-  if (i == 0) {
+//   if (i == 0) {
 
-    return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
+//     return std::min(
+//       MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+//       MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
 
-  } else if (i == 1) {
+//   } else if (i == 1) {
 
-    return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
-                      find_theta_crossing(r, u, l, ijk[i])),
-      MeshDistance(sanitize_theta(ijk[i] - 1), false,
-        find_theta_crossing(r, u, l, ijk[i] - 1)));
+//     return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
+//                       find_theta_crossing(r, u, l, ijk[i])),
+//       MeshDistance(sanitize_theta(ijk[i] - 1), false,
+//         find_theta_crossing(r, u, l, ijk[i] - 1)));
 
-  } else {
+//   } else {
 
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r, u, l, ijk[i] - 1)));
-  }
-}
+//     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
+//                       find_phi_crossing(r, u, l, ijk[i])),
+//       MeshDistance(sanitize_phi(ijk[i] - 1), false,
+//         find_phi_crossing(r, u, l, ijk[i] - 1)));
+//   }
+// }
 
 double SphericalMesh::distance_to_grid_boundary_i(
     int idx, int i, const Position& r, const Direction& u, double l) const {
@@ -1669,8 +1700,6 @@ double SphericalMesh::distance_to_grid_boundary_i(
       return find_phi_crossing(r, u, l, idx);
     }
 }
-
-
 
 int SphericalMesh::set_grid()
 {

@@ -468,6 +468,10 @@ public:
   virtual std::pair<double, StructuredMesh::MeshIndex>
   distance_to_mesh_i(const MeshIndex& ijk, int i, const Position& r, const Direction& u) const override;
 
+  virtual StructuredMesh::MeshDistance
+  distance_to_grid_boundary(
+    const MeshIndex& ijk, int i, const Position& r, const Direction& u, double l) const override;
+
   int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
@@ -478,8 +482,8 @@ public:
 
   double grid_boundary(int idx, int i) const override;
 
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r, const Direction& u, double l) const override;
+  // MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+  //   const Position& r, const Direction& u, double l) const override;
 
   double distance_to_grid_boundary_i(
     int idx, int i, const Position& r, const Direction& u, double l) const override;
