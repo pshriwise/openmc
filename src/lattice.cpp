@@ -862,6 +862,7 @@ HexLattice::get_indices(Position r, Direction u) const
     i2 = std::floor(r_o.y / (0.5*std::sqrt(3.0) * pitch_[0]));
   }
 
+
   // Add offset to indices (the center cell is (i1, i2) = (0, 0) but
   // the array is offset so that the indices never go below 0).
   i1 += n_rings_-1;
@@ -900,7 +901,7 @@ HexLattice::get_indices(Position r, Direction u) const
       // coincidence is checked here so that coincidence is successfully
       // detected on large hex lattice with particles far from the origin
       // which have rounding errors larger than the FP_COINCIDENT thresdhold.
-      bool on_boundary = coincident(1.0, d_min/d);
+      bool on_boundary = d_min < INFTY && coincident(1.0, d_min/d);
       if (d < d_min || on_boundary) {
         // normalize r_t and find dot product
         r_t /= std::sqrt(d);
@@ -916,6 +917,8 @@ HexLattice::get_indices(Position r, Direction u) const
       }
     }
   }
+
+
 
   // update outgoing indices
   i1 += i1_chg;
