@@ -1415,7 +1415,7 @@ std::string SphericalMesh::get_mesh_type() const
   }
 
   if (full_phi_ && !index_is_valid(ijk[2], 2)) {
-   if (ijk[2] < 2) ijk[2] += shape_[2];
+   if (ijk[2] < 1) ijk[2] += shape_[2];
    if (ijk[2] > shape_[2]) ijk[2] -= shape_[2];
   }
 }
@@ -1543,23 +1543,35 @@ SphericalMesh::distance_to_grid_boundary(
 double SphericalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  if ((shell < 0) || (shell >= shape_[0]))
-    return INFTY;
+
+  shell = std::min(shape_[0], std::max(0, shell));
 
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
   const double r0 = grid_[0][shell];
-  const double p = r.dot(u);
-  double D = p * p - r.dot(r) + r0 * r0;
 
-  if (D >= 0.0) {
-    D = std::sqrt(D);
-    // the solution -p - D is always smaller as -p + D : Check this one first
-    if (-p - D > l)
-      return -p - D;
-    if (-p + D > l)
-      return -p + D;
+  if (r0 == 0.0) return INFTY;
+
+  const double k = r.dot(u);
+  const double c = r.dot(r) - r0 * r0;
+  double D = k * k - c;
+
+  if (D < 0.0) {
+    return INFTY;
+  } else if (std::abs(c) < FP_COINCIDENT) {
+    if (k >= 0.0) {
+      return INFTY;
+    } else {
+      return -k + sqrt(D);
+    }
   }
+
+  D = sqrt(D);
+  // the solution -k - D is always smaller as -k + D : Check this one first
+  if (-k - D > l)
+    return -k - D;
+  if (-k + D > l)
+    return -k + D;
 
   return INFTY;
 }
