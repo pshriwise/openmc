@@ -16,10 +16,36 @@ typedef __m256d dreg;
 const int B = 8;
 const double INF = std::numeric_limits<double>::max();
 
-int n;
+// state variables
+int N;
 int nblocks;
 double *_a;
 double (*btree)[B];
+
+// constants of the tree
+
+constexpr int blocks(int n) {
+    return (n + B - 1) / B;
+}
+
+constexpr int prev_keys(int n) {
+    return (blocks(n) + B) / (B + 1) * B;
+}
+
+constexpr int height(int n) {
+    return (n <= B ? 1 : height(prev_keys(n)) + 1);
+}
+
+constexpr int offset(int h) {
+    int k = 0, n = N;
+    while (h--) {
+        k += blocks(n) * B;
+        n = prev_keys(n);
+    }
+    return k;
+}
+
+const int H = height(N), S = offset(H);
 
 int go(int k, int i) { return k * (B + 1) + i + 1; }
 
@@ -28,15 +54,15 @@ void build(int k = 0) {
     if (k < nblocks) {
         for (int i = 0; i < B; i++) {
             build(go(k, i));
-            btree[k][i] = (t < n ? _a[t++] : INF);
+            btree[k][i] = (t < N ? _a[t++] : INF);
         }
         build(go(k, B));
     }
 }
 
 void prepare(double *a, int _n) {
-    n = _n;
-    nblocks = (n + B - 1) / B;
+    N = _n;
+    nblocks = (N + B - 1) / B;
     _a = a;
     btree = (double(*)[8]) aligned_alloc(64, 64 * nblocks);
     build();
@@ -84,12 +110,13 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < n; i++)
         a[i] = (double)rand() / (double)RAND_MAX;
 
-    std::cout << "Queries: " << m << std::endl;
+    std::cout << " #Queries: " << m << std::endl;
     for (int i = 0; i < m; i++) {
         q[i] = (double)rand() / (double)RAND_MAX;
         //std::cout << "Query val: " << q[i] << std::endl;
     }
 
+    std::cout << std::endl;
 
     a[0] = RAND_MAX;
     std::sort(a, a + n);
@@ -100,18 +127,31 @@ int main(int argc, char* argv[]) {
     clock_t start = clock();
 
     for (int i = 0; i < m; i++) {
-        // std::cout << i << std::endl;
-        // std::cout << "Query: " << q[i] << std::endl;
-        // double result = lower_bound(q[i]);
-        // std::cout << "Result: " << result << std::endl;
         checksum ^= (int)lower_bound(q[i]);
-        // checksum ^= (int)*std::lower_bound(a, a+n, q[i]);
     }
 
     float seconds = float(clock() - start) / CLOCKS_PER_SEC;
 
+    std::cout << "std::lower_bound" << std::endl;
+    std::cout << "--------" << std::endl;
     printf("%.2f ns per query\n", 1e9 * seconds / m);
     std::cout << "Checksum: " << checksum << std::endl;
+    std::cout << "--------" << std::endl;
+
+    checksum = 0;
+    start = clock();
+
+    for (int i = 0; i < m; i++) {
+        checksum ^= (int)*std::lower_bound(a, a+n, q[i]);
+    }
+
+    seconds = float(clock() - start) / CLOCKS_PER_SEC;
+
+    std::cout << "B+ Tree" << std::endl;
+    std::cout << "-------" << std::endl;
+    printf("%.2f ns per query\n", 1e9 * seconds / m);
+    std::cout << "Checksum: " << checksum << std::endl;
+    std::cout << "-------" << std::endl;
 
     return 0;
 }
