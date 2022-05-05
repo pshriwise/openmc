@@ -264,6 +264,7 @@ endif()
 
 list(APPEND libopenmc_SOURCES
   src/bank.cpp
+  src/b-tree.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/dagmc.cpp

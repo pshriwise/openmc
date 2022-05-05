@@ -60,7 +60,7 @@ void permute(double *node) {
 
 void prepare(double *a) {
     const int P = 1 << 21, T = (4 * S + P - 1) / P * P;
-    btree = (double*) std::aligned_alloc(P, T);
+    btree = (double*) aligned_alloc(P, T);
     #ifdef __linux__
     madvise(btree, T, MADV_HUGEPAGE);
     #endif
@@ -92,8 +92,8 @@ unsigned direct_rank(dreg x, double* y) {
     dreg ca = _mm256_cmp_pd(a, x, _CMP_GT_OQ);
     dreg cb = _mm256_cmp_pd(b, x, _CMP_GT_OQ);
 
-    int mb = _mm256_movemask_pd((__m256d) cb);
-    int ma = _mm256_movemask_pd((__m256d) ca);
+    int mb = _mm256_movemask_pd(cb);
+    int ma = _mm256_movemask_pd(ca);
 
     unsigned mask = (1 << 16);
     mask |= mb << 8;
