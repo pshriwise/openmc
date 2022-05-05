@@ -654,8 +654,8 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
   std::array<MeshDistance, 6> distances;
   for (int i = 0; i < n_dimension_; i++) {
     int idx = 2*i;
-    distances[idx] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, 0.0));
-    distances[idx+1] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, 0.0));
+    distances[idx] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, TINY_BIT));
+    distances[idx+1] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, TINY_BIT));
 
     if (u.dot(-normal(ijk[i] - 1, i, r + u * distances[idx].distance, u)) <= 0.0) { distances[idx].distance = INFTY; }
     if (u.dot(normal(ijk[i], i, r + u * distances[idx+1].distance, u)) <= 0.0) { distances[idx+1].distance = INFTY; }
