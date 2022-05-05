@@ -1,3 +1,4 @@
+#include <iostream>
 
 #include <x86intrin.h>
 #include <limits>
@@ -16,20 +17,26 @@
 #define N (1<<20)
 #endif
 
-void prepare(int *a, int n);
-int lower_bound(int x);
+void prepare(double *a, int n);
+double lower_bound(double x);
 
 int main(int argc, char* argv[]) {
     int n = (argc > 1 ? atoi(argv[1]) : N);
     int m = (argc > 2 ? atoi(argv[2]) : 1<<20);
 
-    int *a = new int[n];
-    int *q = new int[m];
+    double *a = new double[n];
+    double *q = new double[m];
 
+    std::cout << "Array size: " << n << std::endl;
     for (int i = 0; i < n; i++)
-        a[i] = rand();
-    for (int i = 0; i < m; i++)
-        q[i] = rand();
+        a[i] = (double)rand() / (double)RAND_MAX;
+
+    std::cout << "Queries: " << m << std::endl;
+    for (int i = 0; i < m; i++) {
+        q[i] = (double)rand() / (double)RAND_MAX;
+        //std::cout << "Query val: " << q[i] << std::endl;
+    }
+
 
     a[0] = RAND_MAX;
     std::sort(a, a + n);
@@ -39,22 +46,19 @@ int main(int argc, char* argv[]) {
     int checksum = 0;
     clock_t start = clock();
 
-    #ifdef LATENCY
-    int last = 0;
-
     for (int i = 0; i < m; i++) {
-        last = lower_bound(q[i] ^ last);
-        checksum ^= last;
+        // std::cout << i << std::endl;
+        // std::cout << "Query: " << q[i] << std::endl;
+        // double result = lower_bound(q[i]);
+        // std::cout << "Result: " << result << std::endl;
+        checksum ^= (int)lower_bound(q[i]);
+        // checksum ^= (int)*std::lower_bound(a, a+n, q[i]);
     }
-    #else
-    for (int i = 0; i < m; i++)
-        checksum ^= lower_bound(q[i]);
-    #endif
 
     float seconds = float(clock() - start) / CLOCKS_PER_SEC;
 
     printf("%.2f ns per query\n", 1e9 * seconds / m);
-    printf("%d\n", checksum);
+    std::cout << "Checksum: " << checksum << std::endl;
 
     return 0;
 }
@@ -62,14 +66,15 @@ int main(int argc, char* argv[]) {
 #endif
 
 typedef __m256i reg;
+typedef __m256d dreg;
 
-const int B = 16;
-const int INF = std::numeric_limits<int>::max();
+const int B = 8;
+const double INF = std::numeric_limits<double>::max();
 
 int n;
 int nblocks;
-int *_a;
-int (*btree)[B];
+double *_a;
+double (*btree)[B];
 
 int go(int k, int i) { return k * (B + 1) + i + 1; }
 
@@ -84,27 +89,28 @@ void build(int k = 0) {
     }
 }
 
-void prepare(int *a, int _n) {
+void prepare(double *a, int _n) {
     n = _n;
     nblocks = (n + B - 1) / B;
     _a = a;
-    btree = (int(*)[16]) aligned_alloc(64, 64 * nblocks);
+    btree = (double(*)[8]) aligned_alloc(64, 64 * nblocks);
     build();
 }
 
-int cmp(reg x_vec, int* y_ptr) {
-    reg y_vec = _mm256_load_si256((reg*) y_ptr);
-    reg mask = _mm256_cmpgt_epi32(x_vec, y_vec);
-    return _mm256_movemask_ps((__m256) mask);
+int cmp(dreg x_vec, double* y_ptr) {
+    dreg y_vec = _mm256_load_pd(y_ptr);
+    dreg mask = _mm256_cmp_pd(x_vec, y_vec, _CMP_GT_OQ);
+    return _mm256_movemask_pd(mask);
 }
 
-int lower_bound(int x) {
-    int k = 0, res = INF;
-    reg x_vec = _mm256_set1_epi32(x);
+double lower_bound(double x) {
+    int k = 0;
+    double res = INF;
+    dreg x_vec = _mm256_set1_pd(x);
     while (k < nblocks) {
         int mask = ~(
             cmp(x_vec, &btree[k][0]) +
-            (cmp(x_vec, &btree[k][8]) << 8)
+            (cmp(x_vec, &btree[k][4]) << 4)
         );
         int i = __builtin_ffs(mask) - 1;
         if (i < B)
