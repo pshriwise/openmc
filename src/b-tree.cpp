@@ -17,10 +17,11 @@ const int B = 8;
 const double INF = std::numeric_limits<double>::max();
 
 // state variables
-int N;
+const int N = (1<<20);
 int nblocks;
 double *_a;
-double (*btree)[B];
+// double (*btree)[B];
+double *btree;
 
 // constants of the tree
 
@@ -49,23 +50,38 @@ const int H = height(N), S = offset(H);
 
 int go(int k, int i) { return k * (B + 1) + i + 1; }
 
-void build(int k = 0) {
-    static int t = 0;
-    if (k < nblocks) {
-        for (int i = 0; i < B; i++) {
-            build(go(k, i));
-            btree[k][i] = (t < N ? _a[t++] : INF);
-        }
-        build(go(k, B));
-    }
-}
+// void build(int k = 0) {
+//     static int t = 0;
+//     if (k < nblocks) {
+//         for (int i = 0; i < B; i++) {
+//             build(go(k, i));
+//             btree[k][i] = (t < N ? _a[t++] : INF);
+//         }
+//         build(go(k, B));
+//     }
+// }
 
 void prepare(double *a, int _n) {
-    N = _n;
-    nblocks = (N + B - 1) / B;
-    _a = a;
-    btree = (double(*)[8]) aligned_alloc(64, 64 * nblocks);
-    build();
+    const int P = 1 << 21, T = (8 * S + P - 1) / P * P;
+    btree = (double*) std::aligned_alloc(P, T);
+    madvise(btree, T, MADV_HUGEPAGE);
+
+    for (int i = N; i < S; i++) btree[i] = INF;
+
+    memcpy(btree, a, 8*N);
+
+    // create internal nodes
+    for (int h = 1; h < H; h++) {
+        for (int i = 0; i < offset(h + 1) - offset(h); i++) {
+            int k = i / B,
+                j = i - k * B;
+            k = k * (B + 1) + j + 1; // compare right
+            // and then always to the left
+            for (int l = 0; l < h - 1; l++)
+                k *= (B + 1);
+            btree[offset(h) + i] = (k * B < N ? btree[k * B] : INF);
+        }
+    }
 }
 
 int cmp(dreg x_vec, double* y_ptr) {
@@ -74,30 +90,32 @@ int cmp(dreg x_vec, double* y_ptr) {
     return _mm256_movemask_pd(mask);
 }
 
-double lower_bound(double x) {
-    int k = 0;
-    double res = INF;
-    dreg x_vec = _mm256_set1_pd(x);
-    while (k < nblocks) {
-        int mask = ~(
-            cmp(x_vec, &btree[k][0]) +
-            (cmp(x_vec, &btree[k][4]) << 4)
-        );
-        int i = __builtin_ffs(mask) - 1;
-        if (i < B)
-            res = btree[k][i];
-        k = go(k, i);
-    }
-    return res;
+int direct_rank(dreg x, double* y_ptr) {
+    dreg y1 = _mm256_load_pd(y_ptr);
+    dreg y2 = _mm256_load_pd(y_ptr + 4);
+
+    dreg mask1 = _mm256_cmp_pd(x, y1, _CMP_GT_OQ);
+    dreg mask2 = _mm256_cmp_pd(x, y2, _CMP_GT_OQ);
+
+    int mask = ~(_mm256_movemask_pd(mask1) + (_mm256_movemask_pd(mask2) << 4));
+
+    return __builtin_ffs(mask) - 1;
 }
 
+double lower_bound(double _x) {
+    unsigned k = 0;
+    dreg x_vec = _mm256_set1_pd(_x);
+    for (int h = H - 1; h > 0; h--) {
+       int i = direct_rank(x_vec, btree + offset(h) + k);
+       k = k * (B + 1) + (i << 3);
+    }
+    int i = direct_rank(x_vec, btree + k);
+    return btree[k + i];
+}
 
 #ifdef BTREE_BENCHMARK
 #include <bits/stdc++.h>
 
-#ifndef N
-#define N (1<<20)
-#endif
 
 int main(int argc, char* argv[]) {
     int n = (argc > 1 ? atoi(argv[1]) : N);
@@ -110,11 +128,12 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < n; i++)
         a[i] = (double)rand() / (double)RAND_MAX;
 
-    std::cout << " #Queries: " << m << std::endl;
+    std::cout << "# Queries: " << m << std::endl;
     for (int i = 0; i < m; i++) {
         q[i] = (double)rand() / (double)RAND_MAX;
-        //std::cout << "Query val: " << q[i] << std::endl;
     }
+
+    std::cout << "Tree height: " << H << std::endl;
 
     std::cout << std::endl;
 
@@ -127,7 +146,10 @@ int main(int argc, char* argv[]) {
     clock_t start = clock();
 
     for (int i = 0; i < m; i++) {
-        checksum ^= (int)lower_bound(q[i]);
+        // std::cout << "Query: " << q[i] << std::endl;
+        double result = lower_bound(q[i]);
+        checksum ^= (int)result;
+        // std::cout << "Result: " << result << std::endl;
     }
 
     float seconds = float(clock() - start) / CLOCKS_PER_SEC;
@@ -137,6 +159,7 @@ int main(int argc, char* argv[]) {
     printf("%.2f ns per query\n", 1e9 * seconds / m);
     std::cout << "Checksum: " << checksum << std::endl;
     std::cout << "--------" << std::endl;
+    std::cout << std::endl;
 
     checksum = 0;
     start = clock();
