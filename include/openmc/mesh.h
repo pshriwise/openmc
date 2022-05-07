@@ -770,7 +770,12 @@ public:
     vector<int>& bins, vector<double>& lengths) const override;
 
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, int prev_bin, Position r, const Direction& u) const override;
+    int bin, Position r, const Direction& u) const override;
+
+  virtual std::pair<double, int> distance_to_mesh(
+    const Position& r, const Direction& u) const override;
+
+  virtual bool bin_is_valid(int bin) const override;
 
   int get_bin(Position r) const override;
 

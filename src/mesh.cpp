@@ -2897,6 +2897,11 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
   return {INFTY, {-1, -1, -1}};
 }
 
+std::pair<double, int>
+LibMesh::distance_to_mesh(const Position& r, const Direction& u) const {
+  return {100.0, 0};
+}
+
 int LibMesh::get_bin(Position r) const
 {
   // look-up a tet using the point locator
@@ -2942,6 +2947,10 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 double LibMesh::volume(int bin) const
 {
   return m_->elem_ref(bin).volume();
+}
+
+bool LibMesh::bin_is_valid(int bin) const {
+  return true;
 }
 
 #endif // LIBMESH
