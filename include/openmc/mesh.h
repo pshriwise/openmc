@@ -66,6 +66,8 @@ public:
   Mesh(pugi::xml_node node);
   virtual ~Mesh() = default;
 
+  virtual MeshStructure structure() const = 0;
+
   // Methods
 
   //! Determine which bins were crossed by a particle
@@ -157,6 +159,8 @@ public:
   StructuredMesh() = default;
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
+
+  virtual MeshStructure structure() const override { return MeshStructure::STRUCTURED; }
 
   using MeshIndex = std::array<int, 3>;
 
@@ -537,6 +541,8 @@ public:
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(const std::string& filename);
 
+  virtual MeshStructure structure() const override { return MeshStructure::UNSTRUCTURED; }
+
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
 
@@ -801,6 +807,11 @@ public:
 
   double volume(int bin) const override;
 
+  const unique_ptr<libMesh::Mesh>& libmesh_mesh() const { return m_; }
+
+  //! Translate an element pointer to a bin index
+  int get_bin_from_element(const libMesh::Elem* elem) const;
+
 private:
   void initialize() override;
 
@@ -808,9 +819,6 @@ private:
 
   //! Translate a bin value to an element reference
   const libMesh::Elem& get_element_from_bin(int bin) const;
-
-  //! Translate an element pointer to a bin index
-  int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
   unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance

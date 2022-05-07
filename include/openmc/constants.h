@@ -335,6 +335,10 @@ enum class RunMode {
 
 enum class GeometryType { CSG, DAG, MESH };
 
+// Mesh Constants
+
+enum class MeshStructure { STRUCTURED, UNSTRUCTURED };
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

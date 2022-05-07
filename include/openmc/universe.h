@@ -63,6 +63,8 @@ public:
   // setup cell instances for the mesh geometry
   void create_cells(pugi::xml_node node);
 
+  void create_unstructured_mesh_cells();
+
   // accessors
   int32_t& mesh() { return mesh_; }
   int32_t mesh() const { return mesh_; }

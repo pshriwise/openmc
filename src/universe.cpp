@@ -109,6 +109,31 @@ MeshUniverse::MeshUniverse(pugi::xml_node node)
   create_cells(node);
 }
 
+void MeshUniverse::create_unstructured_mesh_cells() {
+  // get the openmc::LibMesh mesh and libmesh mesh
+  const auto& mesh = model::meshes[mesh_];
+  LibMesh* mesh_ptr = dynamic_cast<LibMesh*>(mesh.get());
+  const auto& lmesh = mesh_ptr->libmesh_mesh();
+
+  std::set<libMesh::subdomain_id_type> subdomain_ids;
+  lmesh->subdomain_ids(subdomain_ids);
+
+  for (const auto& id : subdomain_ids) {
+    std::string subdomain_name = lmesh->subdomain_name(id);
+    if (subdomain_name == "") continue;
+    // get the elements for this domain id
+    std::cout << "Subdomain ID: " << id << "\n";
+    auto subdomain_elements = lmesh->active_subdomain_elements_ptr_range(id);
+
+    for (const auto& elem_ptr : subdomain_elements) {
+
+      int bin = mesh_ptr->get_bin_from_element(elem_ptr);
+      // set cell materials by domain id
+      model::cells[cells_[bin]]->material_[0] = id;
+    }
+  }
+}
+
 void MeshUniverse::create_cells(pugi::xml_node node)
 {
   vector<std::string> cell_fills;
@@ -156,6 +181,11 @@ void MeshUniverse::create_cells(pugi::xml_node node)
     cell->universe_ = id_;
     model::cell_map[cell->id_] = model::cells.size() - 1;
     cells_[i] = model::cells.size() - 1;
+  }
+
+  // special function if mesh is unstructured
+  if (model::meshes[mesh_]->structure() == MeshStructure::UNSTRUCTURED) {
+    create_unstructured_mesh_cells();
   }
 
   // create a cell for the exterior of the mesh

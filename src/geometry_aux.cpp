@@ -78,9 +78,9 @@ void read_geometry_xml()
     }
   }
 
-  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
-    fatal_error("No boundary conditions were applied to any surfaces!");
-  }
+  // if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+  //   fatal_error("No boundary conditions were applied to any surfaces!");
+  // }
 
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
