@@ -2894,7 +2894,93 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
   int bin, Position r, const Direction& u) const
 {
+  // get the element for this bin
+  const auto& elem = get_element_from_bin(bin);
+
+  // get the faces (triangles) of this element
+  for (int i = 0; i < elem.n_sides(); i++) {
+    const auto& side_ptr = elem.side_ptr(i);
+    // triangle connectivity
+    std::array<Position, 3> coords;
+    for (int j = 0; j < side_ptr->n_nodes(); j++) {
+      const auto& node_ref = side_ptr->node_ref(j);
+      coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
+    }
+
+    // perform intersection operation
+
+
+  }
+
   return {INFTY, {-1, -1, -1}};
+}
+
+bool first(const Position& v0, const Position& v1) {
+  if( v0[0] < v1[0] ) { return true; }
+    else if( v0[0] == v1[0] ) {
+      if( v0[1] < v1[1] ) { return true; }
+      else if( v0[1] == v1[1] ) {
+        if( v0[2] < v1[2] ) { return true; }
+        else { return false; }
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+  }
+}
+
+double plucker_edge_test(const Position& v0, const Position& v1, const Position& u, const Position& ray_cross) {
+  double pip;
+  if (first(v0, v1)) {
+    const Position edge = v1 - v0;
+    const Position edge_normal = edge.cross(v1);
+    pip = u.dot(edge_normal) + ray_cross.dot(edge);
+  } else {
+    const Position edge = v0 - v1;
+    const Position edge_normal = edge.cross(v1);
+    pip = -(u.dot(edge_normal) + ray_cross.dot(edge));
+  }
+
+  if (NEAR_ZERO > std::abs(pip)) pip = 0.0;
+
+  return pip;
+}
+
+bool plucker_intersect(const std::array<Position, 3> coords, const Position& r, const Direction& u,
+double& dist_out) {
+
+  const Position ray_cross = u.cross(r);
+
+  double plucker0 = plucker_edge_test(coords[0], coords[1], u, ray_cross);
+  double plucker1 = plucker_edge_test(coords[1], coords[2], u, ray_cross);
+  double plucker2 = plucker_edge_test(coords[2], coords[2], u, ray_cross);
+
+  // check on the correct side of all edges
+  if (plucker0 > 0.0 || plucker1 <=0.0 || plucker2 <=0.0) return false;
+
+  if ( (0.0 < plucker0 && 0.0 > plucker2) || (0.0 > plucker1 && 0.0 < plucker2) ||
+       (0.0 < plucker0 && 0.0 > plucker2) || (0.0> plucker0 && plucker2) ) return false;
+
+  // check for a copanar intersection
+  if (plucker0 == 0.0 && plucker1 == 0.0 && plucker2 == 0.0) return false;
+
+  // compute the distance to intersection
+  const double inv_sum = 1.0 / (plucker0 + plucker1 + plucker2);
+  const Position intersection {plucker0 * inv_sum * coords[2] +
+                               plucker1 * inv_sum * coords[0] +
+                               plucker2 * inv_sum * coords[1]};
+
+  // get index of largest magnitude in direction
+  int max_idx;
+  double max_dir = std::max({std::abs(u.x), std::abs(u.y), std::abs(u.z)});
+  for (int i = 0; i < 3; i++) {
+    if (max_dir == u[i]) max_idx = i;
+  }
+
+  dist_out = (intersection[max_idx] - r[max_idx]) / u[max_idx];
+
+  return true;
 }
 
 std::pair<double, int>
