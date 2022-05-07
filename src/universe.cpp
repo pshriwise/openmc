@@ -118,18 +118,30 @@ void MeshUniverse::create_unstructured_mesh_cells() {
   std::set<libMesh::subdomain_id_type> subdomain_ids;
   lmesh->subdomain_ids(subdomain_ids);
 
-  for (const auto& id : subdomain_ids) {
-    std::string subdomain_name = lmesh->subdomain_name(id);
+  for (const auto& subdomain_id : subdomain_ids) {
+    std::string subdomain_name = lmesh->subdomain_name(subdomain_id);
     if (subdomain_name == "") continue;
-    // get the elements for this domain id
-    std::cout << "Subdomain ID: " << id << "\n";
-    auto subdomain_elements = lmesh->active_subdomain_elements_ptr_range(id);
+    // get the elements for this subdomain id
+    auto subdomain_elements = lmesh->active_subdomain_elements_ptr_range(subdomain_id);
 
+    // determine the material ID to assign for this block
+    int32_t subdomain_mat_id = MATERIAL_VOID;
+    int32_t mat_by_name_idx = get_material_by_name(subdomain_name);
+    if (mat_by_name_idx != -1) {
+      subdomain_mat_id = model::materials[mat_by_name_idx]->id();
+      write_message(fmt::format("Assigning subdomain {} by name: {} with material ID {}.", subdomain_id, subdomain_name, subdomain_mat_id), 10);
+    } else if (model::material_map.find(subdomain_id) != model::material_map.end()) {
+      // if no matching name is found, set cell materials by domain id
+      write_message(fmt::format("Assigning subdomain {} by ID.", subdomain_id, subdomain_name), 10);
+      subdomain_mat_id = subdomain_id;
+    } else {
+      fatal_error(fmt::format("Could not find material by name ({}) or ID ({}).", subdomain_name, subdomain_id));
+    }
+
+    // set each cell in the block with the chosen material ID
     for (const auto& elem_ptr : subdomain_elements) {
-
       int bin = mesh_ptr->get_bin_from_element(elem_ptr);
-      // set cell materials by domain id
-      model::cells[cells_[bin]]->material_[0] = id;
+      model::cells[cells_[bin]]->material_.push_back(subdomain_mat_id);
     }
   }
 }
@@ -174,7 +186,7 @@ void MeshUniverse::create_cells(pugi::xml_node node)
     const auto& cell = model::cells.back();
 
     cell->type_ = Fill::MATERIAL;
-    cell->material_.push_back(fill);
+    //cell->material_.push_back(fill);
     cell->id_ = next_cell_id++;
     // set universe ID, this will be updated later by another loop in
     // geometry_aux
