@@ -327,8 +327,6 @@ void Particle::event_collide()
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
 
-  coord(n_coord() - 1).previous_mesh_bin() = -1;
-
 #ifdef DAGMC
   history().reset();
 #endif

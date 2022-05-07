@@ -258,7 +258,6 @@ void MeshUniverse::next_cell(Particle& p) const
   p.material_last() = p.material();
   p.sqrtkT_last() = p.sqrtkT();
   // set previous bin
-  coord.previous_mesh_bin() = coord.mesh_cell_index();
   coord.mesh_cell_index() = next_mesh_idx;
   coord.cell = next_cell_idx;
   coord.mesh_index() = p.boundary().lattice_translation;

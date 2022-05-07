@@ -94,7 +94,7 @@ public:
   //! \param[in] u Particle direction
   //! \returns distance and the ijk index to the next mesh cell
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, int prev_bin, Position r, const Direction& u) const = 0;
+    int bin, Position r, const Direction& u) const = 0;
 
   //! Determine the distance to a point in the mesh
   //
@@ -193,9 +193,8 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, int prev_bin, Position r, const Direction& u) const override;
+    int bin, Position r, const Direction& u) const override;
 
   virtual std::pair<double, int> distance_to_mesh(
     const Position& r, const Direction& u) const override;

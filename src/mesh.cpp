@@ -636,7 +636,7 @@ Direction StructuredMesh::normal(int idx, int dim, const Position& r, const Dire
 }
 
 std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
-  int bin, int prev_bin, Position r, const Direction& u) const
+  int bin, Position r, const Direction& u) const
 {
 
   // if the particle is outside of the mesh,
@@ -648,7 +648,6 @@ std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
 
   // start in the specified mesh bin
   MeshIndex ijk = get_indices_from_bin(bin);
-  MeshIndex prev_ijk = get_indices_from_bin(prev_bin);
 
   // compute next distane in either direction for each dimension
   std::array<MeshDistance, 6> distances;
