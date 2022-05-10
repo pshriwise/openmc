@@ -2874,47 +2874,6 @@ void LibMesh::set_score_data(const std::string& var_name,
   }
 }
 
-void LibMesh::write(const std::string& filename) const
-{
-  write_message(fmt::format(
-    "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
-  libMesh::ExodusII_IO exo(*m_);
-  std::set<std::string> systems_out = {eq_system_name_};
-  exo.write_discontinuous_exodusII(
-    filename + ".e", *equation_systems_, &systems_out);
-}
-
-void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
-  vector<int>& bins, vector<double>& lengths) const
-{
-  // TODO: Implement triangle crossings here
-  fatal_error("Tracklength tallies on libMesh instances are not implemented.");
-}
-
-std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
-  int bin, Position r, const Direction& u) const
-{
-  // get the element for this bin
-  const auto& elem = get_element_from_bin(bin);
-
-  // get the faces (triangles) of this element
-  for (int i = 0; i < elem.n_sides(); i++) {
-    const auto& side_ptr = elem.side_ptr(i);
-    // triangle connectivity
-    std::array<Position, 3> coords;
-    for (int j = 0; j < side_ptr->n_nodes(); j++) {
-      const auto& node_ref = side_ptr->node_ref(j);
-      coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
-    }
-
-    // perform intersection operation
-
-
-  }
-
-  return {INFTY, {-1, -1, -1}};
-}
-
 bool first(const Position& v0, const Position& v1) {
   if( v0[0] < v1[0] ) { return true; }
     else if( v0[0] == v1[0] ) {
@@ -2947,23 +2906,24 @@ double plucker_edge_test(const Position& v0, const Position& v1, const Position&
   return pip;
 }
 
-bool plucker_intersect(const std::array<Position, 3> coords, const Position& r, const Direction& u,
+IntersectionType plucker_intersect(const std::array<Position, 3> coords, const Position& r, const Direction& u,
 double& dist_out) {
+  dist_out = INFTY;
 
   const Position ray_cross = u.cross(r);
 
   double plucker0 = plucker_edge_test(coords[0], coords[1], u, ray_cross);
   double plucker1 = plucker_edge_test(coords[1], coords[2], u, ray_cross);
-  double plucker2 = plucker_edge_test(coords[2], coords[2], u, ray_cross);
+  double plucker2 = plucker_edge_test(coords[2], coords[0], u, ray_cross);
 
   // check on the correct side of all edges
-  if (plucker0 > 0.0 || plucker1 <=0.0 || plucker2 <=0.0) return false;
+  if (plucker0 > 0.0 || plucker1 > 0.0 || plucker2 > 0.0) return IntersectionType::MISS;
 
-  if ( (0.0 < plucker0 && 0.0 > plucker2) || (0.0 > plucker1 && 0.0 < plucker2) ||
-       (0.0 < plucker0 && 0.0 > plucker2) || (0.0> plucker0 && plucker2) ) return false;
+  if ( (0.0 < plucker1 && 0.0 > plucker2) || (0.0 > plucker1 && 0.0 < plucker2) ||
+       (0.0 < plucker0 && 0.0 > plucker2) || (0.0 > plucker0 && 0.0 < plucker2) ) return IntersectionType::MISS;
 
   // check for a copanar intersection
-  if (plucker0 == 0.0 && plucker1 == 0.0 && plucker2 == 0.0) return false;
+  if (plucker0 == 0.0 && plucker1 == 0.0 && plucker2 == 0.0) return IntersectionType::MISS;
 
   // compute the distance to intersection
   const double inv_sum = 1.0 / (plucker0 + plucker1 + plucker2);
@@ -2980,7 +2940,66 @@ double& dist_out) {
 
   dist_out = (intersection[max_idx] - r[max_idx]) / u[max_idx];
 
-  return true;
+  if (plucker0 == 0.0) return IntersectionType::EDGE0;
+  if (plucker1 == 0.0) return IntersectionType::EDGE1;
+  if (plucker2 == 0.0) return IntersectionType::EDGE2;
+  if (plucker0 == 0.0 && plucker1 == 0.0) return IntersectionType::NODE0;
+  if (plucker0 == 0.0 && plucker1 == 0.0) return IntersectionType::NODE1;
+  if (plucker1 == 0.0 && plucker2 == 0.0) return IntersectionType::NODE2;
+
+  return IntersectionType::INTERIOR;
+}
+
+void LibMesh::write(const std::string& filename) const
+{
+  write_message(fmt::format(
+    "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
+  libMesh::ExodusII_IO exo(*m_);
+  std::set<std::string> systems_out = {eq_system_name_};
+  exo.write_discontinuous_exodusII(
+    filename + ".e", *equation_systems_, &systems_out);
+}
+
+void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
+  vector<int>& bins, vector<double>& lengths) const
+{
+  // TODO: Implement triangle crossings here
+  fatal_error("Tracklength tallies on libMesh instances are not implemented.");
+}
+
+std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
+{
+  // get the element for this bin
+  const auto& elem = get_element_from_bin(bin);
+
+  std::array<double, 4> dists = {INFTY, INFTY, INFTY, INFTY};
+  // get the faces (triangles) of this element
+  for (int i = 0; i < elem.n_sides(); i++) {
+    const auto& side_ptr = elem.build_side_ptr(i);
+    // triangle connectivity
+    std::array<Position, 3> coords;
+    for (int j = 0; j < side_ptr->n_nodes(); j++) {
+      const auto& node_ref = side_ptr->node_ref(j);
+      coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
+    }
+
+
+    // perform ray-triangle intersection
+    plucker_intersect(coords, r, u, dists[i]);
+
+  }
+
+  int idx_out = std::min_element(dists.begin(), dists.end()) - dists.begin();
+
+  const auto& next_elem = elem.neighbor_ptr(idx_out);
+
+  if (!next_elem) return {dists[idx_out], {-1, -1, -1}};
+
+  std::cout << "Dist to intersection: " << dists[idx_out] << std::endl;
+  return {dists[idx_out], {get_bin_from_element(next_elem)}};
+
+  return {INFTY, {-1, -1, -1}};
 }
 
 std::pair<double, int>
@@ -3036,7 +3055,7 @@ double LibMesh::volume(int bin) const
 }
 
 bool LibMesh::bin_is_valid(int bin) const {
-  return true;
+  return bin >= 0 && bin < n_bins();
 }
 
 #endif // LIBMESH

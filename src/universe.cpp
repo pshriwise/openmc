@@ -242,12 +242,12 @@ bool MeshUniverse::find_cell(Particle& p) const
 void MeshUniverse::next_cell(Particle& p) const
 {
   auto& coord = p.coord(p.n_coord() - 1);
-  const auto mesh = dynamic_cast<StructuredMesh*>(model::meshes[mesh_].get());
+  const auto mesh = dynamic_cast<LibMesh*>(model::meshes[mesh_].get());
 
-  int32_t next_mesh_idx =
-    mesh->get_bin_from_indices(p.boundary().lattice_translation);
+  int32_t next_mesh_idx = p.boundary().lattice_translation[0];
+    // mesh->get_bin_from_indices(p.boundary().lattice_translation);
   int32_t next_cell_idx {C_NONE};
-  if (mesh->ijk_is_valid(p.boundary().lattice_translation)) {
+  if (mesh->bin_is_valid(next_mesh_idx)) {
     if (p.coord(p.n_coord() -1).mesh_cell_index() == C_NONE) {
       write_message(
         fmt::format("\tParticle {} moving into the mesh. \n\tPosition: {} {} {}",

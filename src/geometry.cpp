@@ -386,7 +386,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
       const auto& mesh = model::meshes[mesh_univ->mesh()];
       auto mesh_dist =
         mesh->distance_to_next_bin(coord.mesh_cell_index(), r, u);
-      if ((info.distance - mesh_dist.first) / info.distance >=
+      if (info.distance == INFINITY || (info.distance - mesh_dist.first) / info.distance >=
           FP_REL_PRECISION) {
         info.distance = mesh_dist.first;
         info.lattice_translation = mesh_dist.second;
