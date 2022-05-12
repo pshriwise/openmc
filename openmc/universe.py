@@ -327,6 +327,13 @@ class Universe(UniverseBase):
         with TemporaryDirectory() as tmpdir:
             model = openmc.Model()
             model.geometry = openmc.Geometry(self)
+
+            # set energy mode according to material definitions
+            for material in model.geometry.get_all_materials().values():
+                if material.macroscopic is not None:
+                    model.settings.energy_mode = 'multi-group'
+                    break
+
             if seed is not None:
                 model.settings.seed = seed
 

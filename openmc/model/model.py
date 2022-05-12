@@ -4,7 +4,7 @@ from functools import lru_cache
 import os
 from pathlib import Path
 from numbers import Integral
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import h5py
 
@@ -414,18 +414,23 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True)
 
-        self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
         # If a materials collection was specified, export it. Otherwise, look
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d)
+            materials = self.materials
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml(d)
+        materials.export_to_xml(d)
+
+        for material in materials:
+            if material.macroscopic is not None:
+                self.settings.energy_mode = 'multi-group'
+
+        self.settings.export_to_xml(d)
 
         if self.tallies:
             self.tallies.export_to_xml(d)
@@ -699,6 +704,98 @@ class Model:
             else:
                 self.export_to_xml()
                 openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+
+    def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+             basis='xy', color_by='cell', colors=None, seed=None,
+             openmc_exec='openmc', **kwargs):
+        """Display a slice plot of the model.
+
+        Parameters
+        ----------
+        origin : Iterable of float
+            Coordinates at the origin of the plot
+        width : Iterable of float
+            Width of the plot in each basis direction
+        pixels : Iterable of int
+            Number of pixels to use in each basis direction
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               model.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+
+            .. versionadded:: 0.13.1
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+
+        Returns
+        -------
+        matplotlib.image.AxesImage
+            Resulting image
+
+        """
+        import matplotlib.image as mpimg
+        import matplotlib.pyplot as plt
+
+          # Determine extents of plot
+        if basis == 'xy':
+            x, y = 0, 1
+        elif basis == 'yz':
+            x, y = 1, 2
+        elif basis == 'xz':
+            x, y = 0, 2
+        x_min = origin[x] - 0.5*width[0]
+        x_max = origin[x] + 0.5*width[0]
+        y_min = origin[y] - 0.5*width[1]
+        y_max = origin[y] + 0.5*width[1]
+
+        orig_plots = self.plots
+
+        with TemporaryDirectory() as tmpdir:
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+            if colors is not None:
+                plot.colors = colors
+            self.plots = [plot]
+
+            # Run OpenMC in geometry plotting mode
+            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Read image from file
+            img = mpimg.imread(Path(tmpdir) / f'plot_{plot.id}.png')
+
+            # Create a figure sized such that the size of the axes within
+            # exactly matches the number of pixels specified
+            px = 1/plt.rcParams['figure.dpi']
+            fig, ax = plt.subplots()
+            params = fig.subplotpars
+            width = pixels[0]*px/(params.right - params.left)
+            height = pixels[0]*px/(params.top - params.bottom)
+            fig.set_size_inches(width, height)
+
+            self.plots = orig_plots
+
+            # Plot image and return the axes
+            return ax.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):

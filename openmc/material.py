@@ -407,6 +407,10 @@ class Material(IDManagerMixin):
             if nuclide == nuc.name:
                 self.nuclides.remove(nuc)
 
+    @property
+    def macroscopic(self):
+        return self._macroscopic
+
     def add_macroscopic(self, macroscopic):
         """Add a macroscopic to the material.  This will also set the
         density of the material to 1.0, unless it has been otherwise set,
