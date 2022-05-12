@@ -51,6 +51,15 @@ const bool LIBMESH_ENABLED = true;
 const bool LIBMESH_ENABLED = false;
 #endif
 
+std::vector<std::string> IntersectionTypeStrs = { "MISS",
+                                                  "INTERIOR",
+                                                  "EDGE0",
+                                                  "EDGE1",
+                                                  "EDGE2",
+                                                  "NODE0",
+                                                  "NODE1",
+                                                  "NODE2" };
+
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
@@ -2972,8 +2981,14 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
 {
   // get the element for this bin
   const auto& elem = get_element_from_bin(bin);
+  std::cout << "Bin passed in: " << bin << "\n";
+  std::cout << "Detected bin: " << get_bin(r + u * 0.001) << "\n";
+
+  auto ec_tmp = elem.centroid();
+  const Position elem_centroid {ec_tmp(0), ec_tmp(1), ec_tmp(2)};
 
   std::array<double, 4> dists = {INFTY, INFTY, INFTY, INFTY};
+  std::array<IntersectionType, 4> hit_types;
   // get the faces (triangles) of this element
   for (int i = 0; i < elem.n_sides(); i++) {
     const auto& side_ptr = elem.build_side_ptr(i);
@@ -2984,9 +2999,24 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
       coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
     }
 
+    // check that the normal of this triangle is pointed toward the element centroid
+    auto tc_tmp = side_ptr->centroid();
+    const Position tri_center{tc_tmp(0), tc_tmp(1), tc_tmp(2)};
+
+    // get the normal of the triangle
+    const Position v1 = coords[1] - coords[0];
+    const Position v2 = coords[2] - coords[0];
+
+    const Position normal = norm(v1.cross(v2));
+
+    const Position tri_vec = norm(elem_centroid - tri_center);
+
+    std::cout << "Normal dot prod w/ elem center: " << tri_vec.dot(normal) << "\n";
+
+
 
     // perform ray-triangle intersection
-    plucker_intersect(coords, r, u, dists[i]);
+    hit_types[i] = plucker_intersect(coords, r, u, dists[i]);
 
   }
 
@@ -2997,6 +3027,7 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
   if (!next_elem) return {dists[idx_out], {-1, -1, -1}};
 
   std::cout << "Dist to intersection: " << dists[idx_out] << std::endl;
+  std::cout << "Hit type: " << IntersectionTypeStrs[hit_types[idx_out]] << std::endl;
   return {dists[idx_out], {get_bin_from_element(next_elem)}};
 
   return {INFTY, {-1, -1, -1}};

@@ -288,6 +288,8 @@ void MeshUniverse::next_cell(Particle& p) const
     // if (in_mesh) {
     //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
     // }
+    // kill particle exiting mesh for now
+    p.wgt() = 0.0;
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_;
   }
