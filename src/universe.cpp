@@ -118,6 +118,8 @@ void MeshUniverse::create_unstructured_mesh_cells() {
   std::set<libMesh::subdomain_id_type> subdomain_ids;
   lmesh->subdomain_ids(subdomain_ids);
 
+  int mat_elements {0};
+
   for (const auto& subdomain_id : subdomain_ids) {
     std::string subdomain_name = lmesh->subdomain_name(subdomain_id);
     if (subdomain_name == "") continue;
@@ -138,12 +140,18 @@ void MeshUniverse::create_unstructured_mesh_cells() {
       fatal_error(fmt::format("Could not find material by name ({}) or ID ({}).", subdomain_name, subdomain_id));
     }
 
+    int n_subdomain_elems {0};
     // set each cell in the block with the chosen material ID
     for (const auto& elem_ptr : subdomain_elements) {
       int bin = mesh_ptr->get_bin_from_element(elem_ptr);
       model::cells[cells_[bin]]->material_.push_back(subdomain_mat_id);
+      mat_elements++;
+      n_subdomain_elems++;
     }
+    std::cout << fmt::format("{} elements\n", n_subdomain_elems);
   }
+
+  std::cout << fmt::format("Assigned materials to {} elements.\n", mat_elements);
 }
 
 void MeshUniverse::create_cells(pugi::xml_node node)
@@ -306,6 +314,7 @@ void MeshUniverse::next_cell(Particle& p) const
   coord.cell = next_cell_idx;
   coord.mesh_index() = p.boundary().lattice_translation;
   const auto& cell = model::cells.at(next_cell_idx);
+  Cell* cell_ptr = model::cells.at(next_cell_idx).get();
   // TODO: Support multiple cell instances
   p.cell_instance() = 0;
   p.material() = cell->material_[0];
