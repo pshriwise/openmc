@@ -37,6 +37,7 @@
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/cell_tet4.h"
 #endif
 
 namespace openmc {
@@ -3127,39 +3128,39 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
   int bin, Position r, const Direction& u) const
 {
-  write_message("---------- NEXT BIN -----------", 10);
-  write_message(fmt::format("Position: {} {} {}", r.x, r.y, r.z), 10);
-  write_message(fmt::format("Direction: {} {} {}", u.x, u.y, u.z), 10);
-  int32_t detected_bin = get_bin(r);
-  write_message(fmt::format("Bin passed in: {}", bin), 10);
-  write_message(fmt::format("Detected bin: {}", detected_bin), 10);
+  // write_message("---------- NEXT BIN -----------", 10);
+  // write_message(fmt::format("Position: {} {} {}", r.x, r.y, r.z), 10);
+  // write_message(fmt::format("Direction: {} {} {}", u.x, u.y, u.z), 10);
+  // int32_t detected_bin = get_bin(r);
+  // write_message(fmt::format("Bin passed in: {}", bin), 10);
+  // write_message(fmt::format("Detected bin: {}", detected_bin), 10);
   // get the element for this bin
   const auto& elem = get_element_from_bin(bin);
-  write_message(fmt::format("Element ID: {}", elem.id()), 10);
-  write_message(fmt::format("Element on boundary {}", elem.on_boundary()), 10);
+  const auto& tet = (const libMesh::Tet4&)elem;
+  // write_message(fmt::format("Element ID: {}", elem.id()), 10);
+  // write_message(fmt::format("Element on boundary {}", elem.on_boundary()), 10);
 
-  auto ec_tmp = elem.centroid();
-  const Position elem_centroid {ec_tmp(0), ec_tmp(1), ec_tmp(2)};
+  // auto ec_tmp = elem.centroid();
+  // const Position elem_centroid {ec_tmp(0), ec_tmp(1), ec_tmp(2)};
 
   std::array<double, 4> dists = {INFTY, INFTY, INFTY, INFTY};
   std::array<bool, 4> hit_types;
   // get the faces (triangles) of this element
   for (int i = 0; i < elem.n_sides(); i++) {
-    const auto& side_ptr = elem.build_side_ptr(i);
     // triangle connectivity
     std::array<Position, 3> coords;
-    for (int j = 0; j < side_ptr->n_nodes(); j++) {
-      const auto& node_ref = side_ptr->node_ref(j);
+    for (int j = 0; j < 3; j++) {
+      const auto& node_ref = elem.node_ref(tet.side_nodes_map[i][j]);
       coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
     }
 
-    for (int j = 0; j < side_ptr->n_nodes(); j++) {
-      write_message(fmt::format("Side {}, vertex {}: {} {} {}", i, j, coords[j].x, coords[j].y, coords[j].z), 10);
-    }
+    // for (int j = 0; j < side_ptr->n_nodes(); j++) {
+    //   write_message(fmt::format("Side {}, vertex {}: {} {} {}", i, j, coords[j].x, coords[j].y, coords[j].z), 10);
+    // }
 
     // check that the normal of this triangle is pointed toward the element centroid
-    auto tc_tmp = side_ptr->centroid();
-    const Position tri_center{tc_tmp(0), tc_tmp(1), tc_tmp(2)};
+    // auto tc_tmp = side_ptr->centroid();
+    // const Position tri_center{tc_tmp(0), tc_tmp(1), tc_tmp(2)};
 
     // get the normal of the triangle
     const Position v1 = coords[1] - coords[0];
@@ -3167,16 +3168,16 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
 
     const Position normal = norm(v1.cross(v2));
 
-    const Position tri_vec = norm(tri_center - elem_centroid);
+    // const Position tri_vec = norm(tri_center - elem_centroid);
 
-    write_message(fmt::format("Normal dot prod w/ elem center: {}", tri_vec.dot(normal)), 10);
-    write_message(fmt::format("Normal dot prod w/ ray dir: {}", normal.dot(u)), 10);
+    // write_message(fmt::format("Normal dot prod w/ elem center: {}", tri_vec.dot(normal)), 10);
+    // write_message(fmt::format("Normal dot prod w/ ray dir: {}", normal.dot(u)), 10);
 
     // perform ray-triangle intersection
     hit_types[i] = plucker_ray_tri_intersect(coords, r, u, dists[i]);
 
-    write_message(fmt::format("Plucker Test Dist: {}", dists[i]), 10);
-    write_message(fmt::format("Hit Type: {}", hit_types[i]), 10);
+    // write_message(fmt::format("Plucker Test Dist: {}", dists[i]), 10);
+    // write_message(fmt::format("Hit Type: {}", hit_types[i]), 10);
     if (dists[i] <= 0.0) dists[i] = INFTY;
     // if not an exiting intersection, ignore
     if (normal.dot(u) < 0.0) dists[i] = INFTY;
@@ -3185,7 +3186,7 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
       // move location to intersection and check hit
       double test_dist;
       plucker_ray_tri_intersect(coords, r + u * dists[i], u, test_dist);
-      write_message(fmt::format("Distance at intersection: {}", test_dist), 10);
+      // write_message(fmt::format("Distance at intersection: {}", test_dist), 10);
     }
 
   }
@@ -3200,7 +3201,7 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
     }
   }
 
-  write_message(fmt::format("Selected index: {}", idx_out), 10);
+  // write_message(fmt::format("Selected index: {}", idx_out), 10);
 
   if (idx_out == -1) {
     fatal_error("Lost particle in mesh universe");
@@ -3210,10 +3211,10 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
 
   if (!next_elem) return {dists[idx_out], {-1, -1, -1}};
 
-  write_message(fmt::format("Dist to intersection: {}", dists[idx_out]), 10);
-  write_message(fmt::format("Hit Type: {}", IntersectionTypeStrs[hit_types[idx_out]]), 10);
-  write_message(fmt::format("Will move into bin: {}", get_bin_from_element(next_elem)), 10);
-  write_message("-------------------------------", 10);
+  // write_message(fmt::format("Dist to intersection: {}", dists[idx_out]), 10);
+  // write_message(fmt::format("Hit Type: {}", IntersectionTypeStrs[hit_types[idx_out]]), 10);
+  // write_message(fmt::format("Will move into bin: {}", get_bin_from_element(next_elem)), 10);
+  // write_message("-------------------------------", 10);
 
   return {dists[idx_out], {get_bin_from_element(next_elem)}};
   return {INFTY, {-1, -1, -1}};

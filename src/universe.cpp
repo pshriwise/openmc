@@ -122,6 +122,9 @@ void MeshUniverse::create_unstructured_mesh_cells() {
 
   for (const auto& subdomain_id : subdomain_ids) {
     std::string subdomain_name = lmesh->subdomain_name(subdomain_id);
+    std::string lower_name = subdomain_name;
+    to_lower(lower_name);
+
     if (subdomain_name == "") continue;
     // get the elements for this subdomain id
     auto subdomain_elements = lmesh->active_subdomain_elements_ptr_range(subdomain_id);
@@ -129,7 +132,9 @@ void MeshUniverse::create_unstructured_mesh_cells() {
     // determine the material ID to assign for this block
     int32_t subdomain_mat_id = MATERIAL_VOID;
     int32_t mat_by_name_idx = get_material_by_name(subdomain_name);
-    if (mat_by_name_idx != -1) {
+    if (lower_name == "vacuum") {
+      subdomain_mat_id = MATERIAL_VOID;
+    } else if (mat_by_name_idx != -1) {
       subdomain_mat_id = model::materials[mat_by_name_idx]->id();
       write_message(fmt::format("Assigning subdomain {} by name: {} with material ID {}.", subdomain_id, subdomain_name, subdomain_mat_id), 10);
     } else if (model::material_map.find(subdomain_id) != model::material_map.end()) {
