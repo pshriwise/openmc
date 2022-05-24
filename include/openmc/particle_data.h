@@ -354,6 +354,7 @@ public:
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
   const vector<LocalCoord>& coord() const { return coord_; }
+  const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }

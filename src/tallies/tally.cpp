@@ -294,20 +294,6 @@ Tally::Tally(pugi::xml_node node)
         fmt::format("Invalid estimator '{}' on tally {}", est, id_)};
     }
   }
-
-#ifdef LIBMESH
-  // ensure a tracklength tally isn't used with a libMesh filter
-  for (auto i : this->filters_) {
-    auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
-    if (df) {
-      auto lm = dynamic_cast<LibMesh*>(model::meshes[df->mesh()].get());
-      if (lm && estimator_ == TallyEstimator::TRACKLENGTH) {
-        fatal_error("A tracklength estimator cannot be used with "
-                    "an unstructured LibMesh tally.");
-      }
-    }
-  }
-#endif
 }
 
 Tally::~Tally()
