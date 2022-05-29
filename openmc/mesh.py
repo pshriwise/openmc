@@ -197,61 +197,44 @@ class StructuredMesh(MeshBase):
         s1 = (slice(1, None),)*ndim + (slice(None),)
         return (vertices[s0] + vertices[s1]) / 2
 
-
-class RegularMesh(StructuredMesh):
-    """A regular Cartesian mesh in one, two, or three dimensions
-
-    Parameters
-    ----------
-    mesh_id : int
-        Unique identifier for the mesh
-    name : str
-        Name of the mesh
-
-    Attributes
-    ----------
-    id : int
-        Unique identifier for the mesh
-    name : str
-        Name of the mesh
-    dimension : Iterable of int
-        The number of mesh cells in each direction.
-    n_dimension : int
-        Number of mesh dimensions.
-    lower_left : Iterable of float
-        The lower-left corner of the structured mesh. If only two coordinate
-        are given, it is assumed that the mesh is an x-y mesh.
-    upper_right : Iterable of float
-        The upper-right corner of the structured mesh. If only two coordinate
-        are given, it is assumed that the mesh is an x-y mesh.
-    width : Iterable of flabstracoat
-        The width of mesh cells in each direction.
-    indices : Iterable of tuple
-        An iterable of mesh indices for each mesh element, e.g. [(1, 1, 1),
-        (2, 1, 1), ...]
-
-    """
-
-    def __init__(self, mesh_id=None, name=''):
-        super().__init__(mesh_id, name)
-
-        self._dimension = None
-        self._lower_left = None
-        self._upper_right = None
-        self._width = None
-
-    def _check_ordering(self, ordering):
+    def write_vtk_mesh(self, filename=None, curvilinear=True, data=None):
         """
-        Checks that
-        """
-        cv.check_length(f'{type(self).__name__} ordering', ordering, 3, 3)
+        Writes a mesh to file in VTK format
 
-        for val in self._GRID_ORDER_VALS:
-            if ordering.count(val) != 1:
-                raise ValueError(f'Provided ordering "{ordering}" is '
-                                 f'invalid for mesh type {type(self).__name__}. '
-                                 f'Only some permutation of '
-                                 f'{self._GRID_ORDER_VALS} is allowed.')
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Output filename
+        curvilinear : bool
+            Indicates whether or not curvilinear elements should be defined.
+            Only applicable to CylindricalMesh and SphericalMesh.
+        data : dict
+            Data to apply to the mesh. A dictionary with dataset names as keys
+            and data arrays as values. The dimensions of the data arrays must
+            match the dimensions of the mesh.
+
+        """
+        import vtk
+
+        if filename is None:
+            filename = f'mesh_{self.id}.vtk'
+
+        grid = self._create_vtk_mesh(curvilinear, data)
+
+        if isinstance(self, (RectilinearMesh, RegularMesh)):
+            writer = vtk.vtkStructuredGridWriter()
+        else:
+            writer = vtk.vtkUnstructuredGridWriter()
+
+        writer.SetFileName(str(filename))
+
+        if vtk.VTK_MAJOR_VERSION == 5:
+            grid.update()
+            writer.SetInput(grid)
+        else:
+            writer.SetInputData(grid)
+
+        writer.Write()
 
     @staticmethod
     def _generate_vertices(i_grid, j_grid, k_grid):
@@ -460,45 +443,6 @@ class RegularMesh(StructuredMesh):
                 grid.GetCellData().AddArray(arr)
 
         return grid
-
-    def write_vtk_mesh(self, filename=None, curvilinear=True, data=None):
-        """
-        Writes a mesh to file in VTK format
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            Output filename
-        curvilinear : bool
-            Indicates whether or not curvilinear elements should be defined.
-            Only applicable to CylindricalMesh and SphericalMesh.
-        data : dict
-            Data to apply to the mesh. A dictionary with dataset names as keys
-            and data arrays as values. The dimensions of the data arrays must
-            match the dimensions of the mesh.
-
-        """
-        import vtk
-
-        if filename is None:
-            filename = f'mesh_{self.id}.vtk'
-
-        grid = self._create_vtk_mesh(curvilinear, data)
-
-        if isinstance(self, (RectilinearMesh, RegularMesh)):
-            writer = vtk.vtkStructuredGridWriter()
-        else:
-            writer = vtk.vtkUnstructuredGridWriter()
-
-        writer.SetFileName(str(filename))
-
-        if vtk.VTK_MAJOR_VERSION == 5:
-            grid.update()
-            writer.SetInput(grid)
-        else:
-            writer.SetInputData(grid)
-
-        writer.Write()
 
 
 class RegularMesh(StructuredMesh):
