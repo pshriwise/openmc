@@ -485,6 +485,23 @@ public:
   //! \return The centroid of the bin
   virtual Position centroid(int bin) const = 0;
 
+  //! Get the number of vertices in the mesh
+  //
+  //! \return Number of vertices
+  virtual int n_vertices() const = 0;
+
+  //! Retrieve a vertex of the mesh
+  //
+  //! \param[in] vertex ID
+  //! \return vertex coordinates
+  virtual Position vertex(int id) const = 0;
+
+  //! Retrieve connectivity of a mesh element
+  //
+  //! \param[in] element ID
+  //! \return element connectivity as IDs of the vertices
+  virtual std::vector<int> connectivity(int id) const = 0;
+
   //! Get the volume of a mesh bin
   //
   //! \param[in] bin Bin to return the volume for
@@ -556,6 +573,12 @@ public:
   void write(const std::string& base_filename) const override;
 
   Position centroid(int bin) const override;
+
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
 
   double volume(int bin) const override;
 
@@ -700,6 +723,12 @@ public:
   void write(const std::string& base_filename) const override;
 
   Position centroid(int bin) const override;
+
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
 
   double volume(int bin) const override;
 

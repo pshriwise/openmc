@@ -220,6 +220,7 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
+
   // write volume of each element
   vector<double> tet_vols;
   xt::xtensor<double, 2> centroids({static_cast<size_t>(this->n_bins()), 3});
@@ -2194,6 +2195,7 @@ Position MOABMesh::centroid(int bin) const
   return {centroid[0], centroid[1], centroid[2]};
 }
 
+
 std::pair<moab::Tag, moab::Tag> MOABMesh::get_score_tags(
   std::string score) const
 {
@@ -2395,6 +2397,28 @@ Position LibMesh::centroid(int bin) const
   const auto& elem = this->get_element_from_bin(bin);
   auto centroid = elem.centroid();
   return {centroid(0), centroid(1), centroid(2)};
+}
+
+int LibMesh::n_vertices() const
+{
+  return m_->n_nodes();
+}
+
+Position LibMesh::vertex(int vertex_id) const
+{
+  const auto node_ref = m_->node_ref(vertex_id);
+  return {node_ref.x, node_ref.y, node_ref.z};
+}
+
+std::vector<int> LibMesh::connectivity(int elem_id) const
+{
+  std::vector<int> conn;
+  const auto elem_ref = m_->elem_ref(elem_id);
+  for (int i = 0; i < elem_ref->n_nodes(); i++) {
+    const auto n_ref = elem_ref.node_ref(i);
+    conn.push_back(n_ref.unique_id());
+  }
+  return conn;
 }
 
 std::string LibMesh::library() const
