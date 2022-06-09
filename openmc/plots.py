@@ -220,8 +220,8 @@ class PlotBase(IDManagerMixin):
         Indicate whether the plot should be colored by cell or by material
     background : Iterable of int or str
         Color of the background
-    mask_components : Iterable of openmc.Cell or openmc.Material
-        The cells or materials to plot
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
     mask_background : Iterable of int or str
         Color to apply to all cells/materials not listed in mask_components
     show_overlaps : bool
@@ -229,8 +229,10 @@ class PlotBase(IDManagerMixin):
     overlap_color : Iterable of int or str
         Color to apply to overlapping regions
     colors : dict
-        Dictionary indicating that certain cells/materials (keys) should be
-        displayed with a particular color.
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
     level : int
         Universe depth to plot at
     """
@@ -329,14 +331,15 @@ class PlotBase(IDManagerMixin):
     def colors(self, colors):
         cv.check_type('plot colors', colors, Mapping)
         for key, value in colors.items():
-            cv.check_type('plot color key', key, (openmc.Cell, openmc.Material))
+            cv.check_type('plot color key', key,
+                          (openmc.Cell, openmc.Material, Integral))
             self._check_color('plot color value', value)
         self._colors = colors
 
     @mask_components.setter
     def mask_components(self, mask_components):
         cv.check_type('plot mask components', mask_components, Iterable,
-                      (openmc.Cell, openmc.Material))
+                      (openmc.Cell, openmc.Material, Integral))
         self._mask_components = mask_components
 
     @mask_background.setter
@@ -672,11 +675,16 @@ class Plot(PlotBase):
                 color = _SVG_COLORS[color.lower()]
             subelement.text = ' '.join(str(x) for x in color)
 
+        # Helper function that returns the domain ID given either a
+        # Cell/Material object or the domain ID itself
+        def get_id(domain):
+            return domain if isinstance(domain, Integral) else domain.id
+
         if self._colors:
             for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: x[0].id):
+                                        key=lambda x: get_id(x[0])):
                 subelement = ET.SubElement(element, "color")
-                subelement.set("id", str(domain.id))
+                subelement.set("id", str(get_id(domain)))
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("rgb", ' '.join(str(x) for x in color))
@@ -684,7 +692,7 @@ class Plot(PlotBase):
         if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
             subelement.set("components", ' '.join(
-                str(d.id) for d in self._mask_components))
+                str(get_id(d)) for d in self._mask_components))
             color = self._mask_background
             if color is not None:
                 if isinstance(color, str):
@@ -752,15 +760,14 @@ class Plot(PlotBase):
         # Set plot colors
         colors = {}
         for color_elem in elem.findall("color"):
-            uid = color_elem.get("id")
-            colors[uid] = get_tuple(color_elem, "rgb")
-        # TODO: set colors (needs geometry information)
+            uid = int(color_elem.get("id"))
+            colors[uid] = tuple([int(x) for x in color_elem.get("rgb").split()])
+        plot.colors = colors
 
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            mask_components = [int(x) for x in mask_elem.get("components").split()]
-            # TODO: set mask components (needs geometry information)
+            plot.mask_components = [int(x) for x in mask_elem.get("components").split()]
             background = mask_elem.get("background")
             if background is not None:
                 plot.mask_background = tuple([int(x) for x in background.split()])
