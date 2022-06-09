@@ -195,6 +195,12 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   }
 }
 
+Position UnstructuredMesh::sample_tet(std::array<Position, 4> coords, uint64_t* seed) const {
+  // sample barycentric coords and return position
+
+
+}
+
 const std::string UnstructuredMesh::mesh_type = "unstructured";
 
 std::string UnstructuredMesh::get_mesh_type() const
@@ -288,6 +294,11 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
   return ijk;
+}
+
+Position
+StructuredMesh::sample(uint64_t* seed) const {
+  fatal_error("my message");
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -2335,6 +2346,20 @@ LibMesh::LibMesh(const std::string& filename, double length_multiplier)
   filename_ = filename;
   set_length_multiplier(length_multiplier);
   initialize();
+}
+
+Position LibMesh::sample(uint64_t* seed) const {
+  // get a random tet
+  double tet_xi = prn(seed);
+
+  // get tet coordinates (see um-as-geom branch) (specific to mesh library)
+  std::array<Position, 4> tet_coords;
+
+  // algorithm for sampling position via barycentric coords
+  Position r = this->sample_tet(tet_coords, seed);
+
+  // return position in element
+  return r;
 }
 
 void LibMesh::initialize()

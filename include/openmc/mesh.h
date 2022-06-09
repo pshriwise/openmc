@@ -68,6 +68,9 @@ public:
 
   // Methods
 
+  // virtual -- abstract declaration, no implementation (= 0)
+  virtual Position sample(uint64_t* seed) const = 0;
+
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] r0 Previous position of the particle
@@ -152,6 +155,9 @@ public:
       return distance < o.distance;
     }
   };
+
+  // needs to be in derived types of abstract "Mesh" class
+  Position sample(uint64_t* seed) const override;
 
   int get_bin(Position r) const override;
 
@@ -678,6 +684,8 @@ public:
   // Overridden Methods
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  Position sample(uint64_t* seed) const override;
 
   int get_bin(Position r) const override;
 
