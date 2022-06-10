@@ -594,11 +594,11 @@ std::pair<double, int32_t> DAGCell::distance(
     // indicate that particle is lost
     surf_idx = -1;
     dist = INFINITY;
-    if (!dagmc_ptr_->is_implicit_complement(vol) ||
-        model::universe_map[dag_univ->id_] == model::root_universe) {
-      p->mark_as_lost(
-        fmt::format("No intersection found with DAGMC cell {}", id_));
-    }
+    // if (!dagmc_ptr_->is_implicit_complement(vol) ||
+    //     model::universe_map[dag_univ->id_] == model::root_universe) {
+    //   p->mark_as_lost(
+    //     fmt::format("No intersection found with DAGMC cell {}", id_));
+    // }
   }
 
   return {dist, surf_idx};
@@ -726,7 +726,8 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ) {
     cellp->dagmc_ptr()->entity_by_index(3, cellp->dag_index());
 
   moab::EntityHandle new_vol;
-  cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  moab::ErrorCode rval = cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
+  if (rval != moab::MB_SUCCESS) return -1;
 
   return cellp->dagmc_ptr()->index_by_handle(new_vol) +
          univp->cell_idx_offset_;
