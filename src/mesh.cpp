@@ -1779,6 +1779,14 @@ void MOABMesh::initialize()
             filename_);
   }
 
+  // set member range of vertices
+  int vertex_dim = 0;
+  rval = mbi_->get_entities_by_dimension(0, vertex_dim, verts_);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get all vertex handles");
+  }
+
+
   // make an entity set for all tetrahedra
   // this is used for convenience later in output
   rval = mbi_->create_meshset(moab::MESHSET_SET, tetset_);
@@ -2128,6 +2136,14 @@ std::pair<vector<double>, vector<double>> MOABMesh::plot(
   return {};
 }
 
+int MOABMesh::get_vert_idx_from_handle(moab::EntityHandle vert) const {
+  int idx = vert - verts_[0];
+  if (idx >= n_vertices()) {
+    fatal_error(fmt::format("Invalid vertex idx {} (# vertices {})", idx, n_vertices()));
+  }
+  return idx;
+}
+
 int MOABMesh::get_bin_from_ent_handle(moab::EntityHandle eh) const
 {
   int bin = eh - ehs_[0];
@@ -2195,6 +2211,49 @@ Position MOABMesh::centroid(int bin) const
   return {centroid[0], centroid[1], centroid[2]};
 }
 
+int MOABMesh::n_vertices() const {
+  return verts_.size();
+}
+
+Position MOABMesh::vertex(int id) const {
+
+  moab::ErrorCode rval;
+
+  moab::EntityHandle vert = verts_[id];
+  rval = mbi_->handle_from_id(moab::MBVERTEX, id, vert);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error(fmt::format("Failed to find MOAB vertex with id {}", id));
+  }
+
+  moab::CartVect coords;
+  rval = mbi_->get_coords(&vert, 1, coords.array());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get the coordinates of a vertex.");
+  }
+
+  return {coords[0], coords[1], coords[2]};
+}
+
+std::vector<int> MOABMesh::connectivity(int bin) const {
+  moab::ErrorCode rval;
+
+  auto tet = get_ent_handle_from_bin(bin);
+
+  // look up the tet connectivity
+  vector<moab::EntityHandle> conn;
+  rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    warning("Failed to get connectivity of a mesh element.");
+    return {};
+  }
+
+  std::vector<int> verts(4);
+  for (int i = 0; i < verts.size(); i++) {
+    verts[i] = get_vert_idx_from_handle(conn[i]);
+  }
+
+  return verts;
+}
 
 std::pair<moab::Tag, moab::Tag> MOABMesh::get_score_tags(
   std::string score) const
@@ -2407,14 +2466,14 @@ int LibMesh::n_vertices() const
 Position LibMesh::vertex(int vertex_id) const
 {
   const auto node_ref = m_->node_ref(vertex_id);
-  return {node_ref.x, node_ref.y, node_ref.z};
+  return {node_ref(0), node_ref(1), node_ref(2)};
 }
 
 std::vector<int> LibMesh::connectivity(int elem_id) const
 {
   std::vector<int> conn;
-  const auto elem_ref = m_->elem_ref(elem_id);
-  for (int i = 0; i < elem_ref->n_nodes(); i++) {
+  const auto& elem_ref = m_->elem_ref(elem_id);
+  for (int i = 0; i < elem_ref.n_nodes(); i++) {
     const auto n_ref = elem_ref.node_ref(i);
     conn.push_back(n_ref.unique_id());
   }

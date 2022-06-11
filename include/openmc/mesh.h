@@ -644,6 +644,9 @@ private:
   //! \return MOAB EntityHandle of tet
   moab::EntityHandle get_ent_handle_from_bin(int bin) const;
 
+  //! Get a vertex index into the global range from a handle
+  int get_vert_idx_from_handle(moab::EntityHandle vert) const;
+
   //! Get the bin for a given mesh cell index
   //
   //! \param[in] idx Index of the mesh cell.
@@ -678,6 +681,7 @@ private:
 
   // Data members
   moab::Range ehs_; //!< Range of tetrahedra EntityHandle's in the mesh
+  moab::Range verts_; //!< Range of vertex EntityHandle's in the mesh
   moab::EntityHandle tetset_;      //!< EntitySet containing all tetrahedra
   moab::EntityHandle kdtree_root_; //!< Root of the MOAB KDTree
   std::shared_ptr<moab::Interface> mbi_;    //!< MOAB instance
