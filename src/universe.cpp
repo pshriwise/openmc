@@ -122,6 +122,7 @@ void MeshUniverse::create_unstructured_mesh_cells() {
 
   for (const auto& subdomain_id : subdomain_ids) {
     std::string subdomain_name = lmesh->subdomain_name(subdomain_id);
+    std::cout << "Subdomain name: " << subdomain_name << std::endl;
     std::string lower_name = subdomain_name;
     to_lower(lower_name);
 
@@ -141,15 +142,16 @@ void MeshUniverse::create_unstructured_mesh_cells() {
       // if no matching name is found, set cell materials by domain id
       write_message(fmt::format("Assigning subdomain {} by ID.", subdomain_id, subdomain_name), 10);
       subdomain_mat_id = subdomain_id;
-    } else {
-      fatal_error(fmt::format("Could not find material by name ({}) or ID ({}).", subdomain_name, subdomain_id));
-    }
+    } // else {
+    //   fatal_error(fmt::format("Could not find material by name ({}) or ID ({}).", subdomain_name, subdomain_id));
+    // }
 
     int n_subdomain_elems {0};
     // set each cell in the block with the chosen material ID
     for (const auto& elem_ptr : subdomain_elements) {
       int bin = mesh_ptr->get_bin_from_element(elem_ptr);
-      model::cells[cells_[bin]]->material_.push_back(subdomain_mat_id);
+      // replace temporary void material assignment
+      model::cells[cells_[bin]]->material_[0] = subdomain_mat_id;
       mat_elements++;
       n_subdomain_elems++;
     }
@@ -166,9 +168,11 @@ void MeshUniverse::create_cells(pugi::xml_node node)
     cell_fills = get_node_array<std::string>(node, "fills");
   }
 
+  bool structured_mesh = model::meshes[mesh_]->structure() == MeshStructure::STRUCTURED;
+
   int n_bins = model::meshes[mesh_]->n_bins();
-  if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
-    fatal_error(fmt::format("Invalid number of cell fills provided for mesh "
+  if (cell_fills.size() != 1 && cell_fills.size() != n_bins && structured_mesh) {
+    fatal_error(fmt::format("Invalid number of cell fills provided for structured mesh "
                             "universe {}. Must be 1 or {}",
       id_, n_bins));
   }
@@ -182,16 +186,21 @@ void MeshUniverse::create_cells(pugi::xml_node node)
   next_cell_id++;
 
   // create cells to fill the mesh elements
-  int32_t fill = std::stoi(cell_fills[0]);
+  int32_t fill = MATERIAL_VOID;
   for (int i = 0; i < n_bins; i++) {
     // if more than one cell fill is provided, assume that each mesh
     // element has its own fill
-    if (cell_fills.size() != 1)
-      fill = std::stoi(cell_fills[i]);
-    // check that this fill is in the material array
-    if (model::material_map.find(fill) == model::material_map.end()) {
-      fatal_error(
-        fmt::format("Material {} not found for MeshUniverse {}", fill, id_));
+
+    if (structured_mesh) {
+      if (cell_fills.size() > 1)
+        fill = std::stoi(cell_fills[0]);
+      else
+        fill = std::stoi(cell_fills[i]);
+      // check that this fill is in the material array
+      if (model::material_map.find(fill) == model::material_map.end()) {
+        fatal_error(
+          fmt::format("Material {} not found for MeshUniverse {}", fill, id_));
+      }
     }
 
     // create a new mesh cell
@@ -199,7 +208,7 @@ void MeshUniverse::create_cells(pugi::xml_node node)
     const auto& cell = model::cells.back();
 
     cell->type_ = Fill::MATERIAL;
-    //cell->material_.push_back(fill);
+    cell->material_.push_back(fill);
     cell->id_ = next_cell_id++;
     // set universe ID, this will be updated later by another loop in
     // geometry_aux

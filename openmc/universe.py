@@ -920,8 +920,9 @@ class MeshUniverse(UniverseBase):
         mesh_subelement = ET.SubElement(univ_element, 'mesh')
         mesh_subelement.text = str(self.mesh.id)
 
-        fill_subelement = ET.SubElement(univ_element, 'fills')
-        fill_subelement.text = ' '.join(map(lambda f: str(f.id), self.fills))
+        if self.fills:
+            fill_subelement = ET.SubElement(univ_element, 'fills')
+            fill_subelement.text = ' '.join(map(lambda f: str(f.id), self.fills))
 
         if self._outer is not None:
             outer_subelement = ET.SubElement(univ_element, 'outer')
