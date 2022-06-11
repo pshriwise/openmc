@@ -127,11 +127,7 @@ class MeshBase(IDManagerMixin, ABC):
 
 
 class StructuredMesh(MeshBase):
-<<<<<<< HEAD
     """A base class for structured mesh functionality
-=======
-    """A mixin for structured mesh functionality
->>>>>>> 7baadf48c (Initial cut at rendering OpenMC meshes)
 
     Parameters
     ----------
@@ -1101,10 +1097,6 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 7baadf48c (Initial cut at rendering OpenMC meshes)
 class CylindricalMesh(StructuredMesh):
     """A 3D cylindrical mesh
 
