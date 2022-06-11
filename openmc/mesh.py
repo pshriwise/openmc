@@ -565,30 +565,6 @@ class RegularMesh(StructuredMesh):
             nx, = self.dimension
             return ((x,) for x in range(1, nx + 1))
 
-    @property
-    def _grids(self):
-        ndim = len(self._dimension)
-        if ndim == 3:
-            x0, y0, z0 = self.lower_left
-            x1, y1, z1 = self.upper_right
-            nx, ny, nz = self.dimension
-            xarr = np.linspace(x0, x1, nx + 1)
-            yarr = np.linspace(y0, y1, ny + 1)
-            zarr = np.linspace(z0, z1, nz + 1)
-            return (xarr, yarr, zarr)
-        elif ndim == 2:
-            x0, y0 = self.lower_left
-            x1, y1 = self.upper_right
-            nx, ny = self.dimension
-            xarr = np.linspace(x0, x1, nx + 1)
-            yarr = np.linspace(y0, y1, ny + 1)
-            return (xarr, yarr)
-        else:
-            nx, = self.dimension
-            x0, = self.lower_left
-            x1, = self.upper_right
-            return (np.linspace(x0, x1, nx + 1),)
-
     def _grid(self, dim):
         if dim > self.n_dimension - 1:
             return np.asarray([])
