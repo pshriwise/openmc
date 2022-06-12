@@ -246,7 +246,7 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
 
   // write element connectivity
   xt::xtensor<int, 2> connectivity ({static_cast<size_t>(this->n_bins()), 4});
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < this->n_bins(); i++) {
     auto conn = this->connectivity(i);
     xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3]});
   }
