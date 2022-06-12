@@ -2881,8 +2881,7 @@ std::vector<int> LibMesh::connectivity(int elem_id) const
   std::vector<int> conn;
   const auto& elem_ref = m_->elem_ref(elem_id);
   for (int i = 0; i < elem_ref.n_nodes(); i++) {
-    const auto n_ref = elem_ref.node_ref(i);
-    conn.push_back(n_ref.unique_id());
+    conn.push_back(elem_ref.node_id(i));
   }
   return conn;
 }
