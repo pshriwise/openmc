@@ -1729,6 +1729,8 @@ class UnstructuredMesh(MeshBase):
         self.filename = filename
         self._volumes = None
         self._centroids = None
+        self._conectivity = None
+        self._vertices = None
         self.library = library
         self._output = True
         self.length_multiplier = length_multiplier
@@ -1796,6 +1798,14 @@ class UnstructuredMesh(MeshBase):
         return self._centroids
 
     @property
+    def vertices(self):
+        return self._vertices
+
+    @property
+    def connectivity(self):
+        return self._connectivity
+
+    @property
     def n_elements(self):
         if self._centroids is None:
             raise RuntimeError("No information about this mesh has "
@@ -1827,15 +1837,10 @@ class UnstructuredMesh(MeshBase):
     def n_dimension(self):
         return 3
 
-    @property
-    def vertices(self):
-        raise NotImplementedError("Vertices for UnstructuredMesh objects are "
-                                  "not yet available")
-
     def __repr__(self):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
-        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.mesh_lib)
+        string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
@@ -1938,6 +1943,9 @@ class UnstructuredMesh(MeshBase):
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.centroids = np.reshape(centroids, (vol_data.shape[0], 3))
         mesh.size = mesh.volumes.size
+
+        mesh._vertices = group['vertices'][()]
+        mesh._connectivity = group['connectivity'][()]
 
         if 'length_multiplier' in group:
             mesh.length_multiplier = group['length_multiplier'][()]
