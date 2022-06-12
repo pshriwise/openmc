@@ -1846,7 +1846,7 @@ class UnstructuredMesh(MeshBase):
                                               self.length_multiplier)
         return string
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_vtk_mesh(self, filename=None, data=None):
         """Map data to the unstructured mesh element centroids
            to create a VTK point-cloud dataset.
 
@@ -1854,81 +1854,62 @@ class UnstructuredMesh(MeshBase):
         ----------
         filename : str
             Name of the VTK file to write.
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
-        volume_normalization : bool
-            Whether or not to normalize the data by the
-            volume of the mesh elements
+        data : dict
+            Data to apply to the mesh. A dictionary with dataset names as keys
+            and data arrays as values. The dimensions of the data arrays must
+            match the dimensions of the mesh.
         """
-
         import vtk
-        from vtk.util import numpy_support as vtk_npsup
+        from vtk.util import numpy_support as nps
 
-        if self.centroids is None:
-            raise RuntimeError("No centroid information is present on this "
-                               "unstructured mesh. Please load this "
-                               "information from a relevant statepoint file.")
+        if self.connectivity is None or self.vertices is None:
+            raise RuntimeError('This mesh has not been '
+                               'loaded from a statepoint file.')
 
-        if self.volumes is None and volume_normalization:
-            raise RuntimeError("No volume data is present on this "
-                               "unstructured mesh. Please load the "
-                               " mesh information from a statepoint file.")
+        if filename is None:
+            filename = f'mesh_{self.id}.vtk'
 
-        # check that the data sets are appropriately sized
-        for label, dataset in datasets.items():
-            if isinstance(dataset, np.ndarray):
-                assert dataset.size == self.n_elements
-            else:
-                assert len(dataset) == self.n_elements
-            cv.check_type('label', label, str)
+        writer = vtk.vtkUnstructuredGridWriter()
 
-        # create data arrays for the cells/points
-        cell_dim = 1
-        vertices = vtk.vtkCellArray()
-        points = vtk.vtkPoints()
+        writer.SetFileName(str(filename))
 
-        for centroid in self.centroids:
-            # create a point for each centroid
-            point_id = points.InsertNextPoint(centroid * self.length_multiplier)
-            # create a cell of type "Vertex" for each point
-            vertices.InsertNextCell(cell_dim, (point_id,))
+        grid = vtk.vtkUnstructuredGrid()
 
-        # create a VTK data object
-        poly_data = vtk.vtkPolyData()
-        poly_data.SetPoints(points)
-        poly_data.SetVerts(vertices)
+        vtk_pnts = vtk.vtkPoints()
+        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
+        grid.SetPoints(vtk_pnts)
 
-        # strange VTK nuance:
-        # data must be held in some container
-        # until the vtk file is written
-        data_holder = []
+        tets = []
+        for conn in self.connectivity:
+            tet = vtk.vtkTetra()
+            for i, c in enumerate(conn):
+                tet.GetPointIds().SetId(i, c)
+            tets.append(tet)
 
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
+        for tet in tets:
+            grid.InsertNextCell(tet.GetCellType(), tet.GetPointIds())
 
-            if volume_normalization:
-                dataset /= self.volumes.flatten()
+        # add data to the mesh if provided
+        if data is not None:
+            for name, vals in data.items():
+                if vals.shape != (self.dimension,):
+                    raise ValueError(f'Cannot apply dataset {name} with '
+                                     f'shape {vals.shape} to mesh {self.id} '
+                                     f'with dimensions {self.dimension}')
+                arr = vtk.vtkDoubleArray()
+                arr.SetName(name)
+                arr.SetNumberOfTuples(vals.size)
 
-            array = vtk.vtkDoubleArray()
-            array.SetName(label)
-            array.SetNumberOfComponents(1)
-            array.SetArray(vtk_npsup.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
+                for i in range(vals.size):
+                    arr.SetTuple1(i, vals.flat[i])
+                grid.GetCellData().AddArray(arr)
 
-            data_holder.append(dataset)
-            poly_data.GetPointData().AddArray(array)
+        if vtk.VTK_MAJOR_VERSION == 5:
+            grid.update()
+            writer.SetInput(grid)
+        else:
+            writer.SetInputData(grid)
 
-        # set filename
-        if not filename.endswith(".vtk"):
-            filename += ".vtk"
-
-        writer = vtk.vtkGenericDataObjectWriter()
-        writer.SetFileName(filename)
-        writer.SetInputData(poly_data)
         writer.Write()
 
     @classmethod
