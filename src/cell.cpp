@@ -845,6 +845,7 @@ void read_cells(pugi::xml_node node)
   }
 
   read_dagmc_universes(node);
+  read_mesh_universes(node);
 
   populate_universes();
 
@@ -1148,7 +1149,8 @@ vector<ParentCell> Cell::find_parent_cells(
     int lattice_idx = C_NONE;
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
-      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(next_coord.lattice_i);
+      lattice_idx = model::lattices[next_coord.lattice()]->get_flat_index(
+        next_coord.lattice_index());
     }
     stack.push(coord.universe, {coord.cell, lattice_idx});
   }

@@ -1,8 +1,12 @@
 #include "openmc/universe.h"
 
+#include <fmt/core.h>
 #include <set>
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
+#include "openmc/mesh.h"
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -47,7 +51,7 @@ bool Universe::find_cell(Particle& p) const
     if (model::cells[i_cell]->universe_ != i_univ)
       continue;
 
-    // Check if this cell contains the particle;
+    // Check if this cell contains the particle
     Position r {p.r_local()};
     Direction u {p.u_local()};
     auto surf = p.surface();
@@ -71,6 +75,265 @@ BoundingBox Universe::bounding_box() const
     }
   }
   return bbox;
+}
+
+//==============================================================================
+// MeshUniverse implementation
+//==============================================================================
+
+MeshUniverse::MeshUniverse(pugi::xml_node node)
+{
+  geom_type_ = GeometryType::MESH;
+
+  if (check_for_node(node, "id")) {
+    id_ = std::stoi(get_node_value(node, "id"));
+  } else {
+    fatal_error("Must specify the ID of the Mesh Universe");
+  }
+
+  if (check_for_node(node, "name")) {
+    name_ = std::stoi(get_node_value(node, "name"));
+  }
+
+  if (check_for_node(node, "mesh")) {
+    int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+    // Ensure the speicifed mesh is present
+    if (model::mesh_map.find(mesh_id) == model::mesh_map.end()) {
+      fatal_error(fmt::format("Mesh {} could not be found", mesh_id));
+    }
+    mesh_ = model::mesh_map[mesh_id];
+  } else {
+    fatal_error(fmt::format("No mesh specified on mesh universe {}", id_));
+  }
+
+  create_cells(node);
+}
+
+void MeshUniverse::create_unstructured_mesh_cells() {
+  // get the openmc::LibMesh mesh and libmesh mesh
+  const auto& mesh = model::meshes[mesh_];
+  LibMesh* mesh_ptr = dynamic_cast<LibMesh*>(mesh.get());
+  const auto& lmesh = mesh_ptr->libmesh_mesh();
+
+  std::set<libMesh::subdomain_id_type> subdomain_ids;
+  lmesh->subdomain_ids(subdomain_ids);
+
+  int mat_elements {0};
+
+  for (const auto& subdomain_id : subdomain_ids) {
+    std::string subdomain_name = lmesh->subdomain_name(subdomain_id);
+    std::cout << "Subdomain name: " << subdomain_name << std::endl;
+    std::string lower_name = subdomain_name;
+    to_lower(lower_name);
+
+    if (subdomain_name == "") continue;
+    // get the elements for this subdomain id
+    auto subdomain_elements = lmesh->active_subdomain_elements_ptr_range(subdomain_id);
+
+    // determine the material ID to assign for this block
+    int32_t subdomain_mat_id = MATERIAL_VOID;
+    int32_t mat_by_name_idx = get_material_by_name(subdomain_name);
+    if (lower_name == "vacuum") {
+      subdomain_mat_id = MATERIAL_VOID;
+    } else if (mat_by_name_idx != -1) {
+      subdomain_mat_id = model::materials[mat_by_name_idx]->id();
+      write_message(fmt::format("Assigning subdomain {} by name: {} with material ID {}.", subdomain_id, subdomain_name, subdomain_mat_id), 10);
+    } else if (model::material_map.find(subdomain_id) != model::material_map.end()) {
+      // if no matching name is found, set cell materials by domain id
+      write_message(fmt::format("Assigning subdomain {} by ID.", subdomain_id, subdomain_name), 10);
+      subdomain_mat_id = subdomain_id;
+    } // else {
+    //   fatal_error(fmt::format("Could not find material by name ({}) or ID ({}).", subdomain_name, subdomain_id));
+    // }
+
+    int n_subdomain_elems {0};
+    // set each cell in the block with the chosen material ID
+    for (const auto& elem_ptr : subdomain_elements) {
+      int bin = mesh_ptr->get_bin_from_element(elem_ptr);
+      // replace temporary void material assignment
+      model::cells[cells_[bin]]->material_[0] = subdomain_mat_id;
+      mat_elements++;
+      n_subdomain_elems++;
+    }
+    std::cout << fmt::format("{} elements\n", n_subdomain_elems);
+  }
+
+  std::cout << fmt::format("Assigned materials to {} elements.\n", mat_elements);
+}
+
+void MeshUniverse::create_cells(pugi::xml_node node)
+{
+  vector<std::string> cell_fills;
+  if (check_for_node(node, "fills")) {
+    cell_fills = get_node_array<std::string>(node, "fills");
+  }
+
+  bool structured_mesh = model::meshes[mesh_]->structure() == MeshStructure::STRUCTURED;
+
+  int n_bins = model::meshes[mesh_]->n_bins();
+  if (cell_fills.size() != 1 && cell_fills.size() != n_bins && structured_mesh) {
+    fatal_error(fmt::format("Invalid number of cell fills provided for structured mesh "
+                            "universe {}. Must be 1 or {}",
+      id_, n_bins));
+  }
+
+  cells_.reserve(n_bins);
+  // find the available cell id
+  int32_t next_cell_id {-1};
+  for (const auto& c : model::cells) {
+    next_cell_id = std::max(next_cell_id, c->id_);
+  }
+  next_cell_id++;
+
+  // create cells to fill the mesh elements
+  int32_t fill = MATERIAL_VOID;
+  for (int i = 0; i < n_bins; i++) {
+    // if more than one cell fill is provided, assume that each mesh
+    // element has its own fill
+
+    if (structured_mesh) {
+      if (cell_fills.size() > 1)
+        fill = std::stoi(cell_fills[0]);
+      else
+        fill = std::stoi(cell_fills[i]);
+      // check that this fill is in the material array
+      if (model::material_map.find(fill) == model::material_map.end()) {
+        fatal_error(
+          fmt::format("Material {} not found for MeshUniverse {}", fill, id_));
+      }
+    }
+
+    // create a new mesh cell
+    model::cells.push_back(std::make_unique<MeshCell>(mesh_, i));
+    const auto& cell = model::cells.back();
+
+    cell->type_ = Fill::MATERIAL;
+    cell->material_.push_back(fill);
+    cell->id_ = next_cell_id++;
+    // set universe ID, this will be updated later by another loop in
+    // geometry_aux
+    cell->universe_ = id_;
+    model::cell_map[cell->id_] = model::cells.size() - 1;
+    cells_[i] = model::cells.size() - 1;
+  }
+
+  // special function if mesh is unstructured
+  if (model::meshes[mesh_]->structure() == MeshStructure::UNSTRUCTURED) {
+    create_unstructured_mesh_cells();
+  }
+
+  // create a cell for the exterior of the mesh
+  int32_t outer_material = MATERIAL_VOID;
+  if (check_for_node(node, "outer")) {
+    // get id of outer material
+    outer_material = std::stoi(get_node_value(node, "outer"));
+  }
+  // negative one indicates that this cell is the exterior of the mesh
+  model::cells.push_back(std::make_unique<MeshCell>(mesh_, -1));
+  const auto& cell = model::cells.back();
+
+  cell->type_ = Fill::MATERIAL;
+  cell->material_.push_back(outer_material);
+  cell->id_ = next_cell_id;
+  cell->universe_ = id_;
+
+  model::cell_map[cell->id_] = model::cells.size() - 1;
+  outer() = model::cell_map[cell->id_];
+}
+
+bool MeshUniverse::find_cell(Particle& p) const
+{
+  Position r {p.r_local()};
+  const auto& mesh = model::meshes[mesh_];
+  bool in_mesh;
+  int mesh_bin = mesh->get_bin(r);
+
+  if (mesh_bin == C_NONE) {
+    if (outer() == C_NONE)
+      return false;
+    p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
+    p.coord(p.n_coord() - 1).cell = outer();
+    return true;
+  }
+
+  p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
+  p.coord(p.n_coord() - 1).cell = cells_[mesh_bin];
+  return true;
+}
+
+void MeshUniverse::next_cell(Particle& p) const
+{
+  auto& coord = p.coord(p.n_coord() - 1);
+  const auto mesh = dynamic_cast<LibMesh*>(model::meshes[mesh_].get());
+
+  int32_t next_mesh_idx = p.boundary().lattice_translation[0];
+    // mesh->get_bin_from_indices(p.boundary().lattice_translation);
+  int32_t next_cell_idx {C_NONE};
+  if (mesh->bin_is_valid(next_mesh_idx)) {
+    if (p.coord(p.n_coord() -1).mesh_cell_index() == C_NONE) {
+      write_message(
+        fmt::format("\tParticle {} moving into the mesh. \n\tPosition: {} {} {}",
+        p.id(),
+        p.r()[0],
+        p.r()[1],
+        p.r()[2]),
+      10
+      );
+      // bool in_mesh;
+      // auto ijk = mesh->get_indices(p.r() + p.u() * 0.01, in_mesh);
+      // if (!in_mesh) {
+      //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+      // }
+    }
+      write_message(
+        fmt::format("\nMoving into structured mesh cell: {} {} {}",
+                    p.boundary().lattice_translation[0],
+                    p.boundary().lattice_translation[1],
+                    p.boundary().lattice_translation[2]),
+        10
+      );
+    next_cell_idx = cells_[next_mesh_idx];
+  } else {
+    write_message(
+      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} {} \n\tDirection: {} {} {}",
+                  p.id(),
+                  p.r()[0],
+                  p.r()[1],
+                  p.r()[2],
+                  p.u()[0],
+                  p.u()[1],
+                  p.u()[2]),
+      10
+    );
+    // bool in_mesh;
+    // auto ijk = mesh->get_indices(p.r() + p.u() * 0.1, in_mesh);
+    // if (in_mesh) {
+    //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+    // }
+    // kill particle exiting mesh for now
+    p.wgt() = 0.0;
+    next_mesh_idx = C_NONE;
+    next_cell_idx = outer_;
+  }
+
+  // reset the lattice_translation for the boundary crossing
+  p.boundary().lattice_translation[0] = 0;
+  p.boundary().lattice_translation[1] = 0;
+  p.boundary().lattice_translation[2] = 0;
+  // update material and temperature
+  p.material_last() = p.material();
+  p.sqrtkT_last() = p.sqrtkT();
+  // set previous bin
+  coord.mesh_cell_index() = next_mesh_idx;
+  coord.cell = next_cell_idx;
+  coord.mesh_index() = p.boundary().lattice_translation;
+  const auto& cell = model::cells.at(next_cell_idx);
+  Cell* cell_ptr = model::cells.at(next_cell_idx).get();
+  // TODO: Support multiple cell instances
+  p.cell_instance() = 0;
+  p.material() = cell->material_[0];
+  p.sqrtkT() = cell->sqrtkT_[0];
+  return;
 }
 
 //==============================================================================
@@ -215,6 +478,17 @@ const vector<int32_t>& UniversePartitioner::get_cells(
         return partitions_[middle];
       }
     }
+  }
+}
+
+void read_mesh_universes(pugi::xml_node node)
+{
+  vector<int> mesh_universe_ids;
+  for (pugi::xml_node mesh_univ_node : node.children("mesh_universe")) {
+    model::universes.push_back(std::make_unique<MeshUniverse>(mesh_univ_node));
+    mesh_universe_ids.push_back(model::universes.back()->id_);
+    model::universe_map[model::universes.back()->id_] =
+      model::universes.size() - 1;
   }
 }
 

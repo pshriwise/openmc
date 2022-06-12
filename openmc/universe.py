@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
 import numpy as np
+from pyparsing import Or
 
 import openmc
 import openmc.checkvalue as cv
@@ -683,6 +684,9 @@ class DAGMCUniverse(UniverseBase):
     def get_all_materials(self, memo=None):
         return OrderedDict()
 
+    def get_all_universes(self, memo=None):
+        return OrderedDict()
+
     def create_xml_subelement(self, xml_element, memo=None):
         if memo and self in memo:
             return
@@ -755,3 +759,166 @@ class DAGMCUniverse(UniverseBase):
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
         return out
+
+class MeshUniverse(UniverseBase):
+    """
+    A universe defined by a mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier of the universe
+    name : str
+        Name of the universe
+    mesh : openmc.MeshBase
+        Mesh used to define the universe
+    fills : Iterable containing openmc.Material, openmc.Lattice, or openmc.UniverseBase
+        The geometry filling each mesh cell
+    outer : openmc.UniverseBase
+        An outer universe used to define the region exterior to the mesh
+    """
+
+    def __init__(self, mesh, id=None, name=''):
+
+        self.id = id
+        self.name = name
+        self.mesh = mesh
+
+        self._fills = None
+        self._outer = None
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, m):
+        cv.check_type('Universe mesh', m, openmc.MeshBase)
+        self._mesh = m
+
+    @property
+    def fills(self):
+        return self._fills
+
+    @fills.setter
+    def fills(self, f):
+        cv.check_iterable_type('Mesh universe fills', f, \
+        (openmc.Material, openmc.Lattice, openmc.UniverseBase))
+        self._fills = f
+
+    @property
+    def outer(self):
+        return self._outer
+
+    @outer.setter
+    def outer(self, u):
+        cv.check_type('Outer universe', u, openmc.Material)
+        self._outer = u
+
+    def get_all_cells(self, memo=None):
+        """Return all cells contained in the universe.
+
+        Returns
+        -------
+        cells : collections.OrderedDict
+            Always an empty OrderedDict for MeshUniverses. Cells are setup at runtime.
+        """
+        return OrderedDict()
+
+    def get_all_universes(self, memo=None):
+        """Return all universes that are contained within this one.
+
+        Returns
+        -------
+        universes : collections.OrderedDict
+            Always an empty OrderedDict for MeshUniverses.
+        """
+        return OrderedDict()
+
+    def get_all_materials(self, memo=None):
+        """Return all materials within the mesh universe.
+
+        Returns
+        -------
+        collections.OrderedDict
+            Dictionary mapping material IDs to :class:`openmc.Material`
+            instances
+
+        """
+        materials = OrderedDict()
+
+        if memo and self in memo:
+            return materials
+
+        if memo is not None:
+            memo.add(self)
+
+        materials.update({m.id : m for m in self.fills})
+
+        if self.outer is not None:
+            materials[self.outer.id] = self.outer
+
+        return materials
+
+    def create_xml_subelement(self, xml_element, memo=None):
+        """Add the universe xml representation to an incoming xml element
+
+        Parameters
+        ----------
+        xml_element : xml.etree.ElementTree.Element
+            XML element to be added to
+        memo : set or None
+            A set of objects representing geometry entities already
+            written to the xml_element. This parameter is used internally
+            and should not be specified by users.
+
+        Returns
+        -------
+        None
+
+        """
+        if memo and self in memo:
+            return
+
+        if memo is not None:
+            memo.add(self)
+
+        univ_element = ET.Element('mesh_universe')
+        univ_element.set('id', str(self.id))
+
+        mesh_subelement = ET.SubElement(univ_element, 'mesh')
+        mesh_subelement.text = str(self.mesh.id)
+
+        if self.fills:
+            fill_subelement = ET.SubElement(univ_element, 'fills')
+            fill_subelement.text = ' '.join(map(lambda f: str(f.id), self.fills))
+
+        if self._outer is not None:
+            outer_subelement = ET.SubElement(univ_element, 'outer')
+            outer_subelement.text = str(self.outer.id)
+
+        xml_element.append(univ_element)
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate MeshUniverse object from XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            `<mesh_universe>` element
+        """
+        univ_id = int(get_text(elem, 'id'))
+        mesh_id = int(get_text(elem, 'mesh'))
+        mesh = kwargs['meshes'][mesh_id]
+        name = get_text(elem, 'name', default='')
+        # create a new MeshUniverse instance
+        u = cls(mesh, id=univ_id, name=name)
+
+        u.fills = [int(f) for f in get_text(elem, 'fills').split()]
+
+        outer = int(get_text(elem, 'outer'))
+        if outer is not None:
+            u.outer = outer
+
+        return u

@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
+#include "openmc/universe.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -54,6 +55,18 @@ void MeshFilter::get_all_bins(
       match.weights_.push_back(1.0);
     }
   } else {
+    const auto& coord = p.lowest_coord();
+    // if in a mesh universe, check to see if this is the same mesh and
+    // use the current mesh bin to tally instead of ray tracing the mesh
+    if (model::universes[coord.universe]->geom_type() == GeometryType::MESH) {
+      const auto mesh_univ = dynamic_cast<MeshUniverse*>(model::universes[coord.universe].get());
+      if (mesh_univ->mesh() == mesh_) {
+        match.bins_.push_back(coord.mesh_cell_index());
+        match.weights_.push_back(1.0);
+        return;
+      }
+    }
+
     model::meshes[mesh_]->bins_crossed(
       last_r, r, u, match.bins_, match.weights_);
   }

@@ -37,6 +37,7 @@
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#include "libmesh/cell_tet4.h"
 #endif
 
 namespace openmc {
@@ -50,6 +51,15 @@ const bool LIBMESH_ENABLED = true;
 #else
 const bool LIBMESH_ENABLED = false;
 #endif
+
+std::vector<std::string> IntersectionTypeStrs = { "MISS",
+                                                  "INTERIOR",
+                                                  "EDGE0",
+                                                  "EDGE1",
+                                                  "EDGE2",
+                                                  "NODE0",
+                                                  "NODE1",
+                                                  "NODE2" };
 
 namespace model {
 
@@ -307,6 +317,25 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
   return ijk;
 }
 
+bool StructuredMesh::bin_is_valid(int bin) const
+{
+  return bin >= 0 && bin < n_bins() - 1;
+}
+
+bool StructuredMesh::ijk_is_valid(const MeshIndex& ijk) const
+{
+  for (int i = 0; i < n_dimension_; ++i) {
+    if (!index_is_valid(ijk[i], i))
+      return false;
+  }
+  return true;
+}
+
+bool StructuredMesh::index_is_valid(int idx, int dim) const
+{
+  return idx >= 1 && idx <= shape_[dim];
+}
+
 int StructuredMesh::get_bin(Position r) const
 {
   // Determine indices
@@ -557,6 +586,154 @@ void StructuredMesh::surface_bins_crossed(
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
 
+std::pair<double, StructuredMesh::MeshIndex> StructuredMesh::distance_to_mesh_i(
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
+{
+  // distance is zero if already in the mesh
+  // in this dimension
+  if (index_is_valid(ijk[i], i))
+    return {0.0, ijk};
+
+  if (std::abs(u[i]) < FP_PRECISION)
+    return {INFTY, {-1, -1, -1}};
+
+  double dist;
+  // "above" grid and moving toward it
+  if (ijk[i] > shape_[i] && u[i] < 0.0) {
+    dist = upper_right_[i] - r[i] / u[i];
+    // "below" and moving toward it
+  } else if (ijk[i] < 1 && u[i] > 0.0) {
+    dist = lower_left_[i] - r[i] / u[i];
+    // moving away from the grid
+  } else {
+    return {INFTY, {-1, -1, -1}};
+  }
+
+  bool in_mesh;
+  return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
+}
+
+std::pair<double, int> StructuredMesh::distance_to_mesh(
+  const Position& r, const Direction& u) const
+{
+  bool in_mesh;
+  MeshIndex ijk = get_indices(r, in_mesh);
+
+  // if (in_mesh)
+  //   return {0.0, get_bin_from_indices(ijk)};
+
+  std::array<std::pair<double, MeshIndex>, 3> distances;
+  for (int i = 0; i < n_dimension_; ++i) {
+    distances[i] = distance_to_mesh_i(ijk, i, r, u);
+  }
+
+  int idx = C_NONE;
+  double dist_out {INFTY};
+  for (int i = 0; i < n_dimension_; ++i) {
+    const auto& dist = distances[i];
+    if (dist.first < dist_out && ijk_is_valid(dist.second)) {
+      dist_out = dist.first;
+      idx = i;
+    }
+  }
+
+  // couldn't find a valid ijk crossing,
+  // particle is still outside of the mesh
+  const auto& out = distances[idx];
+  if (!ijk_is_valid(out.second)) {
+    return {INFTY, -1};
+  }
+
+  write_message(
+    fmt::format("\tDistance to mesh entry: {}, Next cell: {}, {}, {}",
+                out.first,
+                out.second[0],
+                out.second[1],
+                out.second[2]),
+    10
+    );
+  return {out.first, get_bin_from_indices(out.second)};
+}
+
+Direction StructuredMesh::normal(int idx, int dim, const Position& r, const Direction& u) const {
+  // planar cases
+  Direction normal {0.0, 0.0, 0.0};
+  normal[dim] = 1.0;
+  return normal;
+}
+
+std::pair<double, std::array<int, 3>> StructuredMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
+{
+
+  // if the particle is outside of the mesh,
+  // determine the distance to the mesh
+  if (bin == C_NONE) {
+    auto dist_to_mesh = distance_to_mesh(r, u);
+    return {dist_to_mesh.first, get_indices_from_bin(dist_to_mesh.second)};
+  }
+
+  // start in the specified mesh bin
+  MeshIndex ijk = get_indices_from_bin(bin);
+
+  // compute next distane in either direction for each dimension
+  std::array<MeshDistance, 6> distances;
+  for (int i = 0; i < n_dimension_; i++) {
+    int idx = 2*i;
+    distances[idx] = MeshDistance(ijk[i] - 1, false, distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, TINY_BIT));
+    distances[idx+1] = MeshDistance(ijk[i] + 1, true, distance_to_grid_boundary_i(ijk[i], i, r, u, TINY_BIT));
+
+    if (u.dot(-normal(ijk[i] - 1, i, r + u * distances[idx].distance, u)) <= 0.0) { distances[idx].distance = INFTY; }
+    if (u.dot(normal(ijk[i], i, r + u * distances[idx+1].distance, u)) <= 0.0) { distances[idx+1].distance = INFTY; }
+
+    if (distances[idx].distance <= 0.0) { distances[idx].distance = INFTY; }
+    if (distances[idx+1].distance <= 0.0) { distances[idx+1].distance = INFTY; }
+  }
+
+  // use minimum distance to determine which crossing
+  // and next mesh bin to use
+  double min_dist = INFTY;
+  int idx = C_NONE;
+  for (int i = 0; i < 2 * n_dimension_; i++) {
+    const auto& dist = distances[i];
+    if (dist.distance < min_dist && dist.distance > 0.0) {
+      min_dist = dist.distance;
+      idx = i;
+    }
+  }
+
+  if (idx == C_NONE) {
+    // if the particle didn't start outside of the mesh, error
+    fatal_error(
+      fmt::format("Could not find next mesh cell. Mesh distances: {}, {}, {}",
+        distances[0].distance, distances[1].distance, distances[2].distance));
+  }
+
+  // if (distances[idx].distance > 100.0) {
+  //   warning(
+  //     fmt::format("Returned distance too high for particle in the mesh.")
+  //   );
+  //   // find exiting intersections with the current element
+  //   // in each dimension
+  //   // compute next distance in each direction
+  //   std::array<MeshDistance, 3> distances;
+  //   for (int i = 0; i < n_dimension_; i++) {
+  //     distances[i] = distance_to_grid_boundary(ijk, i, r, u, 0.0);
+  //   }
+  // }
+
+  const auto& dist_out = distances[idx];
+  ijk[idx / 2] = dist_out.next_index;
+  write_message(
+    fmt::format("\tStructured mesh distance: {}, Next cell: {}, {}, {}",
+      dist_out.distance, ijk[0], ijk[1], ijk[2]),
+    10);
+
+  sanitize_indices(ijk);
+
+  return {dist_out.distance, ijk};
+}
+
 //==============================================================================
 // RegularMesh implementation
 //==============================================================================
@@ -656,18 +833,13 @@ std::string RegularMesh::get_mesh_type() const
   return mesh_type;
 }
 
-double RegularMesh::positive_grid_boundary(const MeshIndex& ijk, int i) const
+double RegularMesh::grid_boundary(int idx, int i) const
 {
-  return lower_left_[i] + ijk[i] * width_[i];
-}
-
-double RegularMesh::negative_grid_boundary(const MeshIndex& ijk, int i) const
-{
-  return lower_left_[i] + (ijk[i] - 1) * width_[i];
+  return lower_left_[i] + idx * width_[i];
 }
 
 StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
   MeshDistance d;
@@ -678,13 +850,20 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
   d.max_surface = (u[i] > 0);
   if (d.max_surface && (ijk[i] <= shape_[i])) {
     d.next_index++;
-    d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i], i, r, u, l);
   } else if (!d.max_surface && (ijk[i] >= 1)) {
     d.next_index--;
-    d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, l);
   }
+
   return d;
 }
+
+double RegularMesh::distance_to_grid_boundary_i(
+  int idx, int i, const Position& r, const Direction& u, double l) const {
+    return (grid_boundary(idx, i) - r[i]) / u[i];
+}
+
 
 std::pair<vector<double>, vector<double>> RegularMesh::plot(
   Position plot_ll, Position plot_ur) const
@@ -819,20 +998,12 @@ std::string RectilinearMesh::get_mesh_type() const
   return mesh_type;
 }
 
-double RectilinearMesh::positive_grid_boundary(
-  const MeshIndex& ijk, int i) const
-{
-  return grid_[i][ijk[i]];
-}
-
-double RectilinearMesh::negative_grid_boundary(
-  const MeshIndex& ijk, int i) const
-{
-  return grid_[i][ijk[i] - 1];
+double RectilinearMesh::grid_boundary(int idx, int i) const {
+  return grid_[i][idx];
 }
 
 StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
   MeshDistance d;
@@ -843,12 +1014,17 @@ StructuredMesh::MeshDistance RectilinearMesh::distance_to_grid_boundary(
   d.max_surface = (u[i] > 0);
   if (d.max_surface && (ijk[i] <= shape_[i])) {
     d.next_index++;
-    d.distance = (positive_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i], i, r, u, l);
   } else if (!d.max_surface && (ijk[i] > 0)) {
     d.next_index--;
-    d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
+    d.distance = distance_to_grid_boundary_i(ijk[i] - 1, i, r, u, l);
   }
   return d;
+}
+
+double RectilinearMesh::distance_to_grid_boundary_i(
+  int idx, int i, const Position& r, const Direction& u, double l) const {
+    return (grid_boundary(idx, i) - r[i]) / u[i];
 }
 
 int RectilinearMesh::set_grid()
@@ -948,6 +1124,15 @@ std::string CylindricalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+void CylindricalMesh::sanitize_indices(MeshIndex& ijk) const {
+  if (!full_phi_) return;
+
+  if (!index_is_valid(ijk[1], 1)) {
+    if (ijk[1] < 1) ijk[1] += shape_[1];
+    if (ijk[1] > shape_[1]) ijk[1] -= shape_[1];
+  }
+}
+
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -970,42 +1155,80 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   return idx;
 }
 
+std::pair<double, StructuredMesh::MeshIndex>
+CylindricalMesh::distance_to_mesh_i(
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
+{
+  double dist = INFTY;
+  if (i == 0) {
+    auto min = find_r_crossing(r, u, 0.0, 0);
+    auto max = find_r_crossing(r, u, 0.0, shape_[0]);
+    // use the entering intersection only
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 0, r + u * min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[0], 0, r + u * max, u)) < 0.0) dist = max;
+  } else if (i == 1) {
+    // always in the radial bins, they should not determine mesh exit/entry
+    if (full_phi_) return {INFTY, ijk};
+    auto min = find_phi_crossing(r, u, 0.0, 0);
+    auto max = find_phi_crossing(r, u, 0.0, shape_[1]);
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 1, r + u * min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[1], 1, r + u * max, u)) < 0.0) dist = max;
+  } else if (i == 2) {
+    auto min = find_z_crossing(r, u, 0.0, 0);
+    auto max = find_z_crossing(r, u, 0.0, shape_[2]);
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 2, r + u * min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[2], 2, r + u * max, u)) < 0.0) dist = max;
+  } else {
+    fatal_error("Invalid dimension passed for cylindrical mesh");
+  }
+
+  bool in_mesh;
+  return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
+}
+
 double CylindricalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
 
-  if ((shell < 0) || (shell >= shape_[0]))
-    return INFTY;
+  shell = std::min(shape_[0], std::max(0, shell));
 
-  // solve r.x^2 + r.y^2 == r0^2
+  // solve r.x^2 + r.y^2 = r0^2
   // x^2 + 2*s*u*x + s^2*u^2 + s^2*v^2+2*s*v*y + y^2 -r0^2 = 0
   // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
 
   const double r0 = grid_[0][shell];
-  const double denominator = u.x * u.x + u.y * u.y;
+  const double a = 1.0 - u.z * u.z;
 
-  // Direction of flight is in z-direction. Will never intersect r.
-  if (std::abs(denominator) < FP_PRECISION)
+  if (a == 0.0)
     return INFTY;
 
   // inverse of dominator to help the compiler to speed things up
-  const double inv_denominator = 1.0 / denominator;
+  const double inv_denominator = 1.0 / a;
 
-  const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
-  double D = p * p + (r0 * r0 - r.x * r.x - r.y * r.y) * inv_denominator;
+  double k = u.x * r.x + u.y * r.y;
+  double c = r.x * r.x + r.y * r.y - r0 * r0;
+  double quad = k * k - a * c;
+  // double quad = k * k + (r0 * r0 - r.x * r.x - r.y * r.y);
 
-  if (D < 0.0)
+  if (quad < 0.0)
     return INFTY;
 
-  D = std::sqrt(D);
-
-  // the solution -p - D is always smaller as -p + D : Check this one first
-  if (-p - D > l)
-    return -p - D;
-  if (-p + D > l)
-    return -p + D;
-
-  return INFTY;
+  if (std::abs(c) < FP_COINCIDENT) {
+    // on cyl
+    if (k >= 0.0)
+      return INFTY;
+    else
+      return (-k + sqrt(quad)) / a;
+  } else if (c < 0.0) {
+    // inside cyl
+    return (-k + sqrt(quad)) / a;
+  } else {
+    const double d = (-k - sqrt(quad)) / a;
+    // outside cyl
+    if (d < 0.0)
+      return INFTY;
+    return d;
+  }
 }
 
 double CylindricalMesh::find_phi_crossing(
@@ -1032,6 +1255,8 @@ double CylindricalMesh::find_phi_crossing(
   // Check if direction of flight is not parallel to phi surface
   if (std::abs(denominator) > FP_PRECISION) {
     const double s = -(r.x * s0 - r.y * c0) / denominator;
+
+    if (s < FP_PRECISION) return INFTY;
     // Check if solution is in positive direction of flight and crosses the
     // correct phi surface (not -phi)
     if ((s > l) && ((c0 * (r.x + s * u.x) + s0 * (r.y + s * u.y)) > 0.0))
@@ -1041,48 +1266,58 @@ double CylindricalMesh::find_phi_crossing(
   return INFTY;
 }
 
-StructuredMesh::MeshDistance CylindricalMesh::find_z_crossing(
+double CylindricalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  MeshDistance d;
-  d.next_index = shell;
-
-  // Direction of flight is within xy-plane. Will never intersect z.
   if (std::abs(u.z) < FP_PRECISION)
-    return d;
+    return INFTY;
 
-  d.max_surface = (u.z > 0.0);
-  if (d.max_surface && (shell <= shape_[2])) {
-    d.next_index += 1;
-    d.distance = (grid_[2][shell] - r.z) / u.z;
-  } else if (!d.max_surface && (shell > 0)) {
-    d.next_index -= 1;
-    d.distance = (grid_[2][shell - 1] - r.z) / u.z;
-  }
-  return d;
+  return (grid_boundary(shell, 2) - r.z) / u.z;
+}
+
+double CylindricalMesh::grid_boundary(int idx, int i) const {
+  return grid_[i][idx];
 }
 
 StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u,
   double l) const
 {
-
+  auto r_norm = norm(r);
   if (i == 0) {
-
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
-
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
   } else if (i == 1) {
+    int idx = ijk[i];
+    double dot_prod = -r_norm.y * u.x + r_norm.x * u.y;
+    if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
 
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
-
+    bool max_surf = dot_prod > 0.0;
+    if (max_surf) idx++;
+    else idx--;
+    return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r, u, l, idx));
   } else {
-    return find_z_crossing(r0, u, l, ijk[i]);
+      MeshDistance d;
+      d.next_index = ijk[i];
+      d.max_surface = (u.z > 0);
+      if (d.max_surface) d.next_index += 1;
+      else d.next_index -=1;
+      int idx = d.max_surface ? ijk[i] : ijk[i] - 1;
+      d.distance = find_z_crossing(r, u, l, idx);
+      return d;
   }
+}
+
+double CylindricalMesh::distance_to_grid_boundary_i(
+  int idx, int i, const Position& r, const Direction&u, double l) const {
+    if (i == 0) {
+      return find_r_crossing(r, u, l, idx);
+    } else if (i == 1) {
+      return find_phi_crossing(r, u, l, idx);
+    } else {
+      return find_z_crossing(r, u, l, idx);
+    }
 }
 
 int CylindricalMesh::set_grid()
@@ -1127,6 +1362,22 @@ int CylindricalMesh::set_grid()
   upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 
   return 0;
+}
+
+Direction CylindricalMesh::normal(int idx, int dim, const Position& r, const Direction& u) const {
+  Ensures(dim >= 0 && dim <= 2);
+  if (dim == 0) {
+    // radial - use position to generate normal at nearest point on the surface
+    Direction normal = r;
+    normal[2] = 0.0;
+    return normal / normal.norm();
+  } else if (dim == 1) {
+    // phi - return CCW facing normal of the surface
+    const double phi = grid_[1][idx];
+    return {-sin(phi), cos(phi), 0.0};
+  } else if (dim == 2) {
+    return StructuredMesh::normal(idx, dim, r, u);
+  }
 }
 
 int CylindricalMesh::get_index_in_direction(double r, int i) const
@@ -1180,21 +1431,25 @@ std::string SphericalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+
+ void SphericalMesh::sanitize_indices(MeshIndex& ijk) const {
+  if(!full_theta_ && !full_phi_) return;
+
+  if (full_theta_ && !index_is_valid(ijk[1], 1)) {
+   if (ijk[1] < 1) ijk[1] += shape_[1];
+   if (ijk[1] > shape_[1]) ijk[1] -= shape_[1];
+  }
+
+  if (full_phi_ && !index_is_valid(ijk[2], 2)) {
+   if (ijk[2] < 1) ijk[2] += shape_[2];
+   if (ijk[2] > shape_[2]) ijk[2] -= shape_[2];
+  }
+}
+
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  Position mapped_r;
-
-  mapped_r[0] = r.norm();
-  if (mapped_r[0] < FP_PRECISION) {
-    mapped_r[1] = 0.0;
-    mapped_r[2] = 0.0;
-  } else {
-    mapped_r[1] = std::acos(r.z / mapped_r.x);
-    mapped_r[2] = std::atan2(r.y, r.x);
-    if (mapped_r[2] < 0)
-      mapped_r[2] += 2 * M_PI;
-  }
+  Position mapped_r{to_rtp(r)};
 
   MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
 
@@ -1204,26 +1459,145 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   return idx;
 }
 
+Position
+SphericalMesh::to_rtp(const Position& xyz) const {
+
+  Position rtp;
+
+  rtp[0] = xyz.norm();
+  if (rtp[0] < FP_PRECISION) {
+    rtp[1] = 0.0;
+    rtp[2] = 0.0;
+  } else {
+    rtp[1] = std::acos(xyz.z / rtp.x);
+    rtp[2] = std::atan2(xyz.y, xyz.x);
+    if (rtp[2] < 0) {
+      rtp[2] += 2.0 * M_PI;
+    }
+  }
+
+  return rtp;
+}
+
+Position
+SphericalMesh::to_xyz(const Position& rtp) const {
+  Position xyz;
+
+  double rsin = rtp[0] * std::sin(rtp[1]);
+
+  xyz[0] = rsin * std::cos(rtp[2]);
+  xyz[1] = rsin * std::sin(rtp[2]);
+  xyz[2] = rtp[0] * std::cos(rtp[1]);
+
+  return xyz;
+}
+
+Direction
+SphericalMesh::normal(int idx, int dim, const Position& r, const Direction& u) const
+{
+  if (dim == 0) {
+    return r / r.norm();
+  } else if (dim == 1) {
+    Position rtp = to_rtp(r);
+    rtp[1] += 0.5 * M_PI;
+    // rtp[2] -= M_PI;
+    // if (rtp[2] < 0.0) rtp[2] += 2.0 * M_PI;
+    return to_xyz(rtp);
+  } else if (dim == 2) {
+    // phi - return CCW facing normal of the surface
+    const double phi = grid_[1][idx];
+    return {-sin(phi), cos(phi), 0.0};
+  }
+}
+
+std::pair<double, StructuredMesh::MeshIndex>
+SphericalMesh::distance_to_mesh_i(const MeshIndex& ijk, int i, const Position& r, const Direction& u) const
+{
+  double dist = INFTY;
+  if (i == 0) {
+    auto min = find_r_crossing(r, u, 0.0, 0);
+    auto max = find_r_crossing(r, u, 0.0, shape_[0]);
+    // use the entering intersection only
+    if (min > 0.0 && min < INFTY && u.dot(-normal(0, 0, r+u*min, u)) < 0.0) dist = min;
+    else if (max > 0.0 && max < INFTY && u.dot(normal(shape_[0], 0, r + u * max, u)) < 0.0) dist = max;
+  } else if (i == 1) {
+    // theta dir
+  } else if (i == 2) {
+    // phi dir
+  } else {
+    fatal_error("Invalid dimension passed for spherical mesh");
+  }
+
+  bool in_mesh;
+  return {dist, get_indices(r + (dist + TINY_BIT) * u, in_mesh)};
+}
+
+StructuredMesh::MeshDistance
+SphericalMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r, const Direction& u, double l) const
+{
+  auto r_norm = r / r.norm();
+
+  if (i == 0) {
+    return std::min (
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
+  } else if (i == 1) {
+    int idx = ijk[i];
+    auto n = normal(idx, i, r, u);
+    double dot_prod = n.dot(u);
+
+    if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
+
+    bool max_surf = dot_prod > 0.0;
+    if (max_surf) idx++;
+    else idx--;
+    return MeshDistance(sanitize_phi(idx), max_surf, find_theta_crossing(r, u, l, idx));
+  } else if (i == 2) {
+    int idx = ijk[i];
+    double dot_prod = -r_norm.y * u.x + r_norm.x * u.y;
+    if (dot_prod == 0.0) return MeshDistance(sanitize_phi(idx), false, INFTY);
+
+    bool max_surf = dot_prod > 0.0;
+    if (max_surf) idx++;
+    else idx--;
+    return MeshDistance(sanitize_phi(idx), max_surf, find_phi_crossing(r, u, l, idx));
+  }
+}
+
+
 double SphericalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
-  if ((shell < 0) || (shell >= shape_[0]))
-    return INFTY;
+
+  shell = std::min(shape_[0], std::max(0, shell));
 
   // solve |r+s*u| = r0
   // |r+s*u| = |r| + 2*s*r*u + s^2 (|u|==1 !)
   const double r0 = grid_[0][shell];
-  const double p = r.dot(u);
-  double D = p * p - r.dot(r) + r0 * r0;
 
-  if (D >= 0.0) {
-    D = std::sqrt(D);
-    // the solution -p - D is always smaller as -p + D : Check this one first
-    if (-p - D > l)
-      return -p - D;
-    if (-p + D > l)
-      return -p + D;
+  if (r0 == 0.0) return INFTY;
+
+  const double k = r.dot(u);
+  const double c = r.dot(r) - r0 * r0;
+  double D = k * k - c;
+
+  if (D < 0.0) {
+    return INFTY;
+  } else if (std::abs(c) < FP_COINCIDENT) {
+    if (k >= 0.0) {
+      return INFTY;
+    } else {
+      return -k + sqrt(D);
+    }
   }
+
+  D = sqrt(D);
+  // the solution -k - D is always smaller as -k + D : Check this one first
+  if (-k - D > l)
+    return -k - D;
+  if (-k + D > l)
+    return -k + D;
 
   return INFTY;
 }
@@ -1323,31 +1697,46 @@ double SphericalMesh::find_phi_crossing(
   return INFTY;
 }
 
-StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
-  double l) const
-{
+double SphericalMesh::grid_boundary(int idx, int i) const {
+  return grid_[i][idx];
+}
 
-  if (i == 0) {
+// StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
+//   const MeshIndex& ijk, int i, const Position& r, const Direction& u,
+//   double l) const
+// {
 
-    return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
+//   if (i == 0) {
 
-  } else if (i == 1) {
+//     return std::min(
+//       MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
+//       MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
 
-    return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
-                      find_theta_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_theta(ijk[i] - 1), false,
-        find_theta_crossing(r0, u, l, ijk[i] - 1)));
+//   } else if (i == 1) {
 
-  } else {
+//     return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
+//                       find_theta_crossing(r, u, l, ijk[i])),
+//       MeshDistance(sanitize_theta(ijk[i] - 1), false,
+//         find_theta_crossing(r, u, l, ijk[i] - 1)));
 
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r0, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r0, u, l, ijk[i] - 1)));
-  }
+//   } else {
+
+//     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
+//                       find_phi_crossing(r, u, l, ijk[i])),
+//       MeshDistance(sanitize_phi(ijk[i] - 1), false,
+//         find_phi_crossing(r, u, l, ijk[i] - 1)));
+//   }
+// }
+
+double SphericalMesh::distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const {
+    if (i == 0) {
+      return find_r_crossing(r, u, l, idx);
+    } else if (i == 1) {
+      return find_theta_crossing(r, u, l, idx);
+    } else {
+      return find_phi_crossing(r, u, l, idx);
+    }
 }
 
 int SphericalMesh::set_grid()
@@ -1993,6 +2382,12 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   }
 };
 
+std::pair<double, std::array<int, 3>> MOABMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
+{
+  return {INFTY, {-1, -1, -1}};
+}
+
 moab::EntityHandle MOABMesh::get_tet(const Position& r) const
 {
   moab::CartVect pos(r.x, r.y, r.z);
@@ -2584,6 +2979,230 @@ void LibMesh::set_score_data(const std::string& var_name,
   }
 }
 
+    const bool EXIT_EARLY = false;
+
+
+    /* Function to return the vertex with the lowest coordinates. To force the same
+       ray-edge computation, the Plücker test needs to use consistent edge
+       representation. This would be more simple with MOAB handles instead of
+       coordinates... */
+    inline bool first( const Position& a, const Position& b )
+    {
+        if( a[0] < b[0] ) { return true; }
+        else if( a[0] == b[0] )
+        {
+            if( a[1] < b[1] ) { return true; }
+            else if( a[1] == b[1] )
+            {
+                if( a[2] < b[2] ) { return true; }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    double plucker_edge_test( const Position& vertexa, const Position& vertexb, const Position& ray,
+                              const Position& ray_normal )
+    {
+
+        double pip;
+        const double near_zero = 10 * std::numeric_limits< double >::epsilon();
+
+        if( first( vertexa, vertexb ) )
+        {
+            const Position edge        = vertexb - vertexa;
+            const Position edge_normal = edge.cross(vertexa);
+            pip                        = ray.dot(edge_normal) + ray_normal.dot(edge);
+        }
+        else
+        {
+            const Position edge        = vertexa - vertexb;
+            const Position edge_normal = edge.cross(vertexb);
+            pip                        = ray.dot(edge_normal) + ray_normal.dot(edge);
+            pip                        = -pip;
+        }
+
+        if( near_zero > fabs( pip ) ) pip = 0.0;
+
+        return pip;
+    }
+
+    bool plucker_ray_tri_intersect( const std::array<Position, 3> vertices, const Position& origin, const Position& direction,
+                                    double& dist_out, const double* neg_ray_len=nullptr,
+                                    const int* orientation=nullptr)
+    {
+        const double nonneg_ray_len = INFTY;
+        dist_out = INFTY;
+
+        const Position raya = direction;
+        const Position rayb = direction.cross(origin);
+
+        // Determine the value of the first Plucker coordinate from edge 0
+        double plucker_coord0 = plucker_edge_test(vertices[0], vertices[1], raya, rayb);
+
+        // If orientation is set, confirm that sign of plucker_coordinate indicate
+        // correct orientation of intersection
+        if( orientation && ( *orientation ) * plucker_coord0 > 0 ) { return EXIT_EARLY; }
+
+        // Determine the value of the second Plucker coordinate from edge 1
+        double plucker_coord1 = plucker_edge_test( vertices[1], vertices[2], raya, rayb );
+
+        // If orientation is set, confirm that sign of plucker_coordinate indicate
+        // correct orientation of intersection
+        if( orientation )
+        {
+            if( ( *orientation ) * plucker_coord1 > 0 ) { return EXIT_EARLY; }
+            // If the orientation is not specified, all plucker_coords must be the same sign or
+            // zero.
+        }
+        else if( ( 0.0 < plucker_coord0 && 0.0 > plucker_coord1 ) || ( 0.0 > plucker_coord0 && 0.0 < plucker_coord1 ) )
+        {
+            return EXIT_EARLY;
+        }
+
+        // Determine the value of the second Plucker coordinate from edge 2
+        double plucker_coord2 = plucker_edge_test( vertices[2], vertices[0], raya, rayb );
+
+        // If orientation is set, confirm that sign of plucker_coordinate indicate
+        // correct orientation of intersection
+        if( orientation )
+        {
+            if( ( *orientation ) * plucker_coord2 > 0 ) { return EXIT_EARLY; }
+            // If the orientation is not specified, all plucker_coords must be the same sign or
+            // zero.
+        }
+        else if( ( 0.0 < plucker_coord1 && 0.0 > plucker_coord2 ) || ( 0.0 > plucker_coord1 && 0.0 < plucker_coord2 ) ||
+                 ( 0.0 < plucker_coord0 && 0.0 > plucker_coord2 ) || ( 0.0 > plucker_coord0 && 0.0 < plucker_coord2 ) )
+        {
+            return EXIT_EARLY;
+        }
+
+        // check for coplanar case to avoid dividing by zero
+        if( 0.0 == plucker_coord0 && 0.0 == plucker_coord1 && 0.0 == plucker_coord2 ) { return EXIT_EARLY; }
+
+        // get the distance to intersection
+        const double inverse_sum = 1.0 / ( plucker_coord0 + plucker_coord1 + plucker_coord2 );
+        assert( 0.0 != inverse_sum );
+        const Position intersection( plucker_coord0 * inverse_sum * vertices[2] +
+                                     plucker_coord1 * inverse_sum * vertices[0] +
+                                     plucker_coord2 * inverse_sum * vertices[1] );
+
+        // To minimize numerical error, get index of largest magnitude direction.
+        int idx            = 0;
+        double max_abs_dir = 0;
+        for( unsigned int i = 0; i < 3; ++i )
+        {
+            if( fabs( direction[i] ) > max_abs_dir )
+            {
+                idx         = i;
+                max_abs_dir = fabs( direction[i] );
+            }
+        }
+        const double dist = ( intersection[idx] - origin[idx] ) / direction[idx];
+
+        // is the intersection within distance limits?
+        // if( ( nonneg_ray_len && nonneg_ray_len < dist ) ||  // intersection is beyond positive limit
+        //     ( neg_ray_len && *neg_ray_len >= dist ) ||       // intersection is behind negative limit
+        //     ( !neg_ray_len && 0 > dist ) )
+        // {  // Unless a neg_ray_len is used, don't return negative distances
+        //     return EXIT_EARLY;
+        // }
+
+        dist_out = dist;
+
+        // if( type )
+        //     *type = type_list[( ( 0.0 == plucker_coord2 ) << 2 ) + ( ( 0.0 == plucker_coord1 ) << 1 ) +
+        //                       ( 0.0 == plucker_coord0 )];
+
+        return true;
+    }
+
+// bool first(const Position& v0, const Position& v1) {
+//   if( v0[0] < v1[0] ) { return true; }
+//     else if( v0[0] == v1[0] ) {
+//       if( v0[1] < v1[1] ) { return true; }
+//       else if( v0[1] == v1[1] ) {
+//         if( v0[2] < v1[2] ) { return true; }
+//         else { return false; }
+//       } else {
+//         return false;
+//       }
+//     } else {
+//       return false;
+//   }
+// }
+
+// double plucker_edge_test(const Position& v0, const Position& v1, const Position& u, const Position& ray_cross) {
+//   double pip;
+//   if (first(v0, v1)) {
+//     const Position edge = v1 - v0;
+//     const Position edge_normal = edge.cross(v0);
+//     pip = u.dot(edge_normal) + ray_cross.dot(edge);
+//   } else {
+//     const Position edge = v0 - v1;
+//     const Position edge_normal = edge.cross(v1);
+//     pip = -(u.dot(edge_normal) + ray_cross.dot(edge));
+//   }
+
+//   if (NEAR_ZERO > std::abs(pip)) pip = 0.0;
+
+//   return pip;
+// }
+
+// IntersectionType plucker_intersect(const std::array<Position, 3> coords, const Position& r, const Direction& u,
+// double& dist_out) {
+//   dist_out = INFTY;
+
+//   const Position ray_cross = u.cross(r);
+
+//   double plucker0 = plucker_edge_test(coords[0], coords[1], u, ray_cross);
+//   double plucker1 = plucker_edge_test(coords[1], coords[2], u, ray_cross);
+//   double plucker2 = plucker_edge_test(coords[2], coords[0], u, ray_cross);
+
+//   // check on the correct side of all edges
+//   if (plucker0 > 0.0 || plucker1 > 0.0 || plucker2 > 0.0) return IntersectionType::MISS;
+
+//   if ( (0.0 < plucker1 && 0.0 > plucker2) || (0.0 > plucker1 && 0.0 < plucker2) ||
+//        (0.0 < plucker0 && 0.0 > plucker2) || (0.0 > plucker0 && 0.0 < plucker2) ) return IntersectionType::MISS;
+
+//   // check for a copanar intersection
+//   if (plucker0 == 0.0 && plucker1 == 0.0 && plucker2 == 0.0) return IntersectionType::MISS;
+
+//   // compute the distance to intersection
+//   const double inv_sum = 1.0 / (plucker0 + plucker1 + plucker2);
+//   const Position intersection {plucker0 * inv_sum * coords[2] +
+//                                plucker1 * inv_sum * coords[0] +
+//                                plucker2 * inv_sum * coords[1]};
+
+//   // get index of largest magnitude in direction
+//   int max_idx = 0;
+//   double max_dir = std::max({std::abs(u.x), std::abs(u.y), std::abs(u.z)});
+//   for (int i = 0; i < 3; i++) {
+//     if (max_dir == u[i]) max_idx = i;
+//   }
+
+//   dist_out = (intersection[max_idx] - r[max_idx]) / u[max_idx];
+
+//   if (plucker0 == 0.0) return IntersectionType::EDGE0;
+//   if (plucker1 == 0.0) return IntersectionType::EDGE1;
+//   if (plucker2 == 0.0) return IntersectionType::EDGE2;
+//   if (plucker0 == 0.0 && plucker1 == 0.0) return IntersectionType::NODE0;
+//   if (plucker0 == 0.0 && plucker1 == 0.0) return IntersectionType::NODE1;
+//   if (plucker1 == 0.0 && plucker2 == 0.0) return IntersectionType::NODE2;
+
+//   return IntersectionType::INTERIOR;
+// }
+
 void LibMesh::write(const std::string& filename) const
 {
   write_message(fmt::format(
@@ -2599,6 +3218,106 @@ void LibMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 {
   // TODO: Implement triangle crossings here
   fatal_error("Tracklength tallies on libMesh instances are not implemented.");
+}
+
+std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
+  int bin, Position r, const Direction& u) const
+{
+  // write_message("---------- NEXT BIN -----------", 10);
+  // write_message(fmt::format("Position: {} {} {}", r.x, r.y, r.z), 10);
+  // write_message(fmt::format("Direction: {} {} {}", u.x, u.y, u.z), 10);
+  // int32_t detected_bin = get_bin(r);
+  // write_message(fmt::format("Bin passed in: {}", bin), 10);
+  // write_message(fmt::format("Detected bin: {}", detected_bin), 10);
+  // get the element for this bin
+  const auto& elem = get_element_from_bin(bin);
+  const auto& tet = (const libMesh::Tet4&)elem;
+  // write_message(fmt::format("Element ID: {}", elem.id()), 10);
+  // write_message(fmt::format("Element on boundary {}", elem.on_boundary()), 10);
+
+  // auto ec_tmp = elem.centroid();
+  // const Position elem_centroid {ec_tmp(0), ec_tmp(1), ec_tmp(2)};
+
+  std::array<double, 4> dists = {INFTY, INFTY, INFTY, INFTY};
+  std::array<bool, 4> hit_types;
+  // get the faces (triangles) of this element
+  for (int i = 0; i < elem.n_sides(); i++) {
+    // triangle connectivity
+    std::array<Position, 3> coords;
+    for (int j = 0; j < 3; j++) {
+      const auto& node_ref = elem.node_ref(tet.side_nodes_map[i][j]);
+      coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
+    }
+
+    // for (int j = 0; j < side_ptr->n_nodes(); j++) {
+    //   write_message(fmt::format("Side {}, vertex {}: {} {} {}", i, j, coords[j].x, coords[j].y, coords[j].z), 10);
+    // }
+
+    // check that the normal of this triangle is pointed toward the element centroid
+    // auto tc_tmp = side_ptr->centroid();
+    // const Position tri_center{tc_tmp(0), tc_tmp(1), tc_tmp(2)};
+
+    // get the normal of the triangle
+    const Position v1 = coords[1] - coords[0];
+    const Position v2 = coords[2] - coords[0];
+
+    const Position normal = norm(v1.cross(v2));
+
+    // const Position tri_vec = norm(tri_center - elem_centroid);
+
+    // write_message(fmt::format("Normal dot prod w/ elem center: {}", tri_vec.dot(normal)), 10);
+    // write_message(fmt::format("Normal dot prod w/ ray dir: {}", normal.dot(u)), 10);
+
+    // perform ray-triangle intersection
+    hit_types[i] = plucker_ray_tri_intersect(coords, r, u, dists[i]);
+
+    // write_message(fmt::format("Plucker Test Dist: {}", dists[i]), 10);
+    // write_message(fmt::format("Hit Type: {}", hit_types[i]), 10);
+    if (dists[i] <= 0.0) dists[i] = INFTY;
+    // if not an exiting intersection, ignore
+    if (normal.dot(u) < 0.0) dists[i] = INFTY;
+
+    if (dists[i] < INFTY) {
+      // move location to intersection and check hit
+      double test_dist;
+      plucker_ray_tri_intersect(coords, r + u * dists[i], u, test_dist);
+      // write_message(fmt::format("Distance at intersection: {}", test_dist), 10);
+    }
+
+  }
+
+  int idx_out = -1;
+  double min_dist = INFTY;
+  for (int i = 0; i < dists.size(); i++) {
+    if (!hit_types[i]) continue;
+    if (dists[i] < min_dist) {
+      min_dist = dists[i];
+      idx_out = i;
+    }
+  }
+
+  // write_message(fmt::format("Selected index: {}", idx_out), 10);
+
+  if (idx_out == -1) {
+    fatal_error("Lost particle in mesh universe");
+  }
+
+  const auto& next_elem = elem.neighbor_ptr(idx_out);
+
+  if (!next_elem) return {dists[idx_out], {-1, -1, -1}};
+
+  // write_message(fmt::format("Dist to intersection: {}", dists[idx_out]), 10);
+  // write_message(fmt::format("Hit Type: {}", IntersectionTypeStrs[hit_types[idx_out]]), 10);
+  // write_message(fmt::format("Will move into bin: {}", get_bin_from_element(next_elem)), 10);
+  // write_message("-------------------------------", 10);
+
+  return {dists[idx_out], {get_bin_from_element(next_elem)}};
+  return {INFTY, {-1, -1, -1}};
+}
+
+std::pair<double, int>
+LibMesh::distance_to_mesh(const Position& r, const Direction& u) const {
+  return {100.0, 0};
 }
 
 int LibMesh::get_bin(Position r) const
@@ -2646,6 +3365,10 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 double LibMesh::volume(int bin) const
 {
   return m_->elem_ref(bin).volume();
+}
+
+bool LibMesh::bin_is_valid(int bin) const {
+  return bin >= 0 && bin < n_bins();
 }
 
 #endif // LIBMESH

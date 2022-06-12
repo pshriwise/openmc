@@ -122,13 +122,13 @@ class Lattice(IDManagerMixin, ABC):
         univs = OrderedDict()
         for k in range(len(self._universes)):
             for j in range(len(self._universes[k])):
-                if isinstance(self._universes[k][j], openmc.Universe):
+                if isinstance(self._universes[k][j], openmc.UniverseBase):
                     u = self._universes[k][j]
                     univs[u._id] = u
                 else:
                     for i in range(len(self._universes[k][j])):
                         u = self._universes[k][j][i]
-                        assert isinstance(u, openmc.Universe)
+                        assert isinstance(u, openmc.UniverseBase)
                         univs[u._id] = u
 
         if self.outer is not None:

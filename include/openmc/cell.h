@@ -14,6 +14,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/mesh.h"
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
@@ -182,9 +183,9 @@ public:
   std::string name_;        //!< User-defined name
   Fill type_;               //!< Material, universe, or lattice
   int32_t universe_;        //!< Universe # this cell is in
-  int32_t fill_;            //!< Universe # filling this cell
+  int32_t fill_ {-1};       //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
+  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC, MESH)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
@@ -267,6 +268,38 @@ protected:
   //! \param rpn The rpn being searched
   static vector<int32_t>::iterator find_left_parenthesis(
     vector<int32_t>::iterator start, const vector<int32_t>& rpn);
+};
+
+class MeshCell : public Cell {
+public:
+  MeshCell(int32_t mesh, int32_t idx) : mesh_(mesh), elem_idx_(idx)
+  {
+    geom_type_ = GeometryType::MESH;
+  };
+
+  virtual bool contains(
+    Position r, Direction u, int32_t on_surface) const override
+  {
+    int mesh_bin = model::meshes[mesh_]->get_bin(r);
+    return mesh_bin == elem_idx_;
+  };
+
+  virtual std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const override
+  {
+    // TODO: Make appropriate call for distance here
+    // const auto& mesh = model::meshes[mesh_];
+    // return mesh->distance_to_next_bin(r, u);
+    return {INFTY, -1};
+  };
+
+  virtual void to_hdf5_inner(hid_t group_id) const override {};
+
+  virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
+
+protected:
+  int32_t mesh_; // mesh index
+  int32_t elem_idx_; // flat index of mesh element corresponding to this cell
 };
 
 //==============================================================================

@@ -36,6 +36,18 @@
 
 namespace openmc {
 
+
+enum IntersectionType {
+  MISS = 0,
+  INTERIOR,
+  EDGE0,
+  EDGE1,
+  EDGE2,
+  NODE0,
+  NODE1,
+  NODE2
+};
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -66,6 +78,8 @@ public:
   Mesh(pugi::xml_node node);
   virtual ~Mesh() = default;
 
+  virtual MeshStructure structure() const = 0;
+
   // Methods
 
   //! Determine which bins were crossed by a particle
@@ -87,6 +101,24 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
+  //! Determine which mesh bin the particle will enter next
+  //
+  //! \param[in] bin Flat index to the current mesh bin
+  //! \param[in] r Current position of the particle
+  //! \param[in] u Particle direction
+  //! \returns distance and the ijk index to the next mesh cell
+  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+    int bin, Position r, const Direction& u) const = 0;
+
+  //! Determine the distance to a point in the mesh
+  //
+  //! \param[in] index ijk value of the current mesh
+  //! \param[in] r Current position of the particle
+  //! \param[in] u Particle direction
+  //! \returns distance to mesh entry and bin entered
+  virtual std::pair<double, int> distance_to_mesh(
+    const Position& r, const Direction& u) const = 0;
+
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
@@ -101,6 +133,9 @@ public:
 
   //! Set the mesh ID
   void set_id(int32_t id = -1);
+
+  //! Indicate if a bin value is valid
+  virtual bool bin_is_valid(int bin) const = 0;
 
   //! Write mesh data to an HDF5 group
   //
@@ -137,6 +172,8 @@ public:
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
 
+  virtual MeshStructure structure() const override { return MeshStructure::STRUCTURED; }
+
   using MeshIndex = std::array<int, 3>;
 
   struct MeshDistance {
@@ -153,17 +190,36 @@ public:
     }
   };
 
+
+  virtual Direction normal(int idx, int dim, const Position& r, const Direction& u) const;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
 
   int n_surface_bins() const override;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const = 0;
+
+  virtual double grid_boundary(int idx, int i) const = 0;
+
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
+
+  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+    int bin, Position r, const Direction& u) const override;
+
+  virtual std::pair<double, int> distance_to_mesh(
+    const Position& r, const Direction& u) const override;
+
+  virtual std::pair<double, std::array<int, 3>> distance_to_mesh_i(
+    const MeshIndex& ijk, int i, const Position& r, const Direction& u) const;
+
+  virtual double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const = 0;
 
   //! Determine which cell or surface bins were crossed by a particle
   //
@@ -202,6 +258,25 @@ public:
   //! \return ijk Mesh indices
   virtual MeshIndex get_indices_from_bin(int bin) const;
 
+  //! Indicate whether or not the bin is valid for the mesh
+  //
+  //! \param[in] bin Mesh bin
+  //! \return True if bin is valid, False if not
+  bool bin_is_valid(int bin) const override;
+
+  //! Indicate whether the indices are valid
+  //
+  //! \param[in] ijk Mesh indices
+  //! \return True if indices are valid, False if not
+  bool ijk_is_valid(const MeshIndex& ijk) const;
+
+  //! Indicate whether an index is valid for a given dimension
+  //
+  //! \param[in] ijk Mesh indices
+  //! \param[in] dim dimension to check
+  //! \return True if index is valid, False if not
+  bool index_is_valid(int idx, int dim) const;
+
   //! Get mesh index in a particular direction
   //!
   //! \param[in] r Coordinate to get index for
@@ -222,7 +297,7 @@ public:
   //! \return MeshDistance struct with closest distance, next cell index in
   //! i-direction and min/max surface indicator
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const = 0;
+    const Position& r, const Direction& u, double l) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -255,26 +330,24 @@ public:
 
   static const std::string mesh_type;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const override {};
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
-  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //! Get the coordinate for the mesh grid boundary at the specified index
   //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
+  //! \param[in] idx Index of grid boundary
+  //! \param[in] i Direction
+  double grid_boundary(int idx, int i) const override;
 
-  //! Get the coordinate for the mesh grid boundary in the negative direction
-  //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   //! Count number of bank sites in each mesh bin / energy bin
   //
@@ -302,26 +375,24 @@ public:
 
   static const std::string mesh_type;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const override {};
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
+
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
   void to_hdf5(hid_t group) const override;
 
-  // New methods
-  //! Get the coordinate for the mesh grid boundary in the positive direction
+  //! Get the coordinate for the mesh grid boundary at the specified index
   //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double positive_grid_boundary(const MeshIndex& ijk, int i) const;
-
-  //! Get the coordinate for the mesh grid boundary in the negative direction
-  //!
-  //! \param[in] ijk Array of mesh indices
-  //! \param[in] i Direction index
-  double negative_grid_boundary(const MeshIndex& ijk, int i) const;
+  //! \param[in] idx Index of grid boundary
+  //! \param[in] i Direction
+  double grid_boundary(int idx, int i) const override;
 
   array<vector<double>, 3> grid_;
 
@@ -337,14 +408,26 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
+  virtual Direction normal(int idx, int dim, const Position& r, const Direction& u) const override;
+
   int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
 
+  virtual void sanitize_indices(MeshIndex& ijk) const override;
+
   MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+    const Position& r, const Direction& u, double l) const override;
+
+  std::pair<double, MeshIndex> distance_to_mesh_i(const MeshIndex& ijk, int i,
+    const Position& r, const Direction& u) const override;
+
+  double grid_boundary(int idx, int i) const;
+
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -360,7 +443,7 @@ private:
     const Position& r, const Direction& u, double l, int shell) const;
   double find_phi_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
-  StructuredMesh::MeshDistance find_z_crossing(
+  double find_z_crossing(
     const Position& r, const Direction& u, double l, int shell) const;
 
   bool full_phi_ {false};
@@ -391,14 +474,34 @@ public:
   // Overridden methods
   virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
 
+  Position to_rtp(const Position& xy) const;
+
+  Position to_xyz(const Position& rtp) const;
+
+  virtual Direction normal(int idx, int dim, const Position& r, const Direction& u) const override;
+
+  virtual std::pair<double, StructuredMesh::MeshIndex>
+  distance_to_mesh_i(const MeshIndex& ijk, int i, const Position& r, const Direction& u) const override;
+
+  virtual StructuredMesh::MeshDistance
+  distance_to_grid_boundary(
+    const MeshIndex& ijk, int i, const Position& r, const Direction& u, double l) const override;
+
   int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
 
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+  virtual void sanitize_indices(MeshIndex& ijk) const override;
+
+  double grid_boundary(int idx, int i) const override;
+
+  // MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+  //   const Position& r, const Direction& u, double l) const override;
+
+  double distance_to_grid_boundary_i(
+    int idx, int i, const Position& r, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
@@ -449,6 +552,8 @@ public:
   UnstructuredMesh() {};
   UnstructuredMesh(pugi::xml_node node);
   UnstructuredMesh(const std::string& filename);
+
+  virtual MeshStructure structure() const override { return MeshStructure::UNSTRUCTURED; }
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;
@@ -547,6 +652,9 @@ public:
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+    int bin, int prev_bin, Position r, const Direction& u) const override;
 
   int get_bin(Position r) const override;
 
@@ -706,6 +814,14 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
+  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+    int bin, Position r, const Direction& u) const override;
+
+  virtual std::pair<double, int> distance_to_mesh(
+    const Position& r, const Direction& u) const override;
+
+  virtual bool bin_is_valid(int bin) const override;
+
   int get_bin(Position r) const override;
 
   int n_bins() const override;
@@ -736,6 +852,11 @@ public:
 
   double volume(int bin) const override;
 
+  const unique_ptr<libMesh::Mesh>& libmesh_mesh() const { return m_; }
+
+  //! Translate an element pointer to a bin index
+  int get_bin_from_element(const libMesh::Elem* elem) const;
+
 private:
   void initialize() override;
 
@@ -743,9 +864,6 @@ private:
 
   //! Translate a bin value to an element reference
   const libMesh::Elem& get_element_from_bin(int bin) const;
-
-  //! Translate an element pointer to a bin index
-  int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
   unique_ptr<libMesh::Mesh> m_; //!< pointer to the libMesh mesh instance

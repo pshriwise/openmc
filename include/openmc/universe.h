@@ -2,6 +2,8 @@
 #define OPENMC_UNIVERSE_H
 
 #include "openmc/cell.h"
+#include "openmc/particle.h"
+#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -34,6 +36,8 @@ public:
 
   virtual bool find_cell(Particle& p) const;
 
+  virtual void next_cell(Particle& p) const {};
+
   BoundingBox bounding_box() const;
 
   const GeometryType& geom_type() const { return geom_type_; }
@@ -41,8 +45,36 @@ public:
 
   unique_ptr<UniversePartitioner> partitioner_;
 
-private:
+protected:
   GeometryType geom_type_ = GeometryType::CSG;
+  std::string name_;
+};
+
+class MeshUniverse : public Universe {
+public:
+  MeshUniverse() { geom_type_ = GeometryType::MESH; };
+
+  explicit MeshUniverse(pugi::xml_node node);
+
+  virtual bool find_cell(Particle& p) const override;
+
+  virtual void next_cell(Particle& p) const override;
+
+  // setup cell instances for the mesh geometry
+  void create_cells(pugi::xml_node node);
+
+  void create_unstructured_mesh_cells();
+
+  // accessors
+  int32_t& mesh() { return mesh_; }
+  int32_t mesh() const { return mesh_; }
+
+  int32_t& outer() { return outer_; }
+  int32_t outer() const { return outer_; }
+
+protected:
+  int32_t mesh_;
+  int32_t outer_ {C_NONE};
 };
 
 //==============================================================================
@@ -73,6 +105,10 @@ private:
   //! between `surfs_[i-1]` and `surfs_[i]`.
   vector<vector<int32_t>> partitions_;
 };
+
+// non-member functions
+
+void read_mesh_universes(pugi::xml_node node);
 
 } // namespace openmc
 #endif // OPENMC_UNIVERSE_H
