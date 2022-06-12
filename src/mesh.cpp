@@ -236,6 +236,22 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   if (specified_length_multiplier_)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
+  // write vertex coordinates
+  xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
+  for (int i = 0; i < this->n_vertices(); i++) {
+    auto v = this->vertex(i);
+    xt::view(vertices, i, xt::all()) = xt::xarray<double>({v.x, v.y, v.z});
+  }
+  write_dataset(mesh_group, "vertices", vertices);
+
+  // write element connectivity
+  xt::xtensor<int, 2> connectivity ({static_cast<size_t>(this->n_bins()), 4});
+  for (int i = 0; i < 10; i++) {
+    auto conn = this->connectivity(i);
+    xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1], conn[2], conn[3]});
+  }
+  write_dataset(mesh_group, "connectivity", connectivity);
+
   close_group(mesh_group);
 }
 
@@ -2220,10 +2236,6 @@ Position MOABMesh::vertex(int id) const {
   moab::ErrorCode rval;
 
   moab::EntityHandle vert = verts_[id];
-  rval = mbi_->handle_from_id(moab::MBVERTEX, id, vert);
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error(fmt::format("Failed to find MOAB vertex with id {}", id));
-  }
 
   moab::CartVect coords;
   rval = mbi_->get_coords(&vert, 1, coords.array());
@@ -2243,7 +2255,7 @@ std::vector<int> MOABMesh::connectivity(int bin) const {
   vector<moab::EntityHandle> conn;
   rval = mbi_->get_connectivity(&tet, 1, conn);
   if (rval != moab::MB_SUCCESS) {
-    warning("Failed to get connectivity of a mesh element.");
+    fatal_error("Failed to get connectivity of a mesh element.");
     return {};
   }
 
