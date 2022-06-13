@@ -616,6 +616,8 @@ public:
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 
+  virtual bool bin_is_valid(int bin) const override;
+
   // Data members
   bool output_ {
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
@@ -654,7 +656,9 @@ public:
     vector<int>& bins, vector<double>& lengths) const override;
 
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, int prev_bin, Position r, const Direction& u) const override;
+    int bin, Position r, const Direction& u) const override;
+
+  virtual std::pair<double, int> distance_to_mesh(const Position& r, const Direction& u) const override;
 
   int get_bin(Position r) const override;
 
@@ -819,8 +823,6 @@ public:
 
   virtual std::pair<double, int> distance_to_mesh(
     const Position& r, const Direction& u) const override;
-
-  virtual bool bin_is_valid(int bin) const override;
 
   int get_bin(Position r) const override;
 

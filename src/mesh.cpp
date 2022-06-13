@@ -273,6 +273,10 @@ void UnstructuredMesh::set_length_multiplier(double length_multiplier)
     specified_length_multiplier_ = true;
 }
 
+bool UnstructuredMesh::bin_is_valid(int bin) const {
+  return bin >= 0 && bin < n_bins();
+}
+
 StructuredMesh::MeshIndex StructuredMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -2388,6 +2392,12 @@ std::pair<double, std::array<int, 3>> MOABMesh::distance_to_next_bin(
   return {INFTY, {-1, -1, -1}};
 }
 
+std::pair<double, int>
+MOABMesh::distance_to_mesh(const Position& r, const Direction& u) const
+{
+  return {INFTY, -1};
+}
+
 moab::EntityHandle MOABMesh::get_tet(const Position& r) const
 {
   moab::CartVect pos(r.x, r.y, r.z);
@@ -3364,10 +3374,6 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 double LibMesh::volume(int bin) const
 {
   return m_->elem_ref(bin).volume();
-}
-
-bool LibMesh::bin_is_valid(int bin) const {
-  return bin >= 0 && bin < n_bins();
 }
 
 #endif // LIBMESH
