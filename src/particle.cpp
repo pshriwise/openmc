@@ -174,7 +174,7 @@ void Particle::event_calculate_xs()
   if (lowest_coord().cell == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       if (!delta_tracking()) {
-        alive() = false;
+        wgt() = 0.0;
       } else {
         mark_as_lost("Could not find the cell containing particle " +
                      std::to_string(id()));
@@ -361,7 +361,7 @@ void Particle::event_delta_advance()
     // reset coordinates and trace particle through
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
-    alive() = false;
+    wgt() = 0.0;
     // score to global leakage tally
     keff_tally_leakage() += wgt();
     // coord() = coord_cache;
