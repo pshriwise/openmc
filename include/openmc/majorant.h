@@ -4,7 +4,7 @@
 #ifndef OPENMC_MAJORANT_H
 #define OPENMC_MAJORANT_H
 
-#include<gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 #include <vector>
 
 #include "openmc/settings.h"
