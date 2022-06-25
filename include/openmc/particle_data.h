@@ -361,7 +361,6 @@ public:
   const int& cell_instance() const { return cell_instance_; }
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
-  const vector<LocalCoord>& coord() const { return coord_; }
 
   LocalCoord& lowest_coord() { return coord_[n_coord_ - 1]; }
   const LocalCoord& lowest_coord() const { return coord_[n_coord_ - 1]; }
