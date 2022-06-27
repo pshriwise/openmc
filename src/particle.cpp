@@ -328,11 +328,6 @@ void Particle::event_advance()
   }
 }
 
-void Particle::update_majorant()
-{
-  majorant() = 1.000001 * data::n_majorant->calculate_xs(E());
-}
-
 void Particle::trace_through_geom(double trace_dist)
 {
 

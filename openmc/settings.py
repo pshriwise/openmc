@@ -369,6 +369,7 @@ class Settings:
         self._material_cell_offsets = None
         self._log_grid_bins = None
         self._delta_tracking = None
+        self._delta_threshold = None
         self._event_based = None
         self._max_particles_in_flight = None
         self._max_particle_events = None
@@ -966,6 +967,15 @@ class Settings:
         self._delta_tracking = value
 
     @property
+    def delta_threshold(self) -> Real:
+        return self._delta_threshold
+
+    @delta_threshold.setter
+    def delta_threshold(self, value):
+        cv.check_type('delta threshold', value, Real)
+        self._delta_threshold = value
+
+    @property
     def log_grid_bins(self) -> int:
         return self._log_grid_bins
 
@@ -1467,7 +1477,17 @@ class Settings:
             elem = ET.SubElement(root, "write_initial_source")
             elem.text = str(self._write_initial_source).lower()
 
-    def _create_weight_windows_subelement(self, root, mesh_memo=None):
+    def _create_delta_tracking_subelement(self, root):
+        if self._delta_tracking:
+            elem = ET.SubElement(root, "delta_tracking")
+            elem.text = str(self._delta_tracking).lower()
+
+    def _create_delta_threshold_subelement(self, root):
+        if self._delta_threshold is not None:
+            elem = ET.SubElement(root, "delta_threshold")
+            elem.text = str(self._delta_threshold).lower()
+
+    def _create_weight_windows_subelement(self, root):
         for ww in self._weight_windows:
             # Add weight window information
             root.append(ww.to_xml_element())
@@ -1984,7 +2004,7 @@ class Settings:
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element)
         self._create_delta_tracking_subelement(element)
-
+        self._create_delta_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)

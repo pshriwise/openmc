@@ -1030,6 +1030,11 @@ void read_settings_xml(pugi::xml_node root)
     delta_tracking = get_node_value_bool(root, "delta_tracking");
   }
 
+  // Check whether or not to use delta tracking
+  if (check_for_node(root, "delta_threshold")) {
+    delta_threshold = std::stod(get_node_value(root, "delta_threshold"));
+  }
+
   // Check whether material cell offsets should be generated
   if (check_for_node(root, "material_cell_offsets")) {
     material_cell_offsets = get_node_value_bool(root, "material_cell_offsets");
