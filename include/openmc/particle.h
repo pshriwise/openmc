@@ -110,6 +110,8 @@ public:
   virtual void mark_as_lost(const char* message) override;
   using GeometryState::mark_as_lost;
 
+  void update_majorant();
+
   //! create a particle restart HDF5 file
   void write_restart() const;
 

@@ -330,7 +330,7 @@ void Particle::event_delta_advance()
   double distance;
 
   if (this->E() != this->E_last()) {
-    this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
+    this->update_majorant();
   }
 
   // sample distance to next position
@@ -844,6 +844,11 @@ void Particle::cross_periodic_bc(
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Hit periodic boundary on surface {}", surf.id_);
   }
+}
+
+void Particle::update_majorant()
+{
+  this->majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
 }
 
 void Particle::mark_as_lost(const char* message)
