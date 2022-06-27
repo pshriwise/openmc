@@ -639,7 +639,10 @@ void initialize_history(Particle& p, int64_t index_source)
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add particle's starting weight to count for normalizing tallies later
+  if (settings::delta_tracking)
+  p.update_majorant();
+
+  // Add particle's starting weight to count for normalizing tallies later
 #pragma omp atomic
   simulation::total_weight += p.wgt();
 
