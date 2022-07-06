@@ -188,20 +188,72 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 MeshIndependent::MeshIndependent(pugi::xml_node node)
 {
   // No in-tet distributions implemented, could include distributions for the barycentric coords
+  // Read in unstructured mesh from mesh_id value
+  int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
+  mesh_map_idx_ = model::mesh_map[mesh_id];
+  const auto& mesh_ptr = model::meshes[mesh_map_idx_];
   
-  int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-  const auto& mesh_ptr = model::meshes[mesh_id];
-
-  // line from Patrick code, unsure of use
-  // int bin = mesh_ptr->get_bin();
-  const UnstructuredMesh* umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
+  umesh_ptr_ = dynamic_cast<UnstructuredMesh*>(mesh_ptr.get());
   if (!umesh_ptr_) {fatal_error("Mesh passed to spatial distribution is not an unstructured mesh object"); }
+
+
+  // Create CDF based on weighting scheme
+  int64_t tot_bins = umesh_ptr_->n_bins();
+  float weights[tot_bins] = {};
+  CDF_[tot_bins+1] = {};
+  total_weight_ = 0.0;
+  int i = 0;
+
+  if (check_for_node(node, "elem_weight_scheme")) {
+    sample_scheme_ = get_node_value(node, "elem_weight_scheme");
+  } else {
+      fatal_error("No weighting scheme was specified for element sampling over the mesh");
+  }
+
+  // Create cdfs for sampling for an element over a mesh
+  // Equal is an unweighted sampling over the mesh
+  if (sample_scheme_ == "equal"){
+    std::fill_n(weights, tot_bins, 1);
+  } 
+  // Sampling is weighted by the volume of each tet
+  else if (sample_scheme_ == "volume"){
+    while (i<tot_bins){
+      weights[i] = umesh_ptr_->volume(i);
+      CDF_[i+1] = CDF_[i] + weights[i];
+      total_weight_ = total_weight_ + weights[i];
+      i++;
+    }
+  } else if (sample_scheme_ == "activity"){
+    // TODO currently defaulting to volume-based sampling
+    while (i<tot_bins){
+      weights[i] = umesh_ptr_->volume(i);
+      CDF_[i+1] = CDF_[i] + weights[i];
+      total_weight_ = total_weight_ + weights[i];
+      i++;
+    }
+  } else{
+    fatal_error("Type of element weighting scheme provided is not in the supported types (volume, activity, or equal)");
+  }
+  
 }
 
 Position MeshIndependent::sample(uint64_t* seed) const
 { 
-  Position sampled_ = umesh_ptr_->sample(seed);
-  return sampled_;
+  // TODO get coordinates from element and sample_tet directly or check for library here
+  int64_t tot_bins = umesh_ptr_->n_bins();
+  int32_t tet_bin;
+  int i=0;
+  // Create random variable
+  float eta = prn(seed) * total_weight_;
+  // Sample over the CDF defined in initialization above
+  while (i<tot_bins){
+    if (eta <= CDF_[i+1]){
+      tet_bin = i;
+    }
+    i++;
+  }
+
+  return umesh_ptr_->sample(seed, tet_bin);
 }
 
 

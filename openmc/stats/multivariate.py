@@ -269,6 +269,8 @@ class Spatial(ABC):
             return CylindricalIndependent.from_xml_element(elem)
         elif distribution == 'spherical':
             return SphericalIndependent.from_xml_element(elem)
+        elif distribution == 'mesh':
+            return MeshIndependent.from_xml_element(elem)
         elif distribution == 'box' or distribution == 'fission':
             return Box.from_xml_element(elem)
         elif distribution == 'point':
@@ -612,6 +614,88 @@ class CylindricalIndependent(Spatial):
         z = Univariate.from_xml_element(elem.find('z'))
         origin = [float(x) for x in elem.get('origin').split()]
         return cls(r, phi, z, origin=origin)
+
+class MeshIndependent(Spatial):
+    """Spatial distribution for a mesh.
+
+    This distribution allows one to specify a mesh to sample over and the scheme to sample over the entire mesh. 
+
+    .. versionadded:: TODO
+
+    Parameters
+    ----------
+    elem_weight_scheme : String
+        The scheme for weighting and sampling elements from the mesh. Options are activity, volume, and equal weights.
+    mesh_id : int, optional
+        The mesh ID number, defaults to 0
+
+    Attributes
+    ----------
+    elem_weight_scheme : String
+        Weighting scheme for sampling element from mesh
+    mesh_id : int, optional
+        The ID of the mesh, defaults to 0
+
+    """
+
+    def __init__(self, elem_weight_scheme, mesh_id=0):
+        self.elem_weight_scheme = elem_weight_scheme
+        self.mesh_id = mesh_id
+
+    @property
+    def elem_weight_scheme(self):
+        return self._elem_weight_scheme
+
+    @elem_weight_scheme.setter
+    def elem_weight_scheme(self, elem_weight_scheme):
+        cv.check_type('Scheme for sampling an element from the mesh', elem_weight_scheme, str)
+        if elem_weight_scheme == 'volume' or elem_weight_scheme == 'activity' or elem_weight_scheme == 'equal':
+            self._elem_weight_scheme = elem_weight_scheme
+        else:
+            raise Exception("Type of element sampling scheme provided is not in the supported types (volume, activity, or equal)")
+
+    @property
+    def mesh_id(self):
+        return self._mesh_id
+
+    @mesh_id.setter
+    def mesh_id(self, mesh_id):
+        cv.check_type('Mesh file ID number', mesh_id, int)
+        self._mesh_id = mesh_id
+
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing spatial distribution data
+
+        """
+        element = ET.Element('space')
+        element.set('type', 'mesh')
+        element.set("elem_weight_scheme", self.elem_weight_scheme)
+        element.set("mesh_id", str(self.mesh_id))
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate spatial distribution from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.stats.MeshIndependent
+            Spatial distribution generated from XML element
+
+        """
+        elem_weight_scheme = elem.get('elem_weight_scheme')
+        mesh_id = int(elem.get('mesh_id'))
+        return cls(elem_weight_scheme, mesh_id)
 
 
 class Box(Spatial):
