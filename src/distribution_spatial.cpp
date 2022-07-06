@@ -5,6 +5,11 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/xml_interface.h"
+#include "openmc/mesh.h"
+#include "openmc/search.h"
+
+#include <iostream>
+#include <fstream>
 
 namespace openmc {
 

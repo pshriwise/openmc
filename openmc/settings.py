@@ -18,6 +18,7 @@ from . import (RegularMesh, Source, VolumeCalculation, WeightWindows,
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
 from .mesh import _read_meshes
+from .mesh import MeshBase
 
 
 class RunMode(Enum):
