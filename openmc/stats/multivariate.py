@@ -627,20 +627,26 @@ class MeshIndependent(Spatial):
     elem_weight_scheme : String
         The scheme for weighting and sampling elements from the mesh. Options are activity, volume, and equal weights.
     mesh_id : int, optional
-        The mesh ID number, defaults to 0
+        The mesh ID number, defaults to 1
+    activity_file : String, optional
+        The file name of an activity file for activity based weighting, defaults to empty string
+
 
     Attributes
     ----------
     elem_weight_scheme : String
         Weighting scheme for sampling element from mesh
     mesh_id : int, optional
-        The ID of the mesh, defaults to 0
+        The ID of the mesh, defaults to 1
+    activity_file : String, optional
+        The file name of an activity file for activity based weighting, defaults to empty string
 
     """
 
-    def __init__(self, elem_weight_scheme, mesh_id=0):
+    def __init__(self, elem_weight_scheme, mesh_id=1, activity_file=""):
         self.elem_weight_scheme = elem_weight_scheme
         self.mesh_id = mesh_id
+        self.activity_file = activity_file
 
     @property
     def elem_weight_scheme(self):
@@ -663,6 +669,15 @@ class MeshIndependent(Spatial):
         cv.check_type('Mesh file ID number', mesh_id, int)
         self._mesh_id = mesh_id
 
+    @property
+    def activity_file(self):
+        return self._activity_file
+
+    @activity_file.setter
+    def activity_file(self, activity_file):
+        cv.check_type('File name for activity weighted sampling', activity_file, str)
+        self._activity_file = activity_file
+                
     def to_xml_element(self):
         """Return XML representation of the spatial distribution
 
@@ -676,6 +691,7 @@ class MeshIndependent(Spatial):
         element.set('type', 'mesh')
         element.set("elem_weight_scheme", self.elem_weight_scheme)
         element.set("mesh_id", str(self.mesh_id))
+        element.set("activity_file", self.activity_file)
         return element
 
     @classmethod
@@ -693,8 +709,11 @@ class MeshIndependent(Spatial):
             Spatial distribution generated from XML element
 
         """
+        print("Check py 1")
+
         elem_weight_scheme = elem.get('elem_weight_scheme')
         mesh_id = int(elem.get('mesh_id'))
+        activity_file = elem.get('activity_file')
         return cls(elem_weight_scheme, mesh_id)
 
 

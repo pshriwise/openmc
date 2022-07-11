@@ -113,7 +113,8 @@ private:
   int32_t mesh_map_idx_;
   std::string sample_scheme_;
   float total_weight_;
-  float CDF_[];
+  std::vector<float> mesh_CDF_;
+  
 };
 
 //==============================================================================

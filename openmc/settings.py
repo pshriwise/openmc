@@ -7,12 +7,14 @@ from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional, Union
+from webbrowser import get
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
 
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
+from .mesh import MeshBase
 
 
 class RunMode(Enum):
@@ -142,6 +144,8 @@ class Settings:
         Seed for the linear congruential pseudorandom number generator
     source : Iterable of openmc.Source
         Distribution of source sites in space, angle, and energy
+    mesh : TODO
+        Mesh used for mesh based source sampling
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -248,6 +252,9 @@ class Settings:
 
         # Shannon entropy mesh
         self._entropy_mesh = None
+
+        # Source mesh
+        self.source_mesh = None
 
         # Trigger subelement
         self._trigger_active = None
@@ -1219,6 +1226,19 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
+    # TODO
+    def _create_source_mesh_subelement(self, root):
+        if self.source_mesh is not None:
+            # elem = ET.SubElement(root, "source_mesh")
+            if len(self.source_mesh.name) > 0:
+                root.append(ET.Comment(self.source_mesh.name))
+            root.append(self.source_mesh.to_xml_element())
+        # for settings in self:
+        #     for meshes in settings.source_meshes:
+        #         if len(meshes.mesh.name) > 0:
+        #             root.append(ET.Comment(meshes.mesh.name))
+        #         root.append(meshes.mesh.to_xml_element())
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1526,6 +1546,14 @@ class Settings:
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
+    
+    # TODO ask whether we should allow for multiple source meshes
+    def _source_mesh_from_xml_element(self, root):
+        elem = root.find('mesh')
+        source_meshes = {}
+        if elem is not None:
+            self.source_mesh = MeshBase.from_xml_element(elem)
+            source_meshes[self.source_mesh.id] = self.source_mesh
 
     def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.
@@ -1584,6 +1612,7 @@ class Settings:
         self._create_weight_windows_subelement(root_element)
         self._create_max_splits_subelement(root_element)
         self._create_max_tracks_subelement(root_element)
+        self._create_source_mesh_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(root_element)
@@ -1664,6 +1693,7 @@ class Settings:
         settings._weight_windows_from_xml_element(root)
         settings._max_splits_from_xml_element(root)
         settings._max_tracks_from_xml_element(root)
+        settings._source_mesh_from_xml_element(root)
 
         # TODO: Get volume calculations
 

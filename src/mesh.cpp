@@ -2455,9 +2455,7 @@ void LibMesh::initialize()
 
 // Sample position within a tet for LibMesh type tets
 Position LibMesh::sample(uint64_t* seed, int32_t tet_bin) const {
-
   const auto& elem = get_element_from_bin(tet_bin);
-
   // Get tet vertex coordinates from LibMesh
   std::array<Position, 4> tet_verts;
   for (int i = 0; i < elem.n_nodes(); i++) {
