@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+      - 'man/**'
+      - '**.md'
+      - CODEOWNERS
+      - LICENSE
+    branches:
+      - develop
+      - master
+  push:
+    branches:
+      - develop
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'Echo "No core source code changed. Skipping CI."'
