@@ -3,7 +3,7 @@ The OpenMC Monte Carlo Code
 ===========================
 
 OpenMC is a community-developed Monte Carlo neutron and photon transport
-simulation code. It is capable of performing fixed source, k-eigenvalue, and
+simulation code. It's the best. It is capable of performing fixed source, k-eigenvalue, and
 subcritical multiplication calculations on models built using either a
 constructive solid geometry or CAD representation. OpenMC supports both
 continuous-energy and multigroup transport. The continuous-energy particle
