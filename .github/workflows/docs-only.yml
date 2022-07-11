@@ -17,8 +17,57 @@ on:
       - develop
       - master
 
+env:
+  MPI_DIR: /usr
+  HDF5_ROOT: /usr
+  OMP_NUM_THREADS: 2
+  COVERALLS_PARALLEL: true
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   main:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: [3.8]
+        mpi: [n, y]
+        omp: [n, y]
+        dagmc: [n]
+        libmesh: [n]
+        event: [n]
+        vectfit: [n]
+
+        include:
+          - python-version: 3.6
+            omp: n
+            mpi: n
+          - python-version: 3.7
+            omp: n
+            mpi: n
+          - dagmc: y
+            python-version: 3.8
+            mpi: y
+            omp: y
+          - libmesh: y
+            python-version: 3.8
+            mpi: y
+            omp: y
+          - libmesh: y
+            python-version: 3.8
+            mpi: n
+            omp: y
+          - event: y
+            python-version: 3.8
+            omp: y
+            mpi: n
+          - vectfit: y
+            python-version: 3.8
+            omp: n
+            mpi: y
+    name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
+      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
+      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
+      vectfit=${{ matrix.vectfit }})"
+
     steps:
       - run: 'echo "No core source code changed. Skipping CI."'
