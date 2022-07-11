@@ -18,7 +18,7 @@ on:
       - master
 
 jobs:
-  build:
+  main:
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "No core source code changed. Skipping CI."'
