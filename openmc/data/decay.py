@@ -1,15 +1,17 @@
 from collections.abc import Iterable
 from io import StringIO
 from math import log
+from pathlib import Path
 import re
 from warnings import warn
+from xml.etree import ElementTree as ET
 
 import numpy as np
 from uncertainties import ufloat, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from openmc.stats import Discrete, Tabular, combine_distributions
+from openmc.stats import Discrete, Tabular, Univariate, combine_distributions
 from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER
 from .function import INTERPOLATION_SCHEME
 from .endf import Evaluation, get_head_record, get_list_record, get_tab1_record
@@ -570,3 +572,50 @@ class Decay(EqualityMixin):
 
         self._sources = merged_sources
         return self._sources
+
+
+def _write_decay_source_library(path, decay_objs):
+    root_element = ET.Element("decay_sources")
+
+    for decay in decay_objs:
+        # Some decay evaluations in ENDF/B-VIII.0 are listed as unstable but
+        # have a 0 half-life, which causes problems.
+        try:
+            sources = decay.sources
+        except ValueError:
+            continue
+
+        # Skip nuclide if there is no photon source
+        if 'photon' not in sources:
+            continue
+
+        nuc_elem = ET.SubElement(root_element, "nuclide")
+        nuc_elem.set("name", decay.nuclide['name'])
+
+        dist_elem = sources['photon'].to_xml_element("distribution")
+        nuc_elem.append(dist_elem)
+
+    tree = ET.ElementTree(root_element)
+    tree.write(str(path), xml_declaration=True, encoding='utf-8')
+
+
+def _read_decay_source_library(path):
+    tree = ET.parse(path)
+    root = tree.getroot()
+
+    sources = {}
+    for nuc_elem in root.findall('nuclide'):
+        name = nuc_elem.get('name')
+        sources[name] = Univariate.from_xml_element(nuc_elem[0])
+
+    return sources
+
+
+_DECAY_PHOTON_SOURCE = {}
+
+def decay_photon_source(nuclide):
+    if not _DECAY_PHOTON_SOURCE:
+        source_file = Path(__file__).with_name('endfb80_decay_source.xml')
+        _DECAY_PHOTON_SOURCE.update(_read_decay_source_library(source_file))
+
+    return _DECAY_PHOTON_SOURCE.get(nuclide)
