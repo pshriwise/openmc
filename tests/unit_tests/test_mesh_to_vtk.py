@@ -8,6 +8,10 @@ from vtk.util import numpy_support as nps
 import openmc
 
 
+def ids_func(param):
+    return str(type(param)).split('.')[-1][:-2]
+
+
 regular_mesh = openmc.RegularMesh()
 regular_mesh.lower_left = (0, 0, 0)
 regular_mesh.upper_right = (1, 1, 1)
@@ -28,7 +32,7 @@ spherical_mesh.r_grid = np.linspace(1, 2, num=30)
 spherical_mesh.phi_grid = np.linspace(0, np.pi, num=50)
 spherical_mesh.theta_grid = np.linspace(0, np.pi / 2, num=30)
 
-@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
+@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh], ids=ids_func)
 def test_write_data_to_vtk(mesh, tmpdir):
     # BUILD
     filename = Path(tmpdir) / "out.vtk"
@@ -58,7 +62,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     assert nps.vtk_to_numpy(array1).size == data.size
     assert nps.vtk_to_numpy(array2).size == data.size
 
-@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh])
+@pytest.mark.parametrize("mesh", [cylinder_mesh, regular_mesh, rectilinear_mesh, spherical_mesh], ids=ids_func)
 def test_write_data_to_vtk_size_mismatch(mesh):
     """Checks that an error is raised when the size of the dataset
     doesn't match the mesh number of cells
