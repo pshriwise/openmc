@@ -216,7 +216,7 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
   // Create cdfs for sampling for an element over a mesh
   // Equal scheme is an unweighted sampling over the mesh
   // Volume scheme is weighted by the volume of each tet
-  // Activity scheme is weighted by an 
+  // File scheme is weighted by an array given in the xml file
 
   if (check_for_node(node, "elem_weight_scheme")) {
     sample_scheme_ = get_node_value(node, "elem_weight_scheme");
@@ -234,37 +234,21 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
       weights[i] = umesh_ptr_->volume(i);
       i++;
     }
-    // TODO CHANGE NAME (MORE GENERIC THAN ACTIVITY)
-  } else if (sample_scheme_ == "activity"){
+  } else if (sample_scheme_ == "file"){
 
-    if (check_for_node(node, "activity_file")) {
-      std::string file_name = get_node_value(node, "activity_file");
-      write_message(file_name);
-      std::ifstream data (file_name);
-      std::string line;
-      std::vector<std::string> parsedCsv;
-      parsedCsv.resize(tot_bins);
+    if (check_for_node(node, "weights_file")) {
+      
+      mesh_weights_ = get_node_array<double>(node, "weights_file");
 
-      // auto damn = std::getline(data,line);
-
-      while(data >> line)
-      {
-        std::stringstream lineStream(line);
-        std::string cell;
-        while(std::getline(lineStream,cell,','))
-        {
-            parsedCsv.push_back(cell);
-        }
-      }
-      while (i<tot_bins){
-          weights[i] = std::stof(parsedCsv[i]);
+      while (i<tot_bins && i<mesh_weights_.size()){
+          weights[i] = mesh_weights_[i];
         i++;
       } 
     } else {
-        write_message("No activity file given");
+        write_message("No weights given");
     }
   } else{
-    fatal_error("Type of element weighting scheme provided is not in the supported types (volume, activity, or equal)");
+    fatal_error("Type of element weighting scheme provided is not in the supported types (volume, file, or equal)");
   }
   i = 0;
   while (i<tot_bins){

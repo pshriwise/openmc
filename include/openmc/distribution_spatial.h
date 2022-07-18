@@ -114,6 +114,7 @@ private:
   std::string sample_scheme_;
   float total_weight_;
   std::vector<float> mesh_CDF_;
+  std::vector<double> mesh_weights_;
   
 };
 
