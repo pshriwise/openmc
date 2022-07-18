@@ -83,7 +83,7 @@ def test_unstructured_mesh(test_opts):
 
     # skip the test if the library is not enabled
     if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
-        pytest.skip("DAGMC (and MOAB) mesh not enbaled in this build.")
+        pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
     if test_opts['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
         pytest.skip("LibMesh is not enabled in this build.")
@@ -215,7 +215,7 @@ def test_unstructured_mesh(test_opts):
     if test_opts['schemes'] == 'volume':
         space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'])
     elif test_opts['schemes'] == 'activity':
-        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], activity_file="Random12000")
+        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], activity_file="Random12000.csv")
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)

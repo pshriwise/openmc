@@ -245,7 +245,9 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
       std::vector<std::string> parsedCsv;
       parsedCsv.resize(tot_bins);
 
-      while(std::getline(data,line))
+      // auto damn = std::getline(data,line);
+
+      while(data >> line)
       {
         std::stringstream lineStream(line);
         std::string cell;
