@@ -76,17 +76,17 @@ def model():
 
     # weight windows
 
-    # load pre-generated weight windows
-    # (created using the same tally as above)
-    ww_n_lower_bnds = np.loadtxt('ww_n.txt')
-    ww_p_lower_bnds = np.loadtxt('ww_p.txt')
-
     # create a mesh matching the one used
     # to generate the weight windows
     ww_mesh = openmc.RegularMesh()
     ww_mesh.lower_left = (-240, -240, -240)
     ww_mesh.upper_right = (240, 240, 240)
     ww_mesh.dimension = (5, 6, 7)
+
+    # load pre-generated weight windows
+    # (created using the same tally as above)
+    ww_n_lower_bnds = np.loadtxt('ww_n.txt').reshape(2, *ww_mesh.dimension).T
+    ww_p_lower_bnds = np.loadtxt('ww_p.txt').reshape(2, *ww_mesh.dimension).T
 
     ww_n = openmc.WeightWindows(ww_mesh,
                                 ww_n_lower_bnds,

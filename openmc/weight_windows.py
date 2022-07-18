@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from numbers import Real, Integral
+import warnings
 
 from xml.etree import ElementTree as ET
 import numpy as np
@@ -204,7 +205,7 @@ class WeightWindows(IDManagerMixin):
                                min_depth=1,
                                max_depth=4)
         bounds = np.asarray(bounds)
-        self._check_ww_bound_dim(bounds)
+        self._check_ww_bound_dims(bounds)
         # reshape data according to mesh and energy bins
         if isinstance(self.mesh, UnstructuredMesh):
             bounds.reshape(-1, self.num_energy_bins)
@@ -224,7 +225,7 @@ class WeightWindows(IDManagerMixin):
                                min_depth=1,
                                max_depth=4)
         bounds = np.asarray(bounds)
-        self._check_ww_bound_dim(bounds)
+        self._check_ww_bound_dims(bounds)
         # reshape data according to mesh and energy bins
         if isinstance(self.mesh, UnstructuredMesh):
             bounds.reshape(-1, self.num_energy_bins)
@@ -232,8 +233,8 @@ class WeightWindows(IDManagerMixin):
             bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
         self._upper_ww_bounds = bounds
 
-    def _check_ww_bound_dim(self, arr):
-        # can't do much checking for unstructured meshes
+    def _check_ww_bound_dims(self, arr):
+        # can't do much checking for unstructured meshes, send back the original array
         if isinstance(self.mesh, UnstructuredMesh):
             return
 
@@ -242,15 +243,22 @@ class WeightWindows(IDManagerMixin):
             raise ValueError('Total number of weight window values is incorrect. '
                              f'expected {exp_entries} values.')
 
+        # generate the expected shape of the data
+        exp_shape = (*self.mesh.dimension, self.energy_bounds.size - 1)
+
         # if this is a flat array, trust that the
         # data is ordered correctly
         if len(arr.shape) == 1:
+            warnings.warn('The flat array passed in for weight window '
+                          'bounds will be reshaped to match the mesh '
+                          f'dimensions ({self.mesh.dimension}) and '
+                          f'number of energy groups ({self.energy_bounds.size-1}')
+            arr.shape = exp_shape
             return
 
         # if the array has more than one dimension,
         # check that the dimensions match those of the
         # mesh and energy groups
-        exp_shape = (*self.mesh.dimension, self.energy_bounds.size - 1)
         if exp_shape != arr.shape:
             raise ValueError(f"Array with shape {arr.shape} cannot be used "
                              "as weight window bounds with the mesh and "
@@ -362,8 +370,8 @@ class WeightWindows(IDManagerMixin):
             mesh = MeshBase.from_xml_element(mesh_elem)
 
         # Read all other parameters
-        lower_ww_bounds = [float(l) for l in get_text(elem, 'lower_ww_bounds').split()]
-        upper_ww_bounds = [float(u) for u in get_text(elem, 'upper_ww_bounds').split()]
+        lower_ww_bounds = np.fromstring(get_text(elem, 'lower_ww_bounds'), sep=' ', dtype=float)
+        upper_ww_bounds = np.fromstring(get_text(elem, 'upper_ww_bounds'), sep=' ', dtype=float)
         e_bounds = [float(b) for b in get_text(elem, 'energy_bounds').split()]
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
@@ -375,6 +383,11 @@ class WeightWindows(IDManagerMixin):
         max_split = int(get_text(elem, 'max_split'))
         weight_cutoff = float(get_text(elem, 'weight_cutoff'))
         id = int(get_text(elem, 'id'))
+
+        # set shape of ww bound arrays and re-order correctly
+        ww_bnd_shape = (*mesh.dimension, len(e_bounds)-1)
+        lower_ww_bounds = lower_ww_bounds.reshape(ww_bnd_shape[::-1]).T
+        upper_ww_bounds = upper_ww_bounds.reshape(ww_bnd_shape[::-1]).T
 
         return cls(
             mesh=mesh,
@@ -420,6 +433,11 @@ class WeightWindows(IDManagerMixin):
 
         max_split = group['max_split'][()]
         weight_cutoff = group['weight_cutoff'][()]
+
+        # set shape of ww bound arrays and re-order correctly
+        ww_bnd_shape = (*meshes[mesh_id].dimension, e_bounds.size-1)
+        lower_ww_bounds = lower_ww_bounds.reshape(ww_bnd_shape[::-1]).T
+        upper_ww_bounds = upper_ww_bounds.reshape(ww_bnd_shape[::-1]).T
 
         return cls(
             mesh=meshes[mesh_id],
