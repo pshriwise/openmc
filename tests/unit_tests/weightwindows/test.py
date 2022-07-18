@@ -135,6 +135,14 @@ def test_weightwindows(model):
         ww_sp = model.run()
         os.rename(ww_sp, 'statepoint.ww.h5')
 
+        # check weight window round trip
+        settings_xml = openmc.Settings.from_xml()
+        ww_n_xml = settings_xml.weight_windows[0]
+        ww_p_xml = settings_xml.weight_windows[1]
+        np.testing.assert_allclose(ww_n_lower_bnds, ww_n_xml.lower_ww_bounds)
+        np.testing.assert_allclose(ww_p_lower_bnds, ww_p_xml.lower_ww_bounds)
+
+
         # load both statepoints and examine results
         asp = openmc.StatePoint('statepoint.analog.h5')
         wsp = openmc.StatePoint('statepoint.ww.h5')
