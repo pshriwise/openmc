@@ -203,8 +203,9 @@ class WeightWindows(IDManagerMixin):
                                Real,
                                min_depth=1,
                                max_depth=4)
-        # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
+        self._check_ww_bound_dim(bounds)
+        # reshape data according to mesh and energy bins
         if isinstance(self.mesh, UnstructuredMesh):
             bounds.reshape(-1, self.num_energy_bins)
         else:
@@ -222,13 +223,39 @@ class WeightWindows(IDManagerMixin):
                                Real,
                                min_depth=1,
                                max_depth=4)
-        # reshape data according to mesh and energy bins
         bounds = np.asarray(bounds)
+        self._check_ww_bound_dim(bounds)
+        # reshape data according to mesh and energy bins
         if isinstance(self.mesh, UnstructuredMesh):
             bounds.reshape(-1, self.num_energy_bins)
         else:
             bounds.reshape(*self.mesh.dimension, self.num_energy_bins)
         self._upper_ww_bounds = bounds
+
+    def _check_ww_bound_dim(self, arr):
+        # can't do much checking for unstructured meshes
+        if isinstance(self.mesh, UnstructuredMesh):
+            return
+
+        exp_entries = self.mesh.num_mesh_cells * (self.energy_bounds.size-1)
+        if exp_entries != arr.size:
+            raise ValueError('Total number of weight window values is incorrect. '
+                             f'expected {exp_entries} values.')
+
+        # if this is a flat array, trust that the
+        # data is ordered correctly
+        if len(arr.shape) == 1:
+            return
+
+        # if the array has more than one dimension,
+        # check that the dimensions match those of the
+        # mesh and energy groups
+        exp_shape = (*self.mesh.dimension, self.energy_bounds.size - 1)
+        if exp_shape != arr.shape:
+            raise ValueError(f"Array with shape {arr.shape} cannot be used "
+                             "as weight window bounds with the mesh and "
+                             "energy groups specified. Expected shape "
+                             f"{exp_shape}.")
 
     @property
     def survival_ratio(self):
@@ -291,10 +318,10 @@ class WeightWindows(IDManagerMixin):
         subelement.text = ' '.join(str(e) for e in self.energy_bounds)
 
         subelement = ET.SubElement(element, 'lower_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel())
+        subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))
 
         subelement = ET.SubElement(element, 'upper_ww_bounds')
-        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds.ravel())
+        subelement.text = ' '.join(str(b) for b in self.upper_ww_bounds.ravel('F'))
 
         subelement = ET.SubElement(element, 'survival_ratio')
         subelement.text = str(self.survival_ratio)
