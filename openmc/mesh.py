@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from itertools import product
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
@@ -269,6 +270,7 @@ class StructuredMesh(MeshBase):
         writer.Write()
 
         return vtk_grid
+
 
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
@@ -715,13 +717,8 @@ class RegularMesh(StructuredMesh):
             the VTK object
         """
 
-        ll, ur = self.lower_left, self.upper_right
-        x_vals = np.linspace(ll[0], ur[0], num=self.dimension[0] + 1)
-        y_vals = np.linspace(ll[1], ur[1], num=self.dimension[1] + 1)
-        z_vals = np.linspace(ll[2], ur[2], num=self.dimension[2] + 1)
-
         # create points
-        pts_cartesian = np.array([[x, y, z] for z in z_vals for y in y_vals for x in x_vals])
+        pts_cartesian = np.array([pnt for pnt in product(*self._grids[::-1])])
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -949,7 +946,7 @@ class RectilinearMesh(StructuredMesh):
             the VTK object
         """
         # create points
-        pts_cartesian = np.array([[x, y, z] for z in self.z_grid for y in self.y_grid for x in self.x_grid])
+        pts_cartesian = np.array([pnt for pnt in product(*self._grids[::-1])])
 
         return super().write_data_to_vtk(
             points=pts_cartesian,
@@ -1170,14 +1167,8 @@ class CylindricalMesh(StructuredMesh):
             the VTK object
         """
         # create points
-        pts_cylindrical = np.array(
-            [
-                [r, phi, z]
-                for z in self.z_grid
-                for phi in self.phi_grid
-                for r in self.r_grid
-            ]
-        )
+        pts_cylindrical = np.array([pnt[::-1] for pnt in product(*self._grids[::-1])])
+
         pts_cartesian = np.copy(pts_cylindrical)
         r, phi = pts_cylindrical[:, 0], pts_cylindrical[:, 1]
         pts_cartesian[:, 0] = r * np.cos(phi)
@@ -1403,14 +1394,7 @@ class SphericalMesh(StructuredMesh):
         """
 
         # create points
-        pts_spherical = np.array(
-            [
-                [r, theta, phi]
-                for phi in self.phi_grid
-                for theta in self.theta_grid
-                for r in self.r_grid
-            ]
-        )
+        pts_spherical = np.array([pnt for pnt in product(*self._grids[::-1])])
         pts_cartesian = np.copy(pts_spherical)
         r, theta, phi = pts_spherical[:, 0], pts_spherical[:, 1], pts_spherical[:, 2]
         pts_cartesian[:, 0] = r * np.sin(phi) * np.cos(theta)
