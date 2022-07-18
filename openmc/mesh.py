@@ -199,7 +199,7 @@ class StructuredMesh(MeshBase):
     def num_mesh_cells(self):
         return np.prod(self.dimension)
 
-    def write_data_to_vtk(self, points, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, points, filename, datasets=None, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -248,20 +248,21 @@ class StructuredMesh(MeshBase):
         vtkPts.SetData(nps.numpy_to_vtk(points, deep=True))
         vtk_grid.SetPoints(vtkPts)
 
-        # create VTK arrays for each of
-        # the data sets
-        for label, dataset in datasets.items():
-            dataset = np.asarray(dataset).flatten()
+        if datasets is not None:
+            # create VTK arrays for each of
+            # the data sets
+            for label, dataset in datasets.items():
+                dataset = np.asarray(dataset).flatten()
 
-            if volume_normalization:
-                dataset /= self.volumes.flatten()
+                if volume_normalization:
+                    dataset /= self.volumes.flatten()
 
-            dataset_array = vtk.vtkDoubleArray()
-            dataset_array.SetName(label)
-            dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                           dataset.size,
-                           True)
-            vtk_grid.GetCellData().AddArray(dataset_array)
+                dataset_array = vtk.vtkDoubleArray()
+                dataset_array.SetName(label)
+                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
+                            dataset.size,
+                            True)
+                vtk_grid.GetCellData().AddArray(dataset_array)
 
         # write the .vtk file
         writer = vtk.vtkStructuredGridWriter()
@@ -696,7 +697,7 @@ class RegularMesh(StructuredMesh):
 
         return root_cell, cells
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -925,7 +926,7 @@ class RectilinearMesh(StructuredMesh):
 
         return element
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1146,7 +1147,7 @@ class CylindricalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_p), V_z)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
@@ -1372,7 +1373,7 @@ class SphericalMesh(StructuredMesh):
 
         return np.multiply.outer(np.outer(V_r, V_t), V_p)
 
-    def write_data_to_vtk(self, filename, datasets, volume_normalization=True):
+    def write_data_to_vtk(self, filename, datasets=None, volume_normalization=True):
         """Creates a VTK object of the mesh
 
         Parameters
