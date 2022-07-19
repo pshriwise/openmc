@@ -124,6 +124,10 @@ def test_weightwindows(model):
                                     e_bnds,
                                     survival_ratio=1.01)
 
+        # ensure array data has been reshaped correctly
+        assert ww_n.lower_ww_bounds.shape == (*ww_mesh.dimension, 2)
+        assert ww_p.lower_ww_bounds.shape == (*ww_mesh.dimension, 2)
+
         model.settings.weight_windows = [ww_n, ww_p]
 
         # check that string form of the class can be created
