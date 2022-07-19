@@ -7,7 +7,6 @@ from math import ceil
 from numbers import Integral, Real
 from pathlib import Path
 from typing import Optional, Union
-from webbrowser import get
 from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
@@ -1226,18 +1225,12 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
-    # TODO
     def _create_source_mesh_subelement(self, root):
         if self.source_mesh is not None:
             # elem = ET.SubElement(root, "source_mesh")
             if len(self.source_mesh.name) > 0:
                 root.append(ET.Comment(self.source_mesh.name))
             root.append(self.source_mesh.to_xml_element())
-        # for settings in self:
-        #     for meshes in settings.source_meshes:
-        #         if len(meshes.mesh.name) > 0:
-        #             root.append(ET.Comment(meshes.mesh.name))
-        #         root.append(meshes.mesh.to_xml_element())
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1552,8 +1545,9 @@ class Settings:
         elem = root.find('mesh')
         source_meshes = {}
         if elem is not None:
-            self.source_mesh = MeshBase.from_xml_element(elem)
-            source_meshes[self.source_mesh.id] = self.source_mesh
+            if elem.find('type') == 'unstructured':
+                self.source_mesh = MeshBase.from_xml_element(elem)
+                source_meshes[self.source_mesh.id] = self.source_mesh
 
     def export_to_xml(self, path: Union[str, os.PathLike] = 'settings.xml'):
         """Export simulation settings to an XML file.

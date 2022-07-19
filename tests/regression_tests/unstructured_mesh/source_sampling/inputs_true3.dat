@@ -48,7 +48,9 @@
   <particles>1000</particles>
   <batches>10</batches>
   <source strength="1.0">
-    <space activity_file="Random12000" elem_weight_scheme="volume" mesh_id="1" type="mesh" />
+    <space elem_weight_scheme="file" mesh_id="1" type="mesh">
+      <weights_file>1.0 2.0 3.0 4.0</weights_file>
+    </space>
     <energy type="discrete">
       <parameters>15000000.0 1.0</parameters>
     </energy>

@@ -620,15 +620,15 @@ class MeshIndependent(Spatial):
 
     This distribution allows one to specify a mesh to sample over and the scheme to sample over the entire mesh. 
 
-    .. versionadded:: TODO
+    .. versionadded:: 0.13
 
     Parameters
     ----------
     elem_weight_scheme : String
-        The scheme for weighting and sampling elements from the mesh. Options are file, volume, and equal weights.
+        The scheme for weighting and sampling elements from the mesh. Options are 'file' and 'volume' based weights.
     mesh_id : int, optional
         The mesh ID number, defaults to 1
-    weights_file : Iterable of Real, optional
+    weights_from_file : Iterable of Real, optional
         A list of values which represent the weights of each element
 
 
@@ -638,15 +638,15 @@ class MeshIndependent(Spatial):
         Weighting scheme for sampling element from mesh
     mesh_id : int, optional
         The ID of the mesh, defaults to 1
-    weights_file : Iterable of Real, optional
+    weights_from_file : Iterable of Real, optional
         A list of values which represent the weights of each element
 
     """
 
-    def __init__(self, elem_weight_scheme, mesh_id=1, weights_file=[0.0]):
+    def __init__(self, elem_weight_scheme, mesh_id=1, weights_from_file=[0.0]):
         self.elem_weight_scheme = elem_weight_scheme
         self.mesh_id = mesh_id
-        self.weights_file = weights_file
+        self.weights_from_file = weights_from_file
 
     @property
     def elem_weight_scheme(self):
@@ -654,11 +654,9 @@ class MeshIndependent(Spatial):
 
     @elem_weight_scheme.setter
     def elem_weight_scheme(self, elem_weight_scheme):
-        cv.check_type('Scheme for sampling an element from the mesh', elem_weight_scheme, str)
-        if elem_weight_scheme == 'volume' or elem_weight_scheme == 'file' or elem_weight_scheme == 'equal':
-            self._elem_weight_scheme = elem_weight_scheme
-        else:
-            raise Exception("Type of element sampling scheme provided is not in the supported types (volume, file, or equal)")
+        cv.check_value('Scheme for sampling an element from the mesh', elem_weight_scheme, ['volume', 'file'])
+        
+        self._elem_weight_scheme = elem_weight_scheme
 
     @property
     def mesh_id(self):
@@ -670,19 +668,20 @@ class MeshIndependent(Spatial):
         self._mesh_id = mesh_id
 
     @property
-    def weights_file(self):
-        return self._weights_file
+    def weights_from_file(self):
+        return self._weights_from_file
 
-    @weights_file.setter
-    def weights_file(self, given_weights):
-        cv.check_type('File defined array for weighted sampling', given_weights, Iterable, Real)
-        self._weights_file = np.asarray(given_weights)
+    @weights_from_file.setter
+    def weights_from_file(self, given_weights):
+        # cv.check_type('File defined array for weighted sampling', given_weights, Iterable, Real)
+        # self._weights_from_file = list(given_weights)
+        self._weights_from_file = (np.asarray(given_weights)).flatten()
 
     @property
     def num_weight_bins(self):
-        if self.weights_file is None:
+        if self.weights_from_file is None:
             raise ValueError('Weight bins are not set')
-        return self.weights_file.size
+        return self.weights_from_file.size
                 
     def to_xml_element(self):
         """Return XML representation of the spatial distribution
@@ -698,8 +697,8 @@ class MeshIndependent(Spatial):
         element.set("elem_weight_scheme", self.elem_weight_scheme)
         element.set("mesh_id", str(self.mesh_id))
 
-        subelement = ET.SubElement(element, 'weights_file')
-        subelement.text = ' '.join(str(e) for e in self.weights_file)
+        subelement = ET.SubElement(element, 'weights_from_file')
+        subelement.text = ' '.join(str(e) for e in self.weights_from_file)
 
         return element
 
@@ -722,8 +721,8 @@ class MeshIndependent(Spatial):
 
         elem_weight_scheme = elem.get('elem_weight_scheme')
         mesh_id = int(elem.get('mesh_id'))
-        weights_file = [float(b) for b in get_text(elem, 'weights_file').split()]
-        return cls(elem_weight_scheme, mesh_id, weights_file)
+        weights_from_file = [float(b) for b in get_text(elem, 'weights_from_file').split()]
+        return cls(elem_weight_scheme, mesh_id, weights_from_file)
 
 
 class Box(Spatial):

@@ -2460,7 +2460,7 @@ Position LibMesh::sample(uint64_t* seed, int32_t tet_bin) const {
   std::array<Position, 4> tet_verts;
   for (int i = 0; i < elem.n_nodes(); i++) {
     auto node_ref = elem.node_ref(i);
-    tet_verts[i] =  {node_ref(0), node_ref(1), node_ref(2)};
+    tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates  
   Position r = this->sample_tet(tet_verts, seed);

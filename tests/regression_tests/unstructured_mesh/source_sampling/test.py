@@ -63,7 +63,7 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
 
 
 param_values = (['libmesh', 'moab'], # mesh libraries
-                ['volume', 'activity']) # Element weighting schemes
+                ['volume', 'file']) # Element weighting schemes
                 # [(333, 90, 77), None]) # location of holes in the mesh
 
 test_cases = []
@@ -214,8 +214,8 @@ def test_unstructured_mesh(test_opts):
     # source setup
     if test_opts['schemes'] == 'volume':
         space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'])
-    elif test_opts['schemes'] == 'activity':
-        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], activity_file="Random12000.csv")
+    elif test_opts['schemes'] == 'file':
+        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], weights_from_file=[1.0, 2.0, 3.0, 4])
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)

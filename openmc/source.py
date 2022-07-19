@@ -9,6 +9,7 @@ import openmc.checkvalue as cv
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
+from .mesh import MeshBase
 
 
 class Source:
@@ -61,7 +62,8 @@ class Source:
     """
 
     def __init__(self, space=None, angle=None, energy=None, time=None, filename=None,
-                 library=None, parameters=None, strength=1.0, particle='neutron'):
+                 library=None, parameters=None, strength=1.0, particle='neutron', 
+                 source_mesh=None):
         self._space = None
         self._angle = None
         self._energy = None
@@ -69,6 +71,7 @@ class Source:
         self._file = None
         self._library = None
         self._parameters = None
+        self._source_mesh = None
 
         if space is not None:
             self.space = space
@@ -84,6 +87,8 @@ class Source:
             self.library = library
         if parameters is not None:
             self.parameters = parameters
+        if source_mesh is not None:
+            self.source_mesh = source_mesh
         self.strength = strength
         self.particle = particle
 
@@ -122,6 +127,10 @@ class Source:
     @property
     def particle(self):
         return self._particle
+
+    @property
+    def source_mesh(self):
+        return self._source_mesh
 
     @file.setter
     def file(self, filename):
@@ -169,6 +178,11 @@ class Source:
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
+    @source_mesh.setter
+    def source_mesh(self, source_mesh):
+        # TODO cv.check_type('Mesh for source sampling', source_mesh, mesh)
+        self._source_mesh = source_mesh
+
     def to_xml_element(self):
         """Return XML representation of the source
 
@@ -196,6 +210,10 @@ class Source:
             element.append(self.energy.to_xml_element('energy'))
         if self.time is not None:
             element.append(self.time.to_xml_element('time'))
+        if self.source_mesh is not None:
+            if len(self.source_mesh.name) > 0:
+                element.append(ET.Comment(self.source_mesh.name))
+            element.append(self.source_mesh.to_xml_element())
         return element
 
     @classmethod
@@ -250,6 +268,12 @@ class Source:
         time = elem.find('time')
         if time is not None:
             source.time = Univariate.from_xml_element(time)
+
+        source_mesh = elem.find('mesh')
+        source_meshes = {}
+        if source_mesh is not None:
+            source.source_mesh = MeshBase.from_xml_element(elem)
+            source_meshes[source_mesh.id] = source_mesh
 
         return source
 
