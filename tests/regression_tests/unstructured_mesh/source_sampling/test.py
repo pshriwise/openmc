@@ -21,25 +21,9 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         with openmc.StatePoint(self._sp_name) as sp:
             # loop over the tallies and get data
             for tally in sp.tallies.values():
-                # find the regular and unstructured meshes
-                if tally.contains_filter(openmc.MeshFilter):
-                    flt = tally.find_filter(openmc.MeshFilter)
-
-                    if isinstance(flt.mesh, openmc.RegularMesh):
-                        reg_mesh_data, reg_mesh_std_dev = self.get_mesh_tally_data(tally)
-                        if self.holes:
-                            reg_mesh_data = np.delete(reg_mesh_data, self.holes)
-                            reg_mesh_std_dev = np.delete(reg_mesh_std_dev, self.holes)
-                    else:
-                        umesh_tally = tally
-                        unstructured_data, unstructured_std_dev = self.get_mesh_tally_data(tally, True)
-
-            # we expect these results to be the same to within at least ten
-            # decimal places
-            decimals = 10
-            np.testing.assert_array_almost_equal(unstructured_data,
-                                                 reg_mesh_data,
-                                                 decimals)
+                # we expect these results to be the same to within at least ten
+                # decimal places
+                decimals = 10
 
     @staticmethod
     def get_mesh_tally_data(tally, structured=False):
@@ -79,7 +63,7 @@ def test_unstructured_mesh(test_opts):
 
     openmc.reset_auto_ids()
 
-    pytest.skip("Unstructured mesh source sampling tests in development")
+    # pytest.skip("Unstructured mesh source sampling tests in development")
 
     # skip the test if the library is not enabled
     if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
@@ -197,7 +181,7 @@ def test_unstructured_mesh(test_opts):
     tally1 = openmc.Tally(1)
     tally1.filters = [cell_filter]
     tally1.nuclides = ['H1', 'O16']
-    tally1.scores = ['scatter', 'total', 'absorption', 'flux']
+    tally1.scores = ['scatter', 'total', 'absorption']
     tally2 = openmc.Tally(2)
     tally2.filters = [openmc.CellFilter(fuel_cell)]
     tally2.scores = ['heating', 'fission', 'absorption', 'flux', 'nu-fission']
@@ -210,6 +194,7 @@ def test_unstructured_mesh(test_opts):
     settings.run_mode = 'fixed source'
     settings.particles = 1000
     settings.batches = 10
+    settings.source_mesh = uscd_mesh
 
     # source setup
     if test_opts['schemes'] == 'volume':

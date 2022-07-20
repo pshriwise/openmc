@@ -49,12 +49,15 @@
   <batches>10</batches>
   <source strength="1.0">
     <space elem_weight_scheme="volume" mesh_id="1" type="mesh">
-      <weights_file>0.0</weights_file>
+      <weights_from_file>0.0</weights_from_file>
     </space>
     <energy type="discrete">
       <parameters>15000000.0 1.0</parameters>
     </energy>
   </source>
+  <mesh id="1" library="libmesh" type="unstructured">
+    <filename>test_mesh_tets.e</filename>
+  </mesh>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
@@ -67,7 +70,7 @@
   <tally id="1">
     <filters>2</filters>
     <nuclides>H1 O16</nuclides>
-    <scores>scatter total absorption flux</scores>
+    <scores>scatter total absorption</scores>
   </tally>
   <tally id="2">
     <filters>3</filters>

@@ -646,6 +646,7 @@ class MeshIndependent(Spatial):
     def __init__(self, elem_weight_scheme, mesh_id=1, weights_from_file=[0.0]):
         self.elem_weight_scheme = elem_weight_scheme
         self.mesh_id = mesh_id
+        # if weights_from_file != [0.0]:
         self.weights_from_file = weights_from_file
 
     @property
