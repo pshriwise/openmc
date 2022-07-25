@@ -9,6 +9,7 @@ import numpy as np
 import openmc.checkvalue as cv
 from .._xml import get_text
 from .univariate import Univariate, Uniform, PowerLaw
+from ..mesh import MeshBase
 
 
 class UnitSphere(ABC):
@@ -634,8 +635,8 @@ class MeshIndependent(Spatial):
 
     Attributes
     ----------
-    elem_weight_scheme : String
-        Weighting scheme for sampling element from mesh
+    elem_weight_scheme : String, optional
+        Weighting scheme for sampling element from mesh, defaults to volume
     mesh_id : int, optional
         The ID of the mesh, defaults to 1
     weights_from_file : Iterable of Real, optional
@@ -643,11 +644,21 @@ class MeshIndependent(Spatial):
 
     """
 
-    def __init__(self, elem_weight_scheme, mesh_id=1, weights_from_file=[0.0]):
+    def __init__(self, mesh, elem_weight_scheme="volume", weights_from_file=[0.0]):
+        self.mesh = mesh        
         self.elem_weight_scheme = elem_weight_scheme
-        self.mesh_id = mesh_id
-        # if weights_from_file != [0.0]:
+        self.mesh_id = self.mesh.id
         self.weights_from_file = weights_from_file
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        if mesh != None:
+            cv.check_type('Unstructured Mesh', mesh, MeshBase)
+        self._mesh = mesh
 
     @property
     def elem_weight_scheme(self):
@@ -656,7 +667,6 @@ class MeshIndependent(Spatial):
     @elem_weight_scheme.setter
     def elem_weight_scheme(self, elem_weight_scheme):
         cv.check_value('Scheme for sampling an element from the mesh', elem_weight_scheme, ['volume', 'file'])
-        
         self._elem_weight_scheme = elem_weight_scheme
 
     @property
@@ -674,13 +684,11 @@ class MeshIndependent(Spatial):
 
     @weights_from_file.setter
     def weights_from_file(self, given_weights):
-        # cv.check_type('File defined array for weighted sampling', given_weights, Iterable, Real)
-        # self._weights_from_file = list(given_weights)
-        self._weights_from_file = (np.asarray(given_weights)).flatten()
+        self._weights_from_file = (np.array(given_weights, dtype=float)).flatten()
 
     @property
     def num_weight_bins(self):
-        if self.weights_from_file is None:
+        if self.weights_from_file == None:
             raise ValueError('Weight bins are not set')
         return self.weights_from_file.size
                 
@@ -718,11 +726,11 @@ class MeshIndependent(Spatial):
             Spatial distribution generated from XML element
 
         """
-        print("Check py 1")
 
         elem_weight_scheme = elem.get('elem_weight_scheme')
         mesh_id = int(elem.get('mesh_id'))
         weights_from_file = [float(b) for b in get_text(elem, 'weights_from_file').split()]
+
         return cls(elem_weight_scheme, mesh_id, weights_from_file)
 
 

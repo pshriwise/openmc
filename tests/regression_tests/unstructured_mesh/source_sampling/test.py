@@ -25,18 +25,6 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
                 # decimal places
                 decimals = 10
 
-    @staticmethod
-    def get_mesh_tally_data(tally, structured=False):
-        data = tally.get_reshaped_data(value='mean')
-        std_dev = tally.get_reshaped_data(value='std_dev')
-        if structured:
-           data.shape = (data.size // TETS_PER_VOXEL, TETS_PER_VOXEL)
-           std_dev.shape = (std_dev.size // TETS_PER_VOXEL, TETS_PER_VOXEL)
-        else:
-            data.shape = (data.size, 1)
-            std_dev.shape = (std_dev.size, 1)
-        return np.sum(data, axis=1), np.sum(std_dev, axis=1)
-
     def _cleanup(self):
         super()._cleanup()
         output = glob.glob('tally*.vtk')
@@ -194,13 +182,12 @@ def test_unstructured_mesh(test_opts):
     settings.run_mode = 'fixed source'
     settings.particles = 1000
     settings.batches = 10
-    settings.source_mesh = uscd_mesh
 
     # source setup
     if test_opts['schemes'] == 'volume':
-        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'])
+        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], mesh=uscd_mesh)
     elif test_opts['schemes'] == 'file':
-        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], weights_from_file=[1.0, 2.0, 3.0, 4])
+        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], weights_from_file=[1.0, 2.0, 3.0, 4], mesh=uscd_mesh)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)
