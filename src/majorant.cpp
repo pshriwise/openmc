@@ -130,7 +130,7 @@ void create_majorant() {
     }
     macro_majorants.emplace_back(Majorant());
     macro_majorants.back().update(majorant_e_grid, material_xs);
-    macro_majorants.back().write_ascii(fmt::format("mat_{}_majorant.txt", material->id_));
+    // macro_majorants.back().write_ascii(fmt::format("mat_{}_majorant.txt", material->id_));
   }
 
   data::n_majorant = std::make_unique<Majorant>();
