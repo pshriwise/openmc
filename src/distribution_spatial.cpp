@@ -189,7 +189,6 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 // MeshIndependent implementation
 //==============================================================================
 
-// Loosely adapted Patrick's code shown here
 MeshIndependent::MeshIndependent(pugi::xml_node node)
 {
   // No in-tet distributions implemented, could include distributions for the barycentric coords
@@ -204,14 +203,13 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
 
   // Create CDF based on weighting scheme
   tot_bins_ = umesh_ptr_->n_bins();
-  // float weights[tot_bins_] = {};
   std::vector<double> weights = {};
   weights.resize(tot_bins_);
   double temp_total_weight = 0.0;
   mesh_CDF_.resize(tot_bins_+1);
   mesh_CDF_[0] = {0.0};
   total_weight_ = 0.0;
-  mesh_weights_.resize(get_node_array<double>(node, "weights_from_file").size());
+  mesh_weights_.resize(tot_bins_);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
@@ -232,8 +230,7 @@ MeshIndependent::MeshIndependent(pugi::xml_node node)
     if (check_for_node(node, "weights_from_file")) {
       mesh_weights_ = get_node_array<double>(node, "weights_from_file");
       if (mesh_weights_.size() != tot_bins_){
-        write_message("The size of the weights array from the xml file does not equal the number of elements in the mesh.");
-        // fatal_error("The size of the weights array from the xml file does not equal the number of elements in the mesh.");
+        write_message("WARNING: The size of the weights array from the xml file does not equal the number of elements in the mesh.");
       }
       for (int i = 0; i < tot_bins_; i++){
         weights[i] = mesh_weights_[i];

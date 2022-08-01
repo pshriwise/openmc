@@ -18,12 +18,31 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         self.holes = holes # holes in the test mesh
 
     def _compare_results(self):
-        with openmc.StatePoint(self._sp_name) as sp:
-            # loop over the tallies and get data
-            for tally in sp.tallies.values():
-                # we expect these results to be the same to within at least ten
-                # decimal places
-                decimals = 10
+        # loop over the tracks and get data
+        tracks = openmc.Tracks(filepath='tracks.h5')
+        tracks_born = np.empty((len(tracks), 1))
+        decimals = 3
+
+        instances = np.zeros(1000)
+
+        for i in range(0, len(tracks)):
+            tracks_born[i] = tracks[i].particle_tracks[0].states['cell_id'][0]
+            instances[int(tracks_born[i])-1] = instances[int(tracks_born[i])-1]+1
+
+        if self.test_opts['schemes'] == "file":
+            assert(instances[0] > 0 and instances[1] > 0)
+            assert(instances[0] > instances[1])
+            for i in range(0, len(instances)):
+                if i != 0 and i != 1:
+                    assert(instances[i] == 0)
+
+        else:
+            passed_weights = np.full((1000, 1), 1)
+            born_amounts = instances/instances[1]
+            np.testing.assert_array_almost_equal(passed_weights, 
+                                            born_amounts,
+                                            decimals)    
+            
 
     def _cleanup(self):
         super()._cleanup()
@@ -36,7 +55,6 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
 
 param_values = (['libmesh', 'moab'], # mesh libraries
                 ['volume', 'file']) # Element weighting schemes
-                # [(333, 90, 77), None]) # location of holes in the mesh
 
 test_cases = []
 # for i, (lib, holes) in enumerate(product(*param_values)):
@@ -82,112 +100,71 @@ def test_unstructured_mesh(test_opts):
     materials.export_to_xml()
 
     ### Geometry ###
-    fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
-    fuel_max_x = openmc.XPlane(5.0, name="maximum x")
+    dimen = 10
+    size_hex = 20.0/dimen
 
-    fuel_min_y = openmc.YPlane(-5.0, name="minimum y")
-    fuel_max_y = openmc.YPlane(5.0, name="maximum y")
+    ### Geometry ###
+    cell = np.empty((dimen, dimen, dimen), dtype=object)
+    surfaces = np.empty((dimen+1, 3), dtype=object)
 
-    fuel_min_z = openmc.ZPlane(-5.0, name="minimum z")
-    fuel_max_z = openmc.ZPlane(5.0, name="maximum z")
+    geometry = openmc.Geometry()
+    universe = openmc.Universe(universe_id=1, name="Contains all hexes")
 
-    fuel_cell = openmc.Cell(name="fuel")
-    fuel_cell.region = +fuel_min_x & -fuel_max_x & \
-                       +fuel_min_y & -fuel_max_y & \
-                       +fuel_min_z & -fuel_max_z
-    fuel_cell.fill = fuel_mat
+    for i in range(0,dimen+1):
+        surfaces[i][0] = openmc.XPlane(-10.0+i*size_hex, name="X plane at "+str(-10.0+i*size_hex))
+        surfaces[i][1] = openmc.YPlane(-10.0+i*size_hex, name="Y plane at "+str(-10.0+i*size_hex))
+        surfaces[i][2] = openmc.ZPlane(-10.0+i*size_hex, name="Z plane at "+str(-10.0+i*size_hex))
 
-    clad_min_x = openmc.XPlane(-6.0, name="minimum x")
-    clad_max_x = openmc.XPlane(6.0, name="maximum x")
+        surfaces[i][0].boundary_type = 'vacuum'
+        surfaces[i][1].boundary_type = 'vacuum'
+        surfaces[i][2].boundary_type = 'vacuum'
 
-    clad_min_y = openmc.YPlane(-6.0, name="minimum y")
-    clad_max_y = openmc.YPlane(6.0, name="maximum y")
+    for k in range(0,dimen):
+        for j in range(0,dimen):
+            for i in range(0,dimen):
+                cell[i][j][k] = openmc.Cell(name=("x " + str(i) +" y " + str(j) +" z " + str(k)))
+                cell[i][j][k].region = +surfaces[i][0] & -surfaces[i+1][0] & \
+                                    +surfaces[j][1] & -surfaces[j+1][1] & \
+                                    +surfaces[k][2] & -surfaces[k+1][2]
+                cell[i][j][k].fill = water_mat
+                universe.add_cell(cell[i][j][k])
 
-    clad_min_z = openmc.ZPlane(-6.0, name="minimum z")
-    clad_max_z = openmc.ZPlane(6.0, name="maximum z")
+    geometry = openmc.Geometry(universe)
 
-    clad_cell = openmc.Cell(name="clad")
-    clad_cell.region = (-fuel_min_x | +fuel_max_x |
-                        -fuel_min_y | +fuel_max_y |
-                        -fuel_min_z | +fuel_max_z) & \
-                        (+clad_min_x & -clad_max_x &
-                         +clad_min_y & -clad_max_y &
-                         +clad_min_z & -clad_max_z)
-    clad_cell.fill = zirc_mat
-
-    bounds = (10, 10, 10)
-
-    water_min_x = openmc.XPlane(x0=-bounds[0],
-                                name="minimum x",
-                                boundary_type='vacuum')
-    water_max_x = openmc.XPlane(x0=bounds[0],
-                                name="maximum x",
-                                boundary_type='vacuum')
-
-    water_min_y = openmc.YPlane(y0=-bounds[1],
-                                name="minimum y",
-                                boundary_type='vacuum')
-    water_max_y = openmc.YPlane(y0=bounds[1],
-                                name="maximum y",
-                                boundary_type='vacuum')
-
-    water_min_z = openmc.ZPlane(z0=-bounds[2],
-                                name="minimum z",
-                                boundary_type='vacuum')
-    water_max_z = openmc.ZPlane(z0=bounds[2],
-                                name="maximum z",
-                                boundary_type='vacuum')
-
-    water_cell = openmc.Cell(name="water")
-    water_cell.region = (-clad_min_x | +clad_max_x |
-                         -clad_min_y | +clad_max_y |
-                         -clad_min_z | +clad_max_z) & \
-                         (+water_min_x & -water_max_x &
-                          +water_min_y & -water_max_y &
-                          +water_min_z & -water_max_z)
-    water_cell.fill = water_mat
-
-    # create a containing universe
-    geometry = openmc.Geometry([fuel_cell, clad_cell, water_cell])
-
-    # Initialize mesh for both tallies and source
-    # if test_opts['holes']:
-    #     mesh_filename = "test_mesh_tets_w_holes.e"
-    # else:
-    #     mesh_filename = "test_mesh_tets.e"
     mesh_filename = "test_mesh_tets.e"
 
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
-    uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     ### Tallies ###
 
     # create tallies
     tallies = openmc.Tallies()
 
-    cell_filter = openmc.CellFilter(water_cell)
     tally1 = openmc.Tally(1)
-    tally1.filters = [cell_filter]
-    tally1.nuclides = ['H1', 'O16']
     tally1.scores = ['scatter', 'total', 'absorption']
-    tally2 = openmc.Tally(2)
-    tally2.filters = [openmc.CellFilter(fuel_cell)]
-    tally2.scores = ['heating', 'fission', 'absorption', 'flux', 'nu-fission']
     # Export tallies
-    tallies = openmc.Tallies([tally1, tally2])
+    tallies = openmc.Tallies([tally1])
     tallies.export_to_xml()
 
     ### Settings ###
     settings = openmc.Settings()
     settings.run_mode = 'fixed source'
-    settings.particles = 1000
-    settings.batches = 10
+    settings.particles = 10000
+    settings.batches = 2
+
+    # settings.create_fission_neutrons = False
+    settings.tracks = [(1, 1, 1)]
+    settings.max_tracks = 10000
 
     # source setup
     if test_opts['schemes'] == 'volume':
         space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], mesh=uscd_mesh)
     elif test_opts['schemes'] == 'file':
-        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], weights_from_file=[1.0, 2.0, 3.0, 4], mesh=uscd_mesh)
+        array = np.zeros(12000)
+        for i in range(0, 12):
+            array[i] = 10
+            array[i+12] = 2
+        space = openmc.stats.MeshIndependent(elem_weight_scheme=test_opts['schemes'], weights_from_file=array, mesh=uscd_mesh)
 
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
     source = openmc.Source(space=space, energy=energy)
@@ -198,9 +175,8 @@ def test_unstructured_mesh(test_opts):
                                tallies=tallies,
                                settings=settings)
 
-    harness = UnstructuredMeshSourceTest('statepoint.10.h5',
+    harness = UnstructuredMeshSourceTest('statepoint.2.h5',
                                    model,
                                    test_opts['inputs_true'],
                                    test_opts['schemes'])
-                                   # test_opts['holes'])
     harness.main()

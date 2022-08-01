@@ -48,9 +48,7 @@
   <particles>1000</particles>
   <batches>10</batches>
   <source strength="1.0">
-    <space elem_weight_scheme="volume" mesh_id="1" type="mesh">
-      <weights_from_file>0.0</weights_from_file>
-    </space>
+    <space elem_weight_scheme="volume" mesh_id="1" type="mesh" />
     <energy type="discrete">
       <parameters>15000000.0 1.0</parameters>
     </energy>

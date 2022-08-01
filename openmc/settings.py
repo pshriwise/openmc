@@ -144,8 +144,6 @@ class Settings:
         Seed for the linear congruential pseudorandom number generator
     source : Iterable of openmc.Source
         Distribution of source sites in space, angle, and energy
-    mesh : TODO
-        Mesh used for mesh based source sampling
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -1281,6 +1279,12 @@ class Settings:
     def _source_from_xml_element(self, root):
         for elem in root.findall('source'):
             self.source.append(Source.from_xml_element(elem))
+            if isinstance(self.source.space, MeshIndependent):
+                mesh_id = int(get_text(elem, 'mesh'))
+                path = f"./mesh[@id='{mesh_id}']"
+                mesh_elem = root.find(path)
+                if mesh_elem is not None:
+                    self.source.space.mesh = MeshBase.from_xml_element(mesh_elem)
 
     def _volume_calcs_from_xml_element(self, root):
         volume_elems = root.findall("volume_calc")

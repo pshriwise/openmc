@@ -2439,7 +2439,7 @@ void LibMesh::initialize()
   int n_threads = 1;
 #endif
 
-  for (int i = 0; i < n_threads; i++) { 
+  for (int i = 0; i < n_threads; i++) {
     pl_.emplace_back(m_->sub_point_locator());
     pl_.back()->set_contains_point_tol(FP_COINCIDENT);
     pl_.back()->enable_out_of_mesh_mode();

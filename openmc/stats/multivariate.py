@@ -625,29 +625,29 @@ class MeshIndependent(Spatial):
 
     Parameters
     ----------
-    elem_weight_scheme : String
+    elem_weight_scheme : str, optional
         The scheme for weighting and sampling elements from the mesh. Options are 'file' and 'volume' based weights.
-    mesh_id : int, optional
-        The mesh ID number, defaults to 1
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
     weights_from_file : Iterable of Real, optional
         A list of values which represent the weights of each element
 
 
     Attributes
     ----------
-    elem_weight_scheme : String, optional
+    elem_weight_scheme : str, optional
         Weighting scheme for sampling element from mesh, defaults to volume
-    mesh_id : int, optional
-        The ID of the mesh, defaults to 1
+    mesh : openmc.MeshBase
+        The mesh instance used for sampling, mesh is written into settings.xml, mesh.id is written into the source distribution
     weights_from_file : Iterable of Real, optional
         A list of values which represent the weights of each element
 
     """
 
-    def __init__(self, mesh, elem_weight_scheme="volume", weights_from_file=[0.0]):
+    def __init__(self, mesh, elem_weight_scheme="volume", weights_from_file=None):
         self.mesh = mesh        
         self.elem_weight_scheme = elem_weight_scheme
-        self.mesh_id = self.mesh.id
+        # if weights_from_file is not None:
         self.weights_from_file = weights_from_file
 
     @property
@@ -670,21 +670,15 @@ class MeshIndependent(Spatial):
         self._elem_weight_scheme = elem_weight_scheme
 
     @property
-    def mesh_id(self):
-        return self._mesh_id
-
-    @mesh_id.setter
-    def mesh_id(self, mesh_id):
-        cv.check_type('Mesh file ID number', mesh_id, int)
-        self._mesh_id = mesh_id
-
-    @property
     def weights_from_file(self):
         return self._weights_from_file
 
     @weights_from_file.setter
     def weights_from_file(self, given_weights):
-        self._weights_from_file = (np.array(given_weights, dtype=float)).flatten()
+        if given_weights is not None:
+            self._weights_from_file = (np.array(given_weights, dtype=float)).flatten()
+        else:
+            self._weights_from_file = None
 
     @property
     def num_weight_bins(self):
@@ -704,10 +698,11 @@ class MeshIndependent(Spatial):
         element = ET.Element('space')
         element.set('type', 'mesh')
         element.set("elem_weight_scheme", self.elem_weight_scheme)
-        element.set("mesh_id", str(self.mesh_id))
+        element.set("mesh_id", str(self.mesh.id))
 
-        subelement = ET.SubElement(element, 'weights_from_file')
-        subelement.text = ' '.join(str(e) for e in self.weights_from_file)
+        if self.weights_from_file is not None:
+            subelement = ET.SubElement(element, 'weights_from_file')
+            subelement.text = ' '.join(str(e) for e in self.weights_from_file)
 
         return element
 
@@ -729,8 +724,10 @@ class MeshIndependent(Spatial):
 
         elem_weight_scheme = elem.get('elem_weight_scheme')
         mesh_id = int(elem.get('mesh_id'))
-        weights_from_file = [float(b) for b in get_text(elem, 'weights_from_file').split()]
-
+        if elem.get('weights_from_file') is not None:
+            weights_from_file = [float(b) for b in get_text(elem, 'weights_from_file').split()]
+        else:
+            weights_from_file = None
         return cls(elem_weight_scheme, mesh_id, weights_from_file)
 
 

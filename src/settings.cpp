@@ -546,9 +546,6 @@ void read_settings_xml()
     }
   }
 
-  // Read meshes
-  read_meshes(root);
-
   // Shannon Entropy mesh
   if (check_for_node(root, "entropy_mesh")) {
     int temp = std::stoi(get_node_value(root, "entropy_mesh"));
