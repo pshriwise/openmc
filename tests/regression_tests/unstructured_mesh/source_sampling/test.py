@@ -8,20 +8,31 @@ import numpy as np
 
 import pytest
 from tests.testing_harness import PyAPITestHarness
+from tests.regression_tests import config
 
 TETS_PER_VOXEL = 12
 
 class UnstructuredMeshSourceTest(PyAPITestHarness):
-    def __init__(self, statepoint_name, model, inputs_true, holes):
+    def __init__(self, statepoint_name, model, inputs_true, schemes):
 
         super().__init__(statepoint_name, model, inputs_true)
-        self.holes = holes # holes in the test mesh
+        self.schemes = schemes
+
+    def _run_openmc(self):
+        kwargs = {'openmc_exec' : config['exe'],
+                  'event_based' : config['event'],
+                  'tracks' : True}
+
+        if config['mpi']:
+            kwargs['mpi_args'] = [config['mpi'], '-n', config['mpi_np']]
+
+        openmc.run(**kwargs)
 
     def _compare_results(self):
         # loop over the tracks and get data
         tracks = openmc.Tracks(filepath='tracks.h5')
         tracks_born = np.empty((len(tracks), 1))
-        decimals = 3
+        decimals = 0
 
         instances = np.zeros(1000)
 
@@ -29,19 +40,19 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
             tracks_born[i] = tracks[i].particle_tracks[0].states['cell_id'][0]
             instances[int(tracks_born[i])-1] = instances[int(tracks_born[i])-1]+1
 
-        if self.test_opts['schemes'] == "file":
+        # if self.test_opts['schemes'] == "file":
+        if self.schemes == "file":
             assert(instances[0] > 0 and instances[1] > 0)
             assert(instances[0] > instances[1])
+            
             for i in range(0, len(instances)):
                 if i != 0 and i != 1:
                     assert(instances[i] == 0)
 
         else:
-            passed_weights = np.full((1000, 1), 1)
-            born_amounts = instances/instances[1]
-            np.testing.assert_array_almost_equal(passed_weights, 
-                                            born_amounts,
-                                            decimals)    
+            assert(np.average(instances) == 10)
+            assert(np.std(instances) < np.average(instances))  
+            assert(np.amax(instances) < 30)
             
 
     def _cleanup(self):
@@ -51,6 +62,8 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
+
+    
 
 
 param_values = (['libmesh', 'moab'], # mesh libraries

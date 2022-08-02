@@ -1279,7 +1279,7 @@ class Settings:
     def _source_from_xml_element(self, root):
         for elem in root.findall('source'):
             self.source.append(Source.from_xml_element(elem))
-            if isinstance(self.source.space, MeshIndependent):
+            if isinstance(Source.from_xml_element(elem), MeshIndependent):
                 mesh_id = int(get_text(elem, 'mesh'))
                 path = f"./mesh[@id='{mesh_id}']"
                 mesh_elem = root.find(path)
