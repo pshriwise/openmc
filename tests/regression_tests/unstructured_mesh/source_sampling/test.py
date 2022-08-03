@@ -19,9 +19,9 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         self.schemes = schemes
 
     def _run_openmc(self):
-        kwargs = {'openmc_exec' : config['exe'],
+        kwargs = {'openmc_exec' : 'openmc',
                   'event_based' : config['event'],
-                  'tracks' : "True"}
+                  'tracks' : True}
 
         if config['mpi']:
             kwargs['mpi_args'] = [config['mpi'], '-n', config['mpi_np']]
@@ -43,16 +43,16 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
         if self.schemes == "file":
             assert(instances[0] > 0 and instances[1] > 0)
             assert(instances[0] > instances[1])
-            
+
             for i in range(0, len(instances)):
                 if i != 0 and i != 1:
                     assert(instances[i] == 0)
 
         else:
             assert(np.average(instances) == 10)
-            assert(np.std(instances) < np.average(instances))  
+            assert(np.std(instances) < np.average(instances))
             assert(np.amax(instances) < 30)
-            
+
 
     def _cleanup(self):
         super()._cleanup()
@@ -62,7 +62,7 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
             if os.path.exists(f):
                 os.remove(f)
 
-    
+
 
 
 param_values = (['libmesh', 'moab'], # mesh libraries
