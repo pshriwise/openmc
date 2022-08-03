@@ -1036,18 +1036,6 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material depletable="true" id="1" name="fuel">
-    <density units="g/cc" value="4.5" />
-    <nuclide ao="1.0" name="U235" />
-  </material>
-  <material id="2" name="zircaloy">
-    <density units="g/cc" value="5.77" />
-    <nuclide ao="0.5145" name="Zr90" />
-    <nuclide ao="0.1122" name="Zr91" />
-    <nuclide ao="0.1715" name="Zr92" />
-    <nuclide ao="0.1738" name="Zr94" />
-    <nuclide ao="0.028" name="Zr96" />
-  </material>
   <material id="3" name="water">
     <density units="atom/b-cm" value="0.07416" />
     <nuclide ao="2.0" name="H1" />

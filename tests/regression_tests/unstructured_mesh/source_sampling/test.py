@@ -21,7 +21,7 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
     def _run_openmc(self):
         kwargs = {'openmc_exec' : config['exe'],
                   'event_based' : config['event'],
-                  'tracks' : True}
+                  'tracks' : "True"}
 
         if config['mpi']:
             kwargs['mpi_args'] = [config['mpi'], '-n', config['mpi_np']]
@@ -40,7 +40,6 @@ class UnstructuredMeshSourceTest(PyAPITestHarness):
             tracks_born[i] = tracks[i].particle_tracks[0].states['cell_id'][0]
             instances[int(tracks_born[i])-1] = instances[int(tracks_born[i])-1]+1
 
-        # if self.test_opts['schemes'] == "file":
         if self.schemes == "file":
             assert(instances[0] > 0 and instances[1] > 0)
             assert(instances[0] > instances[1])
@@ -82,8 +81,6 @@ def test_unstructured_mesh(test_opts):
 
     openmc.reset_auto_ids()
 
-    # pytest.skip("Unstructured mesh source sampling tests in development")
-
     # skip the test if the library is not enabled
     if test_opts['library'] == 'moab' and not openmc.lib._dagmc_enabled():
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
@@ -94,17 +91,7 @@ def test_unstructured_mesh(test_opts):
     ### Materials ###
     materials = openmc.Materials()
 
-    fuel_mat = openmc.Material(name="fuel")
-    fuel_mat.add_nuclide("U235", 1.0)
-    fuel_mat.set_density('g/cc', 4.5)
-    materials.append(fuel_mat)
-
-    zirc_mat = openmc.Material(name="zircaloy")
-    zirc_mat.add_element("Zr", 1.0)
-    zirc_mat.set_density("g/cc", 5.77)
-    materials.append(zirc_mat)
-
-    water_mat = openmc.Material(name="water")
+    water_mat = openmc.Material(material_id=3, name="water")
     water_mat.add_nuclide("H1", 2.0)
     water_mat.add_nuclide("O16", 1.0)
     water_mat.set_density("atom/b-cm", 0.07416)
