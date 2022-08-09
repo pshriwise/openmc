@@ -1,12 +1,14 @@
 #include "openmc/bremsstrahlung.h"
 
 #include "openmc/constants.h"
+#include "openmc/interpolate.h"
 #include "openmc/material.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 
 #include "xtensor/xmath.hpp"
+#include "xtensor/xview.hpp"
 
 namespace openmc {
 
@@ -44,13 +46,14 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   }
 
   double e = std::log(p.E());
-  auto n_e = data::ttb_e_grid.size();
+  // auto n_e = data::ttb_e_grid.size();
 
-  // Find the lower bounding index of the incident electron energy
-  size_t j =
-    lower_bound_index(data::ttb_e_grid.cbegin(), data::ttb_e_grid.cend(), e);
-  if (j == n_e - 1)
-    --j;
+  // Using the incident electron energy, calculate the interpolation weight
+  // w_j+1 of the bremsstrahlung energy PDF interpolated in log energy, which
+  // can be interpreted as the probability of index j+1
+  auto interpolator =
+    FixedInterpolator(data::ttb_e_grid.cbegin(), data::ttb_e_grid.cend(), e);
+  size_t j = interpolator.idx();
 
   // Get the interpolation bounds
   double e_l = data::ttb_e_grid(j);
@@ -58,14 +61,9 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   double y_l = mat->yield(j);
   double y_r = mat->yield(j + 1);
 
-  // Calculate the interpolation weight w_j+1 of the bremsstrahlung energy PDF
-  // interpolated in log energy, which can be interpreted as the probability
-  // of index j+1
-  double f = (e - e_l) / (e_r - e_l);
-
   // Get the photon number yield for the given energy using linear
   // interpolation on a log-log scale
-  double y = std::exp(y_l + (y_r - y_l) * f);
+  double y = std::exp(interpolator(mat->yield.cbegin()));
 
   // Sample number of secondary bremsstrahlung photons
   int n = y + prn(p.current_seed());
@@ -77,7 +75,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   // Sample index of the tabulated PDF in the energy grid, j or j+1
   double c_max;
   int i_e;
-  if (prn(p.current_seed()) <= f || j == 0) {
+  if (prn(p.current_seed()) <= interpolator.factor() || j == 0) {
     i_e = j + 1;
 
     // Interpolate the maximum value of the CDF at the incoming particle
@@ -89,7 +87,6 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
     c_max = c_l + std::exp(e_l) * p_l / a * (std::exp(a * (e - e_l)) - 1.0);
   } else {
     i_e = j;
-
     // Maximum value of the CDF
     c_max = mat->cdf(i_e, i_e);
   }

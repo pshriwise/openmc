@@ -40,7 +40,6 @@ public:
 
   const vector<double>& energy() const { return energy_; }
   const vector<double>& y() const { return y_; }
-  Interpolation interpolation_;
   void set_data(gsl::span<const double> energy, gsl::span<const double> y);
 
 private:
@@ -52,6 +51,8 @@ private:
 
   //! Interpolant values.
   vector<double> y_;
+
+  Interpolation interpolation_ {Interpolation::lin_lin};
 };
 
 } // namespace openmc

@@ -5,69 +5,120 @@
 #include <cmath>
 #include <vector>
 
+#include "openmc/error.h"
 #include "openmc/search.h"
 
 namespace openmc {
 
-inline double interpolate_lin_lin(
-  double x0, double x1, double y0, double y1, double x)
-{
-  return y0 + (x - x0) / (x1 - x0) * (y1 - y0);
-}
+struct FixedInterpolator {
+  FixedInterpolator(const std::vector<double>& xs, double x,
+    Interpolation i = Interpolation::lin_lin)
+    : interpolation_(i)
+  {
+    // set index into array
+    if (x < xs.front())
+      idx_ = 0;
+    else if (x > xs.back())
+      idx_ = xs.size() - 2;
+    else
+      idx_ = lower_bound_index(xs.begin(), xs.end(), x);
 
-inline double interpolate_lin_log(
-  double x0, double x1, double y0, double y1, double x)
-{
-  return y0 + log(x / x0) / log(x1 / x0) * (y1 - y0);
-}
-
-inline double interpolate_log_lin(
-  double x0, double x1, double y0, double y1, double x)
-{
-  return y0 * exp((x - x0) / (x1 - x0) * log(y1 / y0));
-}
-
-inline double interpolate_log_log(
-  double x0, double x1, double y0, double y1, double x)
-{
-  double f = log(x / x0) / log(x1 / x0);
-  return y0 * exp(f * log(y1 / y0));
-}
-
-inline double interpolate(const std::vector<double>& xs,
-  const std::vector<double>& ys, int idx, double x,
-  Interpolation i = Interpolation::lin_lin)
-{
-  switch (i) {
-  case Interpolation::lin_lin:
-    return interpolate_lin_lin(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);
-  case Interpolation::log_log:
-    return interpolate_log_log(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);
-  case Interpolation::lin_log:
-    return interpolate_lin_log(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);
-  case Interpolation::log_lin:
-    return interpolate_log_lin(xs[idx], xs[idx + 1], ys[idx], ys[idx + 1], x);
-  default:
-    fatal_error("Unsupported interpolation");
+    set_factor(xs.begin() + idx_, x);
   }
-}
 
-inline double interpolate(const std::vector<double>& xs,
-  const std::vector<double>& ys, double x,
-  Interpolation i = Interpolation::lin_lin)
-{
-  int idx = lower_bound_index(xs.begin(), xs.end(), x);
-  return interpolate(xs, ys, idx, x, i);
-}
+  FixedInterpolator(const std::vector<double>& xs, double x, size_t idx,
+    Interpolation i = Interpolation::lin_lin)
+    : interpolation_(i), idx_(idx)
+  {
+    set_factor(xs.begin() + idx_, x);
+  }
 
-inline double interpolate_lagrangian(
-  const std::vector<double>& xs, const std::vector<double>& ys, double x)
+  template<class It>
+  FixedInterpolator(It arr_begin, It arr_end, double x, size_t idx,
+    Interpolation i = Interpolation::lin_lin)
+    : interpolation_(i), idx_(idx)
+  {
+    set_factor(arr_begin + idx_, x);
+  }
+
+  template<class It>
+  FixedInterpolator(It arr_begin, It arr_end, double x,
+    Interpolation i = Interpolation::lin_lin)
+    : interpolation_(i)
+  {
+    // set index into array
+    if (x < *arr_begin)
+      idx_ = 0;
+    else if (x > *(arr_end - 1))
+      idx_ = arr_end - arr_begin - 2;
+    else
+      idx_ = lower_bound_index(arr_begin, arr_end, x);
+
+    set_factor(arr_begin + idx_, x);
+  }
+
+  template<class It>
+  void set_factor(It pos, double x)
+  {
+    double x0 = *pos;
+    double x1 = *(pos + 1);
+
+    // compute interpolation factor
+    switch (interpolation_) {
+    case Interpolation::lin_lin:
+    case Interpolation::log_lin:
+      interpolation_factor_ = (x - x0) / (x1 - x0);
+      break;
+    case Interpolation::lin_log:
+    case Interpolation::log_log:
+      interpolation_factor_ = log(x / x0) / log(x1 / x0);
+      break;
+    default:
+      fatal_error("Unrecognized interpolation");
+      break;
+    }
+  }
+
+  // performs interpolation for on specified y values
+  double operator()(const std::vector<double>& ys)
+  {
+    return (*this)(ys.begin());
+  }
+
+  template<class It>
+  double operator()(It arr_begin)
+  {
+    double y0 = *(arr_begin + idx_);
+    double y1 = *(arr_begin + idx_ + 1);
+
+    switch (interpolation_) {
+    case Interpolation::lin_lin:
+    case Interpolation::lin_log:
+      return y0 + interpolation_factor_ * (y1 - y0);
+    case Interpolation::log_lin:
+    case Interpolation::log_log:
+      return y0 * exp(interpolation_factor_ * log(y1 / y0));
+    default:
+      fatal_error("Unrecognized interpolation");
+    }
+  }
+
+  // Accessors
+  size_t idx() const { return idx_; }
+  double factor() const { return interpolation_factor_; }
+
+  // Data members
+  Interpolation interpolation_;
+  size_t idx_;
+  double interpolation_factor_;
+};
+
+inline double interpolate_lagrangian(const std::vector<double>& xs,
+  const std::vector<double>& ys, double x, int order)
 {
   int idx = lower_bound_index(xs.begin(), xs.end(), x);
 
   std::vector<double> coeffs;
-
-  int order = 3;
 
   for (int i = 0; i < order + 1; i++) {
     double numerator {1.0};

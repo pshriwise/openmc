@@ -853,28 +853,11 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     double E_low = std::pow(std::max(0.0, E_red - 4.0), 2) * kT / nuc.awr_;
     double E_up = (E_red + 4.0) * (E_red + 4.0) * kT / nuc.awr_;
 
-    // find lower and upper energy bound indices
-    // lower index
-    int i_E_low;
-    if (E_low < nuc.energy_0K_.front()) {
-      i_E_low = 0;
-    } else if (E_low > nuc.energy_0K_.back()) {
-      i_E_low = nuc.energy_0K_.size() - 2;
-    } else {
-      i_E_low =
-        lower_bound_index(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_low);
-    }
+    auto interpolator_low = FixedInterpolator(nuc.energy_0K_, E_low);
+    auto interpolator_up = FixedInterpolator(nuc.energy_0K_, E_up);
 
-    // upper index
-    int i_E_up;
-    if (E_up < nuc.energy_0K_.front()) {
-      i_E_up = 0;
-    } else if (E_up > nuc.energy_0K_.back()) {
-      i_E_up = nuc.energy_0K_.size() - 2;
-    } else {
-      i_E_up =
-        lower_bound_index(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_up);
-    }
+    int i_E_low = interpolator_low.idx();
+    int i_E_up = interpolator_up.idx();
 
     if (i_E_up == i_E_low) {
       // Handle degenerate case -- if the upper/lower bounds occur for the same
@@ -884,9 +867,9 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
     if (sampling_method == ResScatMethod::dbrc) {
       // interpolate xs since we're not exactly at the energy indices
-      double xs_low =
-        interpolate(nuc.energy_0K_, nuc.elastic_0K_, i_E_low, E_low);
-      double xs_up = interpolate(nuc.energy_0K_, nuc.elastic_0K_, i_E_up, E_up);
+      double xs_low = interpolator_low(nuc.elastic_0K_);
+      double xs_up = interpolator_up(nuc.elastic_0K_);
+
       // get max 0K xs value over range of practical relative energies
       double xs_max = *std::max_element(
         &nuc.elastic_0K_[i_E_low + 1], &nuc.elastic_0K_[i_E_up + 1]);
@@ -917,15 +900,11 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
       // cdf value at lower bound attainable energy
       double cdf_low = 0.0;
       if (E_low > nuc.energy_0K_.front()) {
-        double m = (nuc.xs_cdf_[i_E_low + 1] - nuc.xs_cdf_[i_E_low]) /
-                   (nuc.energy_0K_[i_E_low + 1] - nuc.energy_0K_[i_E_low]);
-        cdf_low = nuc.xs_cdf_[i_E_low] + m * (E_low - nuc.energy_0K_[i_E_low]);
+        cdf_low = interpolator_low(nuc.xs_cdf_);
       }
 
       // cdf value at upper bound attainable energy
-      double m = (nuc.xs_cdf_[i_E_up + 1] - nuc.xs_cdf_[i_E_up]) /
-                 (nuc.energy_0K_[i_E_up + 1] - nuc.energy_0K_[i_E_up]);
-      double cdf_up = nuc.xs_cdf_[i_E_up] + m * (E_up - nuc.energy_0K_[i_E_up]);
+      double cdf_up = interpolator_up(nuc.xs_cdf_);
 
       while (true) {
         // directly sample Maxwellian
@@ -933,15 +912,9 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed) * (cdf_up - cdf_low);
-        int i_E_rel = lower_bound_index(nuc.xs_cdf_.begin() + i_E_low,
+        auto interpolator_rel = FixedInterpolator(nuc.xs_cdf_.begin() + i_E_low,
           nuc.xs_cdf_.begin() + i_E_up + 2, cdf_rel);
-        double E_rel = nuc.energy_0K_[i_E_low + i_E_rel];
-        double m = (nuc.xs_cdf_[i_E_low + i_E_rel + 1] -
-                     nuc.xs_cdf_[i_E_low + i_E_rel]) /
-                   (nuc.energy_0K_[i_E_low + i_E_rel + 1] -
-                     nuc.energy_0K_[i_E_low + i_E_rel]);
-        E_rel += (cdf_rel - nuc.xs_cdf_[i_E_low + i_E_rel]) / m;
-
+        double E_rel = interpolator_rel(nuc.energy_0K_.begin() + i_E_low);
         // perform rejection sampling on cosine between
         // neutron and target velocities
         double mu = (E_t + nuc.awr_ * (E - E_rel)) /
