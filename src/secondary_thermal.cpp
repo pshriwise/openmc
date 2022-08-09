@@ -1,6 +1,7 @@
 #include "openmc/secondary_thermal.h"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/interpolate.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
@@ -95,6 +96,8 @@ void IncoherentElasticAEDiscrete::sample(
   double f;
   get_energy_index(energy_, E_in, i, f);
 
+  auto interpolator = FixedInterpolator(energy_, E_in);
+
   // Interpolate between two discrete cosines corresponding to neighboring
   // incoming energies.
 
@@ -107,13 +110,21 @@ void IncoherentElasticAEDiscrete::sample(
   // discrete mu value itself.
 
   // Interpolate kth mu value between distributions at energies i and i+1
-  mu = mu_out_(i, k) + f * (mu_out_(i + 1, k) - mu_out_(i, k));
+  auto mu_out_view = xt::view(mu_out_, xt::all(), k);
+  mu = interpolator(mu_out_view.cbegin());
+  // mu = mu_out_(i, k) + f * (mu_out_(i + 1, k) - mu_out_(i, k));
 
   // Inteprolate (k-1)th mu value between distributions at energies i and i+1.
   // When k==0, pick a value that will smear the cosine out to a minimum of -1.
-  double mu_left = (k == 0) ? -1.0 - (mu + 1.0)
-                            : mu_out_(i, k - 1) +
-                                f * (mu_out_(i + 1, k - 1) - mu_out_(i, k - 1));
+  double mu_left = -1 - (mu + 1.0);
+  if (k != 0) {
+    auto mu_left_view = xt::view(mu_out_, xt::all(), k - 1);
+    mu_left = interpolator(mu_left_view.cbegin());
+  }
+  // double mu_left = (k == 0) ? -1.0 - (mu + 1.0)
+  //                           : mu_out_(i, k - 1) +
+  //                               f * (mu_out_(i + 1, k - 1) - mu_out_(i, k -
+  //                               1));
 
   // Inteprolate (k+1)th mu value between distributions at energies i and i+1.
   // When k is the last discrete value, pick a value that will smear the cosine

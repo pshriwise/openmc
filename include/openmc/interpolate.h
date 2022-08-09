@@ -3,6 +3,7 @@
 #define OPENMC_INTERPOLATE_H
 
 #include <cmath>
+#include <type_traits>
 #include <vector>
 
 #include "openmc/error.h"
@@ -80,10 +81,6 @@ struct FixedInterpolator {
   }
 
   // performs interpolation for on specified y values
-  double operator()(const std::vector<double>& ys)
-  {
-    return (*this)(ys.begin());
-  }
 
   template<class It>
   double operator()(It arr_begin)
@@ -101,6 +98,11 @@ struct FixedInterpolator {
     default:
       fatal_error("Unrecognized interpolation");
     }
+  }
+
+  double operator()(const std::vector<double>& ys)
+  {
+    return (*this)(ys.begin());
   }
 
   // Accessors
