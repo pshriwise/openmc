@@ -112,7 +112,6 @@ void IncoherentElasticAEDiscrete::sample(
   // Interpolate kth mu value between distributions at energies i and i+1
   auto mu_out_view = xt::view(mu_out_, xt::all(), k);
   mu = interpolator(mu_out_view.cbegin());
-  // mu = mu_out_(i, k) + f * (mu_out_(i + 1, k) - mu_out_(i, k));
 
   // Inteprolate (k-1)th mu value between distributions at energies i and i+1.
   // When k==0, pick a value that will smear the cosine out to a minimum of -1.
@@ -121,18 +120,14 @@ void IncoherentElasticAEDiscrete::sample(
     auto mu_left_view = xt::view(mu_out_, xt::all(), k - 1);
     mu_left = interpolator(mu_left_view.cbegin());
   }
-  // double mu_left = (k == 0) ? -1.0 - (mu + 1.0)
-  //                           : mu_out_(i, k - 1) +
-  //                               f * (mu_out_(i + 1, k - 1) - mu_out_(i, k -
-  //                               1));
-
   // Inteprolate (k+1)th mu value between distributions at energies i and i+1.
   // When k is the last discrete value, pick a value that will smear the cosine
   // out to a maximum of 1.
-  double mu_right =
-    (k == n_mu - 1)
-      ? 1.0 + (1.0 - mu)
-      : mu_out_(i, k + 1) + f * (mu_out_(i + 1, k + 1) - mu_out_(i, k + 1));
+  double mu_right = 1.0 + (1.0 - mu);
+  if (k != n_mu - 1) {
+    auto mu_right_view = xt::view(mu_out_, xt::all(), k + 1);
+    mu_right = interpolator(mu_right_view.cbegin());
+  }
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu) * (prn(seed) - 0.5);
