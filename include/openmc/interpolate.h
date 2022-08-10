@@ -81,13 +81,8 @@ struct FixedInterpolator {
   }
 
   // performs interpolation for on specified y values
-
-  template<class It>
-  double operator()(It arr_begin)
+  double operator()(double y0, double y1)
   {
-    double y0 = *(arr_begin + idx_);
-    double y1 = *(arr_begin + idx_ + 1);
-
     switch (interpolation_) {
     case Interpolation::lin_lin:
     case Interpolation::lin_log:
@@ -98,6 +93,15 @@ struct FixedInterpolator {
     default:
       fatal_error("Unrecognized interpolation");
     }
+  }
+
+  template<class It>
+  double operator()(It arr_begin)
+  {
+    double y0 = *(arr_begin + idx_);
+    double y1 = *(arr_begin + idx_ + 1);
+
+    return (*this)(y0, y1);
   }
 
   double operator()(const std::vector<double>& ys)

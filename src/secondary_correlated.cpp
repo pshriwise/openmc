@@ -10,6 +10,7 @@
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/interpolate.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
@@ -159,21 +160,23 @@ void CorrelatedAngleEnergy::sample(
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
-  int i;
-  double r;
-  if (E_in < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E_in > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
-    r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+
+  auto interpolator = FixedInterpolator(energy_, E_in);
+  int i = interpolator.idx();
+
+  // if (E_in < energy_[0]) {
+  //   i = 0;
+  //   r = 0.0;
+  // } else if (E_in > energy_[n_energy_in - 1]) {
+  //   i = n_energy_in - 2;
+  //   r = 1.0;
+  // } else {
+  //   i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
+  //   r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
+  // }
 
   // Sample between the ith and [i+1]th bin
-  int l = r > prn(seed) ? i + 1 : i;
+  int l = interpolator.factor() > prn(seed) ? i + 1 : i;
 
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
@@ -186,8 +189,8 @@ void CorrelatedAngleEnergy::sample(
   double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
   double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
 
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
+  double E_1 = interpolator(E_i_1, E_i1_1);
+  double E_K = interpolator(E_i_K, E_i1_K);
 
   // Determine outgoing energy bin
   n_energy_out = distribution_[l].e_out.size();
