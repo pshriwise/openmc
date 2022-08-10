@@ -5,6 +5,7 @@
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/interpolate.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
@@ -266,8 +267,9 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     const auto& E {electron_energy};
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
-      size_t i_grid = lower_bound_index(
-        E.cbegin(), E.cend(), settings::energy_cutoff[photon]);
+      auto interpolator =
+        FixedInterpolator(E.cbegin(), E.cend(), cutoff, Interpolation::log_log);
+      size_t i_grid = interpolator.idx();
 
       // calculate interpolation factor
       double f = (std::log(cutoff) - std::log(E(i_grid))) /
@@ -276,10 +278,8 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       // Interpolate bremsstrahlung DCS at the cutoff energy and truncate
       xt::xtensor<double, 2> dcs({n_e - i_grid, n_k});
       for (int i = 0; i < n_k; ++i) {
-        double y = std::exp(
-          std::log(dcs_(i_grid, i)) +
-          f * (std::log(dcs_(i_grid + 1, i)) - std::log(dcs_(i_grid, i))));
         auto col_i = xt::view(dcs, xt::all(), i);
+        double y = interpolator(col_i.cbegin());
         col_i(0) = y;
         for (int j = i_grid + 1; j < n_e; ++j) {
           col_i(j - i_grid) = dcs_(j, i);
