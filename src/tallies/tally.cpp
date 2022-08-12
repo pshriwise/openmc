@@ -1275,7 +1275,8 @@ extern "C" size_t tallies_size()
 // given a tally ID, remove it from the tallies vector
 extern "C" int openmc_remove_tally(int32_t index)
 {
-  if (index <= 0 || index > model::tallies.size()) {
+  // check that id is in the map
+  if (index < 0 || index > model::tallies.size()) {
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
