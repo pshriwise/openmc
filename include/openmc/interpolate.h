@@ -11,39 +11,17 @@
 
 namespace openmc {
 
+template<class itx>
 struct FixedInterpolator {
-  FixedInterpolator(const std::vector<double>& xs, double x,
-    Interpolation i = Interpolation::lin_lin)
-    : interpolation_(i)
-  {
-    // set index into array
-    if (x < xs.front())
-      idx_ = 0;
-    else if (x > xs.back())
-      idx_ = xs.size() - 2;
-    else
-      idx_ = lower_bound_index(xs.begin(), xs.end(), x);
 
-    set_factor(xs.begin() + idx_, x);
-  }
-
-  FixedInterpolator(const std::vector<double>& xs, double x, size_t idx,
-    Interpolation i = Interpolation::lin_lin)
-    : interpolation_(i), idx_(idx)
-  {
-    set_factor(xs.begin() + idx_, x);
-  }
-
-  template<class It>
-  FixedInterpolator(It arr_begin, It arr_end, double x, size_t idx,
+  FixedInterpolator(itx arr_begin, itx arr_end, double x, size_t idx,
     Interpolation i = Interpolation::lin_lin)
     : interpolation_(i), idx_(idx)
   {
     set_factor(arr_begin + idx_, x);
   }
 
-  template<class It>
-  FixedInterpolator(It arr_begin, It arr_end, double x,
+  FixedInterpolator(itx arr_begin, itx arr_end, double x,
     Interpolation i = Interpolation::lin_lin)
     : interpolation_(i)
   {
@@ -58,8 +36,7 @@ struct FixedInterpolator {
     set_factor(arr_begin + idx_, x);
   }
 
-  template<class It>
-  void set_factor(It pos, double x)
+  void set_factor(itx pos, double x)
   {
     double x0 = *pos;
     double x1 = *(pos + 1);
@@ -95,8 +72,8 @@ struct FixedInterpolator {
     }
   }
 
-  template<class It>
-  double operator()(It arr_begin)
+  template<class ity>
+  double operator()(ity arr_begin)
   {
     double y0 = *(arr_begin + idx_);
     double y1 = *(arr_begin + idx_ + 1);

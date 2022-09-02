@@ -75,7 +75,8 @@ void EnergyFunctionFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   if (p.E_last() >= energy_.front() && p.E_last() <= energy_.back()) {
-    auto fi = FixedInterpolator(energy_, p.E_last(), interpolation_);
+    auto fi = FixedInterpolator(
+      energy_.begin(), energy_.end(), p.E_last(), interpolation_);
     double w = fi(y_);
 
     // Interpolate on the lin-lin grid.

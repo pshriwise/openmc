@@ -96,7 +96,7 @@ void IncoherentElasticAEDiscrete::sample(
   double f;
   get_energy_index(energy_, E_in, i, f);
 
-  auto interpolator = FixedInterpolator(energy_, E_in);
+  auto interpolator = FixedInterpolator(energy_.begin(), energy_.end(), E_in);
 
   // Interpolate between two discrete cosines corresponding to neighboring
   // incoming energies.

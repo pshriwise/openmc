@@ -853,8 +853,10 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     double E_low = std::pow(std::max(0.0, E_red - 4.0), 2) * kT / nuc.awr_;
     double E_up = (E_red + 4.0) * (E_red + 4.0) * kT / nuc.awr_;
 
-    auto interpolator_low = FixedInterpolator(nuc.energy_0K_, E_low);
-    auto interpolator_up = FixedInterpolator(nuc.energy_0K_, E_up);
+    auto interpolator_low =
+      FixedInterpolator(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_low);
+    auto interpolator_up =
+      FixedInterpolator(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_up);
 
     int i_E_low = interpolator_low.idx();
     int i_E_up = interpolator_up.idx();
