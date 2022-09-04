@@ -9,6 +9,7 @@
 #include "xtensor/xview.hpp"
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/interpolate.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
@@ -120,21 +121,10 @@ void KalbachMann::sample(
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
-  int i;
-  double r;
-  if (E_in < energy_[0]) {
-    i = 0;
-    r = 0.0;
-  } else if (E_in > energy_[n_energy_in - 1]) {
-    i = n_energy_in - 2;
-    r = 1.0;
-  } else {
-    i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
-    r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
-  }
+  auto interp = FixedInterpolator(energy_.begin(), energy_.end(), E_in);
 
   // Sample between the ith and [i+1]th bin
-  int l = r > prn(seed) ? i + 1 : i;
+  int i = interp.idx();
 
   // Interpolation for energy E1 and EK
   int n_energy_out = distribution_[i].e_out.size();
@@ -147,21 +137,25 @@ void KalbachMann::sample(
   double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
   double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
 
-  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
-  double E_K = E_i_K + r * (E_i1_K - E_i_K);
+  double E_1 = interp(E_i_1, E_i1_1);
+  double E_K = interp(E_i_K, E_i1_K);
 
   // Determine outgoing energy bin
-  n_energy_out = distribution_[l].e_out.size();
-  n_discrete = distribution_[l].n_discrete;
+  // select index via stochastic interpolation
+  int l = interp.factor() > prn(seed) ? interp.idx() + 1 : interp.idx();
+  const auto& e_distribution = distribution_[l];
+
+  n_energy_out = e_distribution.e_out.size();
+  n_discrete = e_distribution.n_discrete;
   double r1 = prn(seed);
-  double c_k = distribution_[l].c[0];
+  double c_k = e_distribution.c[0];
   int k = 0;
   int end = n_energy_out - 2;
 
   // Discrete portion
   for (int j = 0; j < n_discrete; ++j) {
     k = j;
-    c_k = distribution_[l].c[k];
+    c_k = e_distribution.c[k];
     if (r1 < c_k) {
       end = j;
       break;
@@ -172,17 +166,18 @@ void KalbachMann::sample(
   double c_k1;
   for (int j = n_discrete; j < end; ++j) {
     k = j;
-    c_k1 = distribution_[l].c[k + 1];
+    c_k1 = e_distribution.c[k + 1];
     if (r1 < c_k1)
       break;
     k = j + 1;
     c_k = c_k1;
   }
 
-  double E_l_k = distribution_[l].e_out[k];
-  double p_l_k = distribution_[l].p[k];
+  double E_l_k = e_distribution.e_out[k];
+  double p_l_k = e_distribution.p[k];
   double km_r, km_a;
-  if (distribution_[l].interpolation == Interpolation::histogram) {
+
+  if (e_distribution.interpolation == Interpolation::histogram) {
     // Histogram interpolation
     if (p_l_k > 0.0 && k >= n_discrete) {
       E_out = E_l_k + (r1 - c_k) / p_l_k;
@@ -191,13 +186,13 @@ void KalbachMann::sample(
     }
 
     // Determine Kalbach-Mann parameters
-    km_r = distribution_[l].r[k];
-    km_a = distribution_[l].a[k];
+    km_r = e_distribution.r[k];
+    km_a = e_distribution.a[k];
 
   } else {
     // Linear-linear interpolation
-    double E_l_k1 = distribution_[l].e_out[k + 1];
-    double p_l_k1 = distribution_[l].p[k + 1];
+    double E_l_k1 = e_distribution.e_out[k + 1];
+    double p_l_k1 = e_distribution.p[k + 1];
 
     double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
     if (frac == 0.0) {
@@ -211,12 +206,12 @@ void KalbachMann::sample(
     }
 
     // Determine Kalbach-Mann parameters
-    km_r = distribution_[l].r[k] +
-           (E_out - E_l_k) / (E_l_k1 - E_l_k) *
-             (distribution_[l].r[k + 1] - distribution_[l].r[k]);
-    km_a = distribution_[l].a[k] +
-           (E_out - E_l_k) / (E_l_k1 - E_l_k) *
-             (distribution_[l].a[k + 1] - distribution_[l].a[k]);
+    km_r =
+      e_distribution.r[k] + (E_out - E_l_k) / (E_l_k1 - E_l_k) *
+                              (e_distribution.r[k + 1] - e_distribution.r[k]);
+    km_a =
+      e_distribution.a[k] + (E_out - E_l_k) / (E_l_k1 - E_l_k) *
+                              (e_distribution.a[k + 1] - e_distribution.a[k]);
   }
 
   // Now interpolate between incident energy bins i and i + 1

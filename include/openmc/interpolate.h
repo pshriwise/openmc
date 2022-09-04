@@ -26,14 +26,16 @@ struct FixedInterpolator {
     : interpolation_(i)
   {
     // set index into array
-    if (x < *arr_begin)
+    if (x < *arr_begin) {
       idx_ = 0;
-    else if (x > *(arr_end - 1))
+      interpolation_factor_ = 0.0;
+    } else if (x > *(arr_end - 1)) {
       idx_ = arr_end - arr_begin - 2;
-    else
+      interpolation_factor_ = 1.0;
+    } else {
       idx_ = lower_bound_index(arr_begin, arr_end, x);
-
-    set_factor(arr_begin + idx_, x);
+      set_factor(arr_begin + idx_, x);
+    }
   }
 
   void set_factor(itx pos, double x)
@@ -91,8 +93,10 @@ struct FixedInterpolator {
   double factor() const { return interpolation_factor_; }
 
   // Data members
-  Interpolation interpolation_;
-  size_t idx_;
+  Interpolation interpolation_ {0.0};
+  itx begin_;
+  itx end_;
+  size_t idx_ {0};
   double interpolation_factor_;
 };
 
