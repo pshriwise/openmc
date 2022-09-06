@@ -12,16 +12,16 @@
 namespace openmc {
 
 template<class itx>
-struct FixedInterpolator {
+struct Interpolator {
 
-  FixedInterpolator(itx arr_begin, itx arr_end, double x, size_t idx,
+  Interpolator(itx arr_begin, itx arr_end, double x, size_t idx,
     Interpolation i = Interpolation::lin_lin)
     : interpolation_(i), idx_(idx)
   {
     set_factor(arr_begin + idx_, x);
   }
 
-  FixedInterpolator(itx arr_begin, itx arr_end, double x,
+  Interpolator(itx arr_begin, itx arr_end, double x,
     Interpolation i = Interpolation::lin_lin)
     : interpolation_(i)
   {
@@ -121,6 +121,13 @@ inline double interpolate_lagrangian(const std::vector<double>& xs,
 
   return std::inner_product(
     coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
+}
+
+// Pseudo-constructor for Interpolator class to handle CTAD, constructor can be
+// called directly when we move to C++17
+template <typename F>
+Interpolator<F> FixedInterpolator(F&& begin, F&& end, double x, Interpolation i = Interpolation::lin_lin) {
+    return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, i};
 }
 
 } // namespace openmc
