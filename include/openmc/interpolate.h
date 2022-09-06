@@ -130,6 +130,14 @@ Interpolator<F> FixedInterpolator(F&& begin, F&& end, double x, Interpolation i 
     return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, i};
 }
 
+// Pseudo-constructor for Interpolator class to handle CTAD, constructor can be
+// called directly when we move to C++17
+template <typename F>
+Interpolator<F> LinLinInterpolator(F&& begin, F&& end, double x) {
+    return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, Interpolation::lin_lin};
+}
+
+
 } // namespace openmc
 
 #endif
