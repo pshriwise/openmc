@@ -30,7 +30,6 @@ inline double interpolate_lagrangian(Itx x_start, double x, Ity y_start, int ord
     coeffs.begin(), coeffs.end(), y_start, 0.0);
 }
 
-
 template<class itx>
 struct Interpolator {
 
@@ -121,6 +120,7 @@ struct Interpolator {
 
   // Accessors
   size_t idx() const { return idx_; }
+  double x() const { return x_; }
   double factor() const { return interpolation_factor_; }
 
   // Data members
@@ -132,22 +132,19 @@ struct Interpolator {
   double interpolation_factor_;
 };
 
-
-
 // Pseudo-constructor for Interpolator class to handle CTAD, constructor can be
 // called directly when we move to C++17
 template <typename F>
 Interpolator<F> FixedInterpolator(F&& begin, F&& end, double x, Interpolation i = Interpolation::lin_lin) {
-    return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, i};
+  return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, i};
 }
 
 // Pseudo-constructor for Interpolator class to handle CTAD, constructor can be
 // called directly when we move to C++17
 template <typename F>
 Interpolator<F> LinLinInterpolator(F&& begin, F&& end, double x) {
-    return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, Interpolation::lin_lin};
+  return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, Interpolation::lin_lin};
 }
-
 
 } // namespace openmc
 
