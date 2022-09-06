@@ -122,6 +122,7 @@ struct Interpolator {
   size_t idx() const { return idx_; }
   double x() const { return x_; }
   double factor() const { return interpolation_factor_; }
+  double f() const { return interpolation_factor_; }
 
   // Data members
   Interpolation interpolation_ {0.0};
@@ -145,6 +146,14 @@ template <typename F>
 Interpolator<F> LinLinInterpolator(F&& begin, F&& end, double x) {
   return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, Interpolation::lin_lin};
 }
+
+// Pseudo-constructor for Interpolator class to handle CTAD, constructor can be
+// called directly when we move to C++17
+template <typename F>
+Interpolator<F> LogLogInterpolator(F&& begin, F&& end, double x) {
+  return Interpolator<F>{std::forward<F>(begin), std::forward<F>(end), x, Interpolation::log_log};
+}
+
 
 } // namespace openmc
 

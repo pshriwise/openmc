@@ -161,7 +161,7 @@ void CorrelatedAngleEnergy::sample(
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
 
-  auto interpolator = FixedInterpolator(energy_.begin(), energy_.end(), E_in);
+  auto interpolator = LinLinInterpolator(energy_.begin(), energy_.end(), E_in);
   int i = interpolator.idx();
 
   // if (E_in < energy_[0]) {

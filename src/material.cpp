@@ -734,7 +734,7 @@ void Material::init_bremsstrahlung()
       // Loop over photon energies
       double c = 0.0;
       for (int i = 0; i < j; ++i) {
-        // Integra  te the CDF from the PDF using the trapezoidal rule in
+        // Integrate the CDF from the PDF using the trapezoidal rule in
         // log-log space
         double w_l = std::log(data::ttb_e_grid(i));
         double w_r = std::log(data::ttb_e_grid(i + 1));

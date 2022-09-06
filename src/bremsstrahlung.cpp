@@ -52,7 +52,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
   // w_j+1 of the bremsstrahlung energy PDF interpolated in log energy, which
   // can be interpreted as the probability of index j+1
   auto interpolator =
-    FixedInterpolator(data::ttb_e_grid.cbegin(), data::ttb_e_grid.cend(), e);
+    LinLinInterpolator(data::ttb_e_grid.cbegin(), data::ttb_e_grid.cend(), e);
   size_t j = interpolator.idx();
 
   // Get the interpolation bounds

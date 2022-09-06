@@ -121,7 +121,7 @@ void KalbachMann::sample(
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   auto n_energy_in = energy_.size();
-  auto interp = FixedInterpolator(energy_.begin(), energy_.end(), E_in);
+  auto interp = LinLinInterpolator(energy_.begin(), energy_.end(), E_in);
 
   // Sample between the ith and [i+1]th bin
   int i = interp.idx();

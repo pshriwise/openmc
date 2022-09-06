@@ -854,9 +854,9 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
     double E_up = (E_red + 4.0) * (E_red + 4.0) * kT / nuc.awr_;
 
     auto interpolator_low =
-      FixedInterpolator(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_low);
+      LinLinInterpolator(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_low);
     auto interpolator_up =
-      FixedInterpolator(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_up);
+      LinLinInterpolator(nuc.energy_0K_.begin(), nuc.energy_0K_.end(), E_up);
 
     int i_E_low = interpolator_low.idx();
     int i_E_up = interpolator_up.idx();
@@ -914,7 +914,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
         // sample a relative energy using the xs cdf
         double cdf_rel = cdf_low + prn(seed) * (cdf_up - cdf_low);
-        auto interpolator_rel = FixedInterpolator(nuc.xs_cdf_.begin() + i_E_low,
+        auto interpolator_rel = LinLinInterpolator(nuc.xs_cdf_.begin() + i_E_low,
           nuc.xs_cdf_.begin() + i_E_up + 2, cdf_rel);
         double E_rel = interpolator_rel(nuc.energy_0K_.begin() + i_E_low);
         // perform rejection sampling on cosine between

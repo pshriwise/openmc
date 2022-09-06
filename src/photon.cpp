@@ -268,7 +268,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     double cutoff = settings::energy_cutoff[photon];
     if (cutoff > E(0)) {
       auto interpolator =
-        FixedInterpolator(E.cbegin(), E.cend(), cutoff, Interpolation::log_log);
+        LogLogInterpolator(E.cbegin(), E.cend(), cutoff);
       size_t i_grid = interpolator.idx();
 
       // calculate interpolation factor
