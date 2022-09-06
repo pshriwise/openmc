@@ -11,19 +11,39 @@
 
 namespace openmc {
 
+template<class Itx, class Ity>
+inline double interpolate_lagrangian(Itx x_start, double x, Ity y_start, int order) {
+  std::vector<double> coeffs;
+
+  for (int i = 0; i < order + 1; i++) {
+    double numerator {1.0};
+    double denominator {1.0};
+    for (int j = 0; j < order; j++) {
+      if (i == j) continue;
+      numerator *= (x - *(x_start + j));
+      denominator *= (*(x_start + i) - *(x_start + j));
+    }
+    coeffs.push_back(numerator / denominator);
+  }
+
+  return std::inner_product(
+    coeffs.begin(), coeffs.end(), y_start, 0.0);
+}
+
+
 template<class itx>
 struct Interpolator {
 
   Interpolator(itx arr_begin, itx arr_end, double x, size_t idx,
     Interpolation i = Interpolation::lin_lin)
-    : interpolation_(i), idx_(idx)
+    : interpolation_(i), idx_(idx), x_(x)
   {
     set_factor(arr_begin + idx_, x);
   }
 
   Interpolator(itx arr_begin, itx arr_end, double x,
     Interpolation i = Interpolation::lin_lin)
-    : interpolation_(i)
+    : interpolation_(i), x_(x)
   {
     // set index into array
     if (x < *arr_begin) {
@@ -53,6 +73,8 @@ struct Interpolator {
     case Interpolation::log_log:
       interpolation_factor_ = log(x / x0) / log(x1 / x0);
       break;
+    case Interpolation::quadratic:
+      break;
     default:
       fatal_error("Unrecognized interpolation");
       break;
@@ -69,6 +91,9 @@ struct Interpolator {
     case Interpolation::log_lin:
     case Interpolation::log_log:
       return y0 * exp(interpolation_factor_ * log(y1 / y0));
+    case Interpolation::quadratic:
+    case Interpolation::cubic:
+      fatal_error("Invalid use of this method signature for quadratic or cubic interpolation.");
     default:
       fatal_error("Unrecognized interpolation");
     }
@@ -77,10 +102,16 @@ struct Interpolator {
   template<class ity>
   double operator()(ity arr_begin)
   {
-    double y0 = *(arr_begin + idx_);
-    double y1 = *(arr_begin + idx_ + 1);
-
-    return (*this)(y0, y1);
+    switch(interpolation_) {
+      case Interpolation::quadratic:
+        return interpolate_lagrangian(begin_+idx_, x_, arr_begin+idx_, 2);
+      case Interpolation::cubic:
+        return interpolate_lagrangian(begin_+idx_, x_, arr_begin+idx_, 3);
+      default:
+        double y0 = *(arr_begin + idx_);
+        double y1 = *(arr_begin + idx_ + 1);
+        return (*this)(y0, y1);
+    }
   }
 
   double operator()(const std::vector<double>& ys)
@@ -96,32 +127,12 @@ struct Interpolator {
   Interpolation interpolation_ {0.0};
   itx begin_;
   itx end_;
+  double x_;
   size_t idx_ {0};
   double interpolation_factor_;
 };
 
-inline double interpolate_lagrangian(const std::vector<double>& xs,
-  const std::vector<double>& ys, double x, int order)
-{
-  int idx = lower_bound_index(xs.begin(), xs.end(), x);
 
-  std::vector<double> coeffs;
-
-  for (int i = 0; i < order + 1; i++) {
-    double numerator {1.0};
-    double denominator {1.0};
-    for (int j = 0; j < order; j++) {
-      if (i == j)
-        continue;
-      numerator *= (x - xs[idx + j]);
-      denominator *= (xs[idx + i] - xs[idx + j]);
-    }
-    coeffs.push_back(numerator / denominator);
-  }
-
-  return std::inner_product(
-    coeffs.begin(), coeffs.end(), ys.begin() + idx, 0.0);
-}
 
 // Pseudo-constructor for Interpolator class to handle CTAD, constructor can be
 // called directly when we move to C++17
