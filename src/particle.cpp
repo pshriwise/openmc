@@ -98,7 +98,10 @@ void Particle::from_source(const SourceSite* src)
   wgt() = src->wgt;
   wgt_last() = src->wgt;
   r() = src->r;
-  u() = src->u;
+  // u() = src->u;
+  // enforce transport along x-axis
+  u() = {1.0, 0.0, 0.0};
+
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
