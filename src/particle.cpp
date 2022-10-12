@@ -100,7 +100,10 @@ void Particle::from_source(const SourceSite* src)
   r() = src->r;
   // u() = src->u;
   // enforce transport along x-axis
-  u() = {1.0, 0.0, 0.0};
+  if (prn(&seeds(STREAM_SOURCE)) > 0.5)
+    u() = {1.0, 0.0, 0.0};
+  else
+    u() = {-1.0, 0.0, 0.0};
 
   r_last_current() = src->r;
   r_last() = src->r;
