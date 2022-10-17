@@ -233,6 +233,11 @@ double ScattData::get_xs(
   return val;
 }
 
+double ScattData::bidirectional_sample(uint64_t* seed)
+{
+  return prn(seed) > 0.5 ? -1 : 1;
+}
+
 //==============================================================================
 // ScattDataLegendre methods
 //==============================================================================
@@ -355,22 +360,24 @@ void ScattDataLegendre::sample(
   int i_gout;
   sample_energy(gin, gout, i_gout, seed);
 
-  // Now we can sample mu using the scattering kernel using rejection
-  // sampling from a rectangular bounding box
-  double M = max_val[gin][i_gout];
-  int samples;
-  for (samples = 0; samples < MAX_SAMPLE; ++samples) {
-    mu = 2. * prn(seed) - 1.;
-    double f = calc_f(gin, gout, mu);
-    if (f > 0.) {
-      double u = prn(seed) * M;
-      if (u <= f)
-        break;
-    }
-  }
-  if (samples == MAX_SAMPLE) {
-    fatal_error("Maximum number of Legendre expansion samples reached!");
-  }
+  mu = bidirectional_sample(seed);
+
+  // // Now we can sample mu using the scattering kernel using rejection
+  // // sampling from a rectangular bounding box
+  // double M = max_val[gin][i_gout];
+  // int samples;
+  // for (samples = 0; samples < MAX_SAMPLE; ++samples) {
+  //   mu = 2. * prn(seed) - 1.;
+  //   double f = calc_f(gin, gout, mu);
+  //   if (f > 0.) {
+  //     double u = prn(seed) * M;
+  //     if (u <= f)
+  //       break;
+  //   }
+  // }
+  // if (samples == MAX_SAMPLE) {
+  //   fatal_error("Maximum number of Legendre expansion samples reached!");
+  // }
 
   // Update the weight to reflect neutron multiplicity
   wgt *= mult[gin][i_gout];
@@ -743,42 +750,45 @@ void ScattDataTabular::sample(
   int i_gout;
   sample_energy(gin, gout, i_gout, seed);
 
-  // Determine the outgoing cosine bin
-  int NP = this->mu.shape()[0];
-  double xi = prn(seed);
+  mu = bidirectional_sample(seed);
 
-  double c_k = dist[gin][i_gout][0];
-  int k;
-  for (k = 0; k < NP - 1; k++) {
-    double c_k1 = dist[gin][i_gout][k + 1];
-    if (xi < c_k1)
-      break;
-    c_k = c_k1;
-  }
+  // // Determine the outgoing cosine bin
+  // int NP = this->mu.shape()[0];
+  // double xi = prn(seed);
 
-  // Check to make sure k is <= NP - 1
-  k = std::min(k, NP - 2);
+  // double c_k = dist[gin][i_gout][0];
+  // int k;
+  // for (k = 0; k < NP - 1; k++) {
+  //   double c_k1 = dist[gin][i_gout][k + 1];
+  //   if (xi < c_k1)
+  //     break;
+  //   c_k = c_k1;
+  // }
 
-  // Find the pdf values we want
-  double p0 = fmu[gin][i_gout][k];
-  double mu0 = this->mu[k];
-  double p1 = fmu[gin][i_gout][k + 1];
-  double mu1 = this->mu[k + 1];
+  // // Check to make sure k is <= NP - 1
+  // k = std::min(k, NP - 2);
 
-  if (p0 == p1) {
-    mu = mu0 + (xi - c_k) / p0;
-  } else {
-    double frac = (p1 - p0) / (mu1 - mu0);
-    mu =
-      mu0 +
-      (std::sqrt(std::max(0., p0 * p0 + 2. * frac * (xi - c_k))) - p0) / frac;
-  }
+  // // Find the pdf values we want
+  // double p0 = fmu[gin][i_gout][k];
+  // double mu0 = this->mu[k];
+  // double p1 = fmu[gin][i_gout][k + 1];
+  // double mu1 = this->mu[k + 1];
 
-  if (mu < -1.) {
-    mu = -1.;
-  } else if (mu > 1.) {
-    mu = 1.;
-  }
+  // if (p0 == p1) {
+  //   mu = mu0 + (xi - c_k) / p0;
+  // } else {
+  //   double frac = (p1 - p0) / (mu1 - mu0);
+  //   mu =
+  //     mu0 +
+  //     (std::sqrt(std::max(0., p0 * p0 + 2. * frac * (xi - c_k))) - p0) /
+  //     frac;
+  // }
+
+  // if (mu < -1.) {
+  //   mu = -1.;
+  // } else if (mu > 1.) {
+  //   mu = 1.;
+  // }
 
   // Update the weight to reflect neutron multiplicity
   wgt *= mult[gin][i_gout];

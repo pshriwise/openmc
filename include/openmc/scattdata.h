@@ -117,6 +117,11 @@ public:
   //!   use nullptr if irrelevant.
   //! @return Requested cross section value.
   double get_xs(MgxsType xstype, int gin, const int* gout, const double* mu);
+
+  //! \brief Convenience function for bidirectional sampling
+  //!
+  //! @param seed Random number generation seed
+  static double bidirectional_sample(uint64_t* seed);
 };
 
 //==============================================================================
