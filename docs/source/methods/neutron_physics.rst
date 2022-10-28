@@ -1390,7 +1390,7 @@ angle of the neutron after scattering. For incoherent and coherent elastic
 scattering, the energy of the neutron does not actually change, but the angle
 does change. For coherent elastic scattering, the angle will depend on which
 Bragg edge scattered the neutron. The probability that edge :math:`i` will
-scatter then neutron is given by
+scatter the neutron is given by
 
 .. math::
     :label: coherent-elastic-probability
