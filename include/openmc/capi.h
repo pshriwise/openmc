@@ -89,6 +89,7 @@ int openmc_material_set_density(
 int openmc_material_set_densities(
   int32_t index, int n, const char** name, const double* density);
 int openmc_material_set_id(int32_t index, int32_t id);
+int openmc_material_set_temperature(int32_t index, double temp);
 int openmc_material_get_name(int32_t index, const char** name);
 int openmc_material_set_name(int32_t index, const char* name);
 int openmc_material_set_volume(int32_t index, double volume);

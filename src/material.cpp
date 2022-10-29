@@ -1458,6 +1458,22 @@ extern "C" int openmc_material_set_id(int32_t index, int32_t id)
   return 0;
 }
 
+extern "C" int openmc_material_set_temperature(int32_t index, double temp)
+{
+  if (index >= 0 && index < model::materials.size()) {
+    try {
+      model::materials.at(index)->set_temperature(temp);
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
+  } else {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+
 extern "C" int openmc_material_get_name(int32_t index, const char** name)
 {
   if (index < 0 || index >= model::materials.size()) {
