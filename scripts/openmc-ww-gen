@@ -144,7 +144,7 @@ def generate_wws(model, tally_id, rel_err_tol):
         particles = ['neutron']
     else:
         p_filter = tally.find_filter(openmc.ParticleFilter)
-        particles = pf.bins
+        particles = p_filter.bins
 
     wws = []
 
@@ -152,6 +152,7 @@ def generate_wws(model, tally_id, rel_err_tol):
     for particle, p_mean, p_rel_err in zip(particles, mean, rel_err):
 
         ww_lower_bounds = np.empty((*mesh.dimension, n_e_bins), dtype=float)
+
         for i, (e_mean, e_rel_err) in enumerate(zip(p_mean.T[..., :], p_rel_err.T[..., :])):
             # now we should be working with mesh data
             e_mean = e_mean / np.max(e_mean)
