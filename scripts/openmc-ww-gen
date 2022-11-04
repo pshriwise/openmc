@@ -11,6 +11,7 @@ import openmc
 import openmc.lib
 from openmc.mpi import comm
 
+_ALLOWED_FILTER_TYPES = (openmc.MeshFilter, openmc.EnergyFilter, openmc.ParticleFilter)
 
 def magic(model, tally_id, iterations, rel_err_tol=0.7):
     """
@@ -35,7 +36,7 @@ def magic(model, tally_id, iterations, rel_err_tol=0.7):
         weight windows.
     """
 
-
+    check_tally(model, tally_id)
 
     if comm.rank == 0:
         model.export_to_xml()
@@ -49,6 +50,24 @@ def magic(model, tally_id, iterations, rel_err_tol=0.7):
             model.settings.weight_windows = wws
             model.export_to_xml()
 
+
+def check_tally(model, tally_id):
+
+    for tally in model.tallies:
+        if tally.id == tally_id:
+            break
+
+    if tally.id != tally_id:
+        raise RuntimeError(f'No tally with ID "{tally_id}" is present in the model.')
+
+    filter_types = tuple(type(f) for f in tally.filters)
+
+    if openmc.MeshFilter not in filter_types:
+        raise ValueError('This script requires a MeshFilter on the specified tally')
+
+    if filter_types != _ALLOWED_FILTER_TYPES[:len(filter_types)]:
+        raise RuntimeError(f'This script accepts the following types: {_ALLOWED_FILTER_TYPES}\n in that order. '
+        'Only the MeshFilter is required.')
 
 def generate_wws(model, tally_id, rel_err_tol):
     """
@@ -66,28 +85,13 @@ def generate_wws(model, tally_id, rel_err_tol):
     with openmc.StatePoint(sp_file) as sp:
         tally = sp.get_tally(id=tally_id)
 
-    # ensure the tally filters are allowed for this process
-    allowed_filters = [openmc.ParticleFilter, openmc.MeshFilter, openmc.EnergyFilter]
-
     filter_types = [type(f) for f in tally.filters]
 
     for ft in filter_types:
-        if ft not in allowed_filters:
+        if ft not in _ALLOWED_FILTER_TYPES:
             raise ValueError(f'Filter type {ft} is unsupported for weight window generation')
 
-    # get the index for the filter types
-    filter_indices = [None, None, None]
-
-    for i, f in enumerate(allowed_filters):
-        if f in filter_types:
-            filter_indices[i] = filter_types.index(f)
-
-    # if no mesh filter is present, raise an exception
-    try:
-        mesh_filter = tally.find_filter(openmc.MeshFilter)
-    except ValueError:
-        raise RuntimeError(f'No mesh filter is present on tally {tally_id}')
-
+    mesh_filter = tally.find_filter(openmc.MeshFilter)
     mesh = mesh_filter.mesh
     mesh_copy = deepcopy(mesh)
 
@@ -116,19 +120,10 @@ def generate_wws(model, tally_id, rel_err_tol):
     if openmc.EnergyFilter not in filter_types:
         mean = np.expand_dims(mean, 1)
         rel_err = np.expand_dims(rel_err, 1)
-        filter_indices[2] = mean.ndim - 1
 
     if openmc.ParticleFilter not in filter_types:
-        mean = np.expand_dims(mean, 0)
-        rel_err = np.expand_dims(rel_err, 0)
-        filter_indices[0] = 0
-        filter_indices[1] += 1
-        filter_indices[2] += 1
-
-    # swap remaining axes to match the following order:
-    # ParticleFilter, EnergyFilter, MeshFilter
-    mean = np.moveaxis(mean, filter_indices, (0, 1, 2))
-    rel_err = np.moveaxis(rel_err, filter_indices, (0, 1, 2))
+        mean = np.expand_dims(mean, 2)
+        rel_err = np.expand_dims(rel_err, 2)
 
     assert mean.ndim == 3
 
@@ -146,22 +141,32 @@ def generate_wws(model, tally_id, rel_err_tol):
         p_filter = tally.find_filter(openmc.ParticleFilter)
         particles = p_filter.bins
 
+
     wws = []
+
+    mean = mean.T
+    rel_err = rel_err.T
+    print(f'Mean shape: {mean.shape}')
 
     # loop over particle data
     for particle, p_mean, p_rel_err in zip(particles, mean, rel_err):
-
+        print(f'p_mean shape: {p_mean.shape}')
+        print(n_e_bins)
         ww_lower_bounds = np.empty((*mesh.dimension, n_e_bins), dtype=float)
 
-        for i, (e_mean, e_rel_err) in enumerate(zip(p_mean.T[..., :], p_rel_err.T[..., :])):
+        for i, (e_mean, e_rel_err) in enumerate(zip(p_mean, p_rel_err)):
+            print(f'e_mean shape: {e_mean.shape}')
             # now we should be working with mesh data
             e_mean = e_mean / np.max(e_mean)
 
             e_mean[(e_mean == 0) | (e_rel_err > rel_err_tol)] = -1.0
+            e_mean[~np.isfinite(e_mean)] = -1.0
 
             e_mean = e_mean.reshape(mesh.dimension[::-1]).T
             ww_lower_bounds[..., i] = e_mean
 
+
+        print(ww_lower_bounds.shape)
         p_weight_windows = openmc.WeightWindows(mesh_copy,
                                                 ww_lower_bounds,
                                                 upper_bound_ratio=5.0,
