@@ -1,5 +1,6 @@
 import copy
 import os
+from numbers import Integral, Real
 from typing import Union
 from collections.abc import Iterable
 
@@ -85,6 +86,17 @@ def check_iterable_type(name, value, expected_type, min_depth=1, max_depth=1):
     # Initialize the tree at the very first item.
     tree = [value]
     index = [0]
+
+    # If this is a numpy array, perform checks on the dtype for potential
+    # early exit
+    if isinstance(value, np.ndarray):
+        if expected_type == Real and np.issubdtype(value.dtype, np.floating):
+            return
+        if expected_type == Integral and np.issubdtype(value.dtype, np.integer):
+            return
+        # Final, generic check. Not always guaranteed to work.
+        if np.issubdtype(value.dtype, np.dtype(expected_type)):
+            return
 
     # Traverse the tree.
     while index[0] != len(tree[0]):
