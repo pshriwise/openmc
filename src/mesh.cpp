@@ -1784,7 +1784,6 @@ MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
 MOABMesh::MOABMesh(std::shared_ptr<moab::Interface> external_mbi)
 {
   mbi_ = external_mbi;
-  filename_ = "unknown (external file)";
   this->initialize();
 }
 

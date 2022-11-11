@@ -521,7 +521,7 @@ public:
   // Data members
   bool output_ {
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
-  std::string filename_; //!< Path to unstructured mesh file
+  std::string filename_ = "unknown"; //!< Path to unstructured mesh file
 
 protected:
   //! Set the length multiplier to apply to each point in the mesh
