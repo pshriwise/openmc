@@ -13,7 +13,7 @@ from openmc.mpi import comm
 
 _ALLOWED_FILTER_TYPES = (openmc.MeshFilter, openmc.EnergyFilter, openmc.ParticleFilter)
 
-def magic(model, tally_id, iterations, rel_err_tol=0.7):
+def magic(model, tally_id, iterations=3, rel_err_tol=0.7):
     """
     Performs weight window generation using the MAGIC method
 
@@ -29,7 +29,7 @@ def magic(model, tally_id, iterations, rel_err_tol=0.7):
         The OpenMC model to run
     tally : int
         The tally ID to use for weight window generation
-    iterations : int
+    iterations : int (default: 3)
         The number of iterations to perform
     rel_err_tol : float (default: 0.7)
         Upper limit on relative error of flux values used to produce
@@ -175,8 +175,8 @@ def generate_wws(model, tally_id, rel_err_tol):
 if __name__ == '__main__':
     ap = ArgumentParser("Applies MAGIC method to a local OpenMC model.")
     ap.add_argument('t', type=int, help='ID of the tally to use for weight window generation')
-    ap.add_argument('n', type=int, help='Number of iterations to perform')
-    ap.add_argument('r', type=float, default=0.7, help='Relative error tolerance')
+    ap.add_argument('-n', type=int, default=3, help='Number of iterations to perform')
+    ap.add_argument('-r', type=float, default=0.7, help='Relative error tolerance')
 
     args = ap.parse_args()
 
