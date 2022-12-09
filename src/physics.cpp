@@ -113,7 +113,7 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= 10000) {
+      if (simulation::shared_secondary_bank.size() >= 10000) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -227,7 +227,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
     } else {
-      p.secondary_bank().push_back(site);
+      simulation::shared_secondary_bank.thread_safe_append(site);
     }
 
     // Set the delayed group on the particle as well

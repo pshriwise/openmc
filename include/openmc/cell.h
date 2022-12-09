@@ -100,6 +100,8 @@ public:
   //! Get Boolean of if the cell is simple or not
   bool is_simple() const { return simple_; }
 
+  const vector<int32_t>& expression() const { return expression_; }
+
 private:
   //----------------------------------------------------------------------------
   // Private Methods
@@ -208,6 +210,9 @@ public:
 
   //! Check if the cell region expression is simple
   virtual bool is_simple() const { return true; }
+
+  //! Return the cell's region.
+  virtual const Region& region() const { return {}; };
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -353,6 +358,8 @@ public:
   void to_hdf5_inner(hid_t group_id) const override;
 
   bool is_simple() const override { return region_.is_simple(); }
+
+  const Region& region() const { return region_; }
 
 protected:
   //! Returns the beginning position of a parenthesis block (immediately before
