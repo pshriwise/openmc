@@ -11,6 +11,26 @@ Problems with Compilation
 If you are experiencing problems trying to compile OpenMC, first check if the
 error you are receiving is among the following options.
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Copmiler/Dependency Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following table lists the set of known limitations for compilers and dependenies
+
+
++-----------+--------------+------------------------+
+|Dependency | Version      | Reason                 |
++===========+==============+========================+
+| gcc       | 7.5.0        | Full C++14 support     |
++-----------+--------------+------------------------+
+
+
++-----------+--------------+------------------------+
+|Dependency | Version      | Reason                 |
++===========+==============+========================+
+|hdf5       | >=1.8.13     | Need ``H5free_memory`` |
++-----------+--------------+------------------------+
+
 -------------------------
 Problems with Simulations
 -------------------------
