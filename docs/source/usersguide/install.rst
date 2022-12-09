@@ -206,6 +206,8 @@ Prerequisites
 
     * HDF5_ Library for portable binary output format
 
+      **Minimum version requirement: 1.8.13**
+
       OpenMC uses HDF5 for many input/output files. As such, you will need to
       have HDF5 installed on your computer. The installed version will need to
       have been compiled with the same compiler you intend to compile OpenMC
