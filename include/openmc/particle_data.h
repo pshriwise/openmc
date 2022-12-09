@@ -300,7 +300,7 @@ private:
   int stream_;                // current RNG stream
 
   // Secondary particle bank
-  vector<SourceSite> secondary_bank_;
+  // vector<SourceSite> secondary_bank_;
 
   int64_t current_work_; // current work index
 
@@ -432,8 +432,8 @@ public:
   uint64_t* seeds() { return seeds_; }
   int& stream() { return stream_; }
 
-  SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
-  decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
+  // SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
+  // decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
   int64_t& current_work() { return current_work_; }
   const int64_t& current_work() const { return current_work_; }
   double& flux_derivs(int i) { return flux_derivs_[i]; }

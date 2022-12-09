@@ -69,21 +69,21 @@ void Particle::create_secondary(
     return;
   }
 
-  secondary_bank().emplace_back();
-
-  auto& bank {secondary_bank().back()};
+  SourceSite bank;
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  simulation::shared_secondary_bank.thread_safe_append(bank);
 
   n_bank_second() += 1;
 }
 
-void Particle::from_source(const SourceSite* src)
+void Particle::from_source(SourceSite s)
 {
+  SourceSite* src = &s;
   // Reset some attributes
   clear();
   surface() = 0;
@@ -288,7 +288,6 @@ void Particle::event_collide()
 
   // Reset banked weight during collision
   n_bank() = 0;
-  n_bank_second() = 0;
   wgt_bank() = 0.0;
   zero_delayed_bank();
 
@@ -335,25 +334,31 @@ void Particle::event_revive_from_secondary()
     wgt() = 0.0;
   }
 
+  if (alive())
+    return;
+
   // Check for secondary particles if this particle is dead
-  if (!alive()) {
-    // Write final position for this particle
-    if (write_track()) {
-      write_particle_track(*this);
-    }
 
-    // If no secondary particles, break out of event loop
-    if (secondary_bank().empty())
-      return;
-
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
-    n_event() = 0;
-
-    // Enter new particle in particle track file
-    if (write_track())
-      add_particle_track(*this);
+  // Write final position for this particle
+  if (write_track()) {
+    write_particle_track(*this);
   }
+
+#pragma omp critical(SourceBankPop)
+  {
+    // If no secondary particles, break out of event loop
+    if (!simulation::shared_secondary_bank.empty()) {
+      SourceSite s = simulation::shared_secondary_bank.back();
+      simulation::shared_secondary_bank.resize(
+        simulation::shared_secondary_bank.size() - 1);
+      from_source(s);
+      n_event() = 0;
+    }
+  }
+
+  // Enter new particle in particle track file
+  if (write_track())
+    add_particle_track(*this);
 }
 
 void Particle::event_death()
