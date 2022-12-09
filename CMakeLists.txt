@@ -151,6 +151,10 @@ if(HDF5_IS_PARALLEL)
   message(STATUS "Using parallel HDF5")
 endif()
 
+if(${HDF5_VERSION} VERSION_LESS 1.8.13)
+  message(FATAL_ERROR "OpenMC requires a version of HDF5 >= 1.8.13. Version found: ${HDF5_VERSION}")
+endif()
+
 # Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
 # Thus, we give these flags to allow usage of the old interface in newer
 # versions of HDF5.
