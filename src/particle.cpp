@@ -106,8 +106,9 @@ void Particle::split(double wgt)
   bank.time = time();
 }
 
-void Particle::from_source(const SourceSite* src)
+void Particle::from_source(SourceSite s)
 {
+  SourceSite* src = &s;
   // Reset some attributes
   clear();
   surface() = SURFACE_NONE;
@@ -405,12 +406,10 @@ void Particle::event_revive_from_secondary()
     wgt() = 0.0;
   }
 
+  if (alive())
+    return;
+
   // Check for secondary particles if this particle is dead
-  if (!alive()) {
-    // Write final position for this particle
-    if (write_track()) {
-      write_particle_track(*this);
-    }
 
     // If no secondary particles, break out of event loop
     if (secondary_bank().empty())
@@ -447,10 +446,26 @@ void Particle::event_revive_from_secondary()
       pht_secondary_particles();
     }
 
-    // Enter new particle in particle track file
-    if (write_track())
-      add_particle_track(*this);
+  // Write final position for this particle
+  if (write_track()) {
+    write_particle_track(*this);
   }
+
+#pragma omp critical(SourceBankPop)
+  {
+    // If no secondary particles, break out of event loop
+    if (!simulation::shared_secondary_bank.empty()) {
+      SourceSite s = simulation::shared_secondary_bank.back();
+      simulation::shared_secondary_bank.resize(
+        simulation::shared_secondary_bank.size() - 1);
+      from_source(s);
+      n_event() = 0;
+    }
+  }
+
+  // Enter new particle in particle track file
+  if (write_track())
+    add_particle_track(*this);
 }
 
 void Particle::event_death()

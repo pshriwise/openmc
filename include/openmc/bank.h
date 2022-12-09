@@ -18,6 +18,8 @@ namespace simulation {
 
 extern vector<SourceSite> source_bank;
 
+extern SharedArray<SourceSite> shared_secondary_bank;
+
 extern SharedArray<SourceSite> surf_source_bank;
 
 extern SharedArray<SourceSite> fission_bank;

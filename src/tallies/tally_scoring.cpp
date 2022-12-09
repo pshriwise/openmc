@@ -1498,7 +1498,6 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
         // ...less the energy of any secondary particles since they will be
         // transported individually later
         score -= p.bank_second_E();
-
         score *= p.wgt_last();
       }
       break;

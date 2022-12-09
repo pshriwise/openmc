@@ -26,6 +26,8 @@ SharedArray<SourceSite> surf_source_bank;
 // function.
 SharedArray<SourceSite> fission_bank;
 
+SharedArray<SourceSite> shared_secondary_bank;
+
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
 // used to efficiently sort the fission bank after each iteration.
@@ -49,6 +51,11 @@ void init_fission_bank(int64_t max)
 {
   simulation::fission_bank.reserve(max);
   simulation::progeny_per_particle.resize(simulation::work_per_rank);
+}
+
+void init_secondary_bank(int64_t max)
+{
+  simulation::shared_secondary_bank.resize(1000000);
 }
 
 // Performs an O(n) sort on the fission bank, by leveraging
