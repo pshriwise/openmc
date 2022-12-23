@@ -1332,7 +1332,7 @@ class CylindricalMesh(StructuredMesh):
         pts_cartesian[:, 0] = r * np.cos(phi) + self.origin[0]
         pts_cartesian[:, 1] = r * np.sin(phi) + self.origin[1]
         pts_cartesian[:, 2] += self.origin[2]
-        
+
         return super().write_data_to_vtk(
             points=pts_cartesian,
             filename=filename,
