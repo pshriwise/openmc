@@ -28,7 +28,8 @@ def read_meshes(root):
         Root element of the file to search
     """
     for elem in root.findall('.//mesh'):
-        MeshBase.from_xml_element(elem)
+        if get_text(elem, 'id') is not None:
+            MeshBase.from_xml_element(elem)
 
 
 
@@ -208,7 +209,7 @@ class StructuredMesh(MeshBase):
             Returns a numpy.ndarray representing the mesh element centroid
             coordinates with a shape equal to (ndim, dim1, ..., dimn). Can be
             unpacked along the first dimension with xx, yy, zz = mesh.centroids.
-            
+
 
         """
         ndim = self.n_dimension
