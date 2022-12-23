@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from collections import OrderedDict
 from math import pi
 from numbers import Real, Integral
 from pathlib import Path
@@ -13,6 +14,22 @@ import openmc
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+
+# a dictionary containing all created mesh instances
+MESHES = OrderedDict()
+
+def read_meshes(root):
+    """
+    Reads all mesh instances from an XML file
+
+    Parameters
+    ----------
+    root : xml.etree.ElementTree.Element
+        Root element of the file to search
+    """
+    for elem in root.findall('.//mesh'):
+        MeshBase.from_xml_element(elem)
+
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -41,6 +58,9 @@ class MeshBase(IDManagerMixin, ABC):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
+
+        # add self to the module-level dictionary
+        MESHES[self.id] = self
 
     @property
     def name(self):

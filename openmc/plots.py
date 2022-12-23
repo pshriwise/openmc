@@ -9,6 +9,7 @@ import openmc
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from .mesh import read_meshes
 
 
 _BASES = ['xy', 'xz', 'yz']
@@ -953,6 +954,8 @@ class Plots(cv.CheckedList):
         """
         tree = ET.parse(path)
         root = tree.getroot()
+
+        read_meshes(root)
 
         # Generate each plot
         plots = cls()

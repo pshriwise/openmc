@@ -16,7 +16,7 @@ from openmc.stats.multivariate import MeshSpatial
 from . import RegularMesh, Source, VolumeCalculation, WeightWindows
 from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
-from .mesh import MeshBase
+from .mesh import MeshBase, read_meshes
 
 
 class RunMode(Enum):
@@ -971,8 +971,8 @@ class Settings:
         for source in self.source:
             root.append(source.to_xml_element())
             if isinstance(source.space, MeshSpatial):
-                path = f"./mesh[@id='{source.space.mesh.id}']" 
-                if root.find(path) is None: 
+                path = f"./mesh[@id='{source.space.mesh.id}']"
+                if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
 
     def _create_volume_calcs_subelement(self, root):
@@ -1293,14 +1293,6 @@ class Settings:
     def _source_from_xml_element(self, root):
         for elem in root.findall('source'):
             src = Source.from_xml_element(elem)
-            if isinstance(src.space, MeshSpatial):
-                mesh_id = int(get_text(elem, 'mesh'))
-                path = f"./mesh[@id='{mesh_id}']"
-                mesh_elem = root.find(path)
-                if mesh_elem is not None:
-                    src.space.mesh = MeshBase.from_xml_element(mesh_elem)
-                else:
-                    raise RuntimeError('No mesh was specified for the mesh source')
             self.source.append(src)
 
     def _volume_calcs_from_xml_element(self, root):
@@ -1644,6 +1636,8 @@ class Settings:
         """
         tree = ET.parse(path)
         root = tree.getroot()
+
+        read_meshes(root)
 
         settings = cls()
         settings._eigenvalue_from_xml_element(root)

@@ -968,7 +968,7 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        typing.Union[dict, float]
+        Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
@@ -990,7 +990,7 @@ class Material(IDManagerMixin):
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
-    
+
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False):
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g] or [W/cm3].
@@ -1024,16 +1024,16 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
-        
-        decayheat = {} 
+
+        decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             decay_erg = openmc.data.decay_energy(nuclide)
             inv_seconds = openmc.data.decay_constant(nuclide)
             decay_erg *= openmc.data.JOULE_PER_EV
             decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 
-        return decayheat if by_nuclide else sum(decayheat.values()) 
-    
+        return decayheat if by_nuclide else sum(decayheat.values())
+
     def get_nuclide_atoms(self):
         """Return number of atoms of each nuclide in the material
 

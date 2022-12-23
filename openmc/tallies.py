@@ -16,7 +16,7 @@ import openmc
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
-from .mesh import MeshBase
+from .mesh import MeshBase, read_meshes, MESHES
 
 
 # The tally arithmetic product types. The tensor product performs the full
@@ -3194,7 +3194,7 @@ class Tallies(cv.CheckedList):
             Path to tallies XML file
 
         Returns
-        -------
+        -------meshes
         openmc.Tallies
             Tallies object
 
@@ -3202,11 +3202,8 @@ class Tallies(cv.CheckedList):
         tree = ET.parse(path)
         root = tree.getroot()
 
-        # Read mesh elements
-        meshes = {}
-        for elem in root.findall('mesh'):
-            mesh = MeshBase.from_xml_element(elem)
-            meshes[mesh.id] = mesh
+        read_meshes(root)
+        meshes = MESHES
 
         # Read filter elements
         filters = {}

@@ -8,6 +8,7 @@ import warnings
 import openmc
 import openmc._xml as xml
 from .checkvalue import check_type, check_less_than, check_greater_than
+from .mesh import read_meshes
 
 
 class Geometry:
@@ -175,6 +176,8 @@ class Geometry:
 
         tree = ET.parse(path)
         root = tree.getroot()
+
+        read_meshes(root)
 
         # Get surfaces
         surfaces = {}
