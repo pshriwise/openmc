@@ -461,6 +461,7 @@ void read_settings_xml(pugi::xml_node root)
       model::external_sources.push_back(make_unique<IndependentSource>(node));
     }
   }
+
   // Check if the user has specified to read surface source
   if (check_for_node(root, "surf_source_read")) {
     surf_source_read = true;
