@@ -1,8 +1,9 @@
 from collections.abc import Iterable
 from numbers import Real, Integral
 
-from xml.etree import ElementTree as ET
+import h5py
 import numpy as np
+from xml.etree import ElementTree as ET
 
 from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, UnstructuredMesh
@@ -612,3 +613,21 @@ def wwinp_to_wws(path):
         wws.append(ww)
 
     return wws
+
+
+def hdf5_to_wws(path):
+    """Create WeightWindows instances from a weight windows hdf5 file
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to the weight windows hdf5 file
+
+    Returns
+    -------
+    list of openmc.WeightWindows
+    """
+    with h5py.File(path) as h5_file:
+        return [WeightWindows.from_hdf5(ww) for ww in h5_file['weight_windows']]
