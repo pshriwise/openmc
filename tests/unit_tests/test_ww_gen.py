@@ -112,16 +112,19 @@ def test_ww_gen(run_in_tmpdir, filters, model):
         # retrieve the tally we created above in memory
         lib_tally = openmc.lib.tallies[tally.id]
 
+        # create a new weight windows object
+        ww = openmc.lib.WeightWindows.from_tally(lib_tally)
+
         # run particle transport
         openmc.lib.run()
 
         # capture analog data
         analog_mean = lib_tally.mean
 
-        # create a new weight windows object
-        ww = openmc.lib.WeightWindows.from_tally(lib_tally)
+        openmc.lib.reset()
 
         # update the weight window values using tally results
+        print(tally)
         ww.update_weight_windows_magic(lib_tally)
 
         # turn on weight windows for the subsequent run
@@ -167,9 +170,9 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     tally = openmc.lib.tallies[1]
 
-    openmc.lib.run()
-
     ww = openmc.lib.WeightWindows.from_tally(tally)
+
+    openmc.lib.run()
 
     mean_before = np.array(tally.mean)
 
@@ -193,5 +196,3 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     assert np.allclose(lb_before, lb_after)
     assert np.allclose(up_before, up_after)
-
-    openmc.lib.finalize()

@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "xtensor/xindex_view.hpp"
 #include "xtensor/xmasked_view.hpp"
 #include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
@@ -228,6 +229,9 @@ WeightWindows* WeightWindows::from_hdf5(
   }
   wws->set_mesh(model::mesh_map[mesh_id]);
 
+  wws->lower_ww_ = xt::empty<double>({wws->bounds_size()});
+  wws->upper_ww_ = xt::empty<double>({wws->bounds_size()});
+
   read_dataset<double>(ww_group, "lower_ww_bounds", wws->lower_ww_);
   read_dataset<double>(ww_group, "upper_ww_bounds", wws->upper_ww_);
   read_dataset(ww_group, "survival_ratio", wws->survival_ratio_);
@@ -443,6 +447,10 @@ void WeightWindows::set_weight_windows(
 void WeightWindows::update_weight_windows_magic(
   const Tally* tally, const std::string& value, double threshold, double ratio)
 {
+
+  lower_ww_ = xt::empty<double>({bounds_size()});
+  upper_ww_ = xt::empty<double>({bounds_size()});
+
   // set of allowed filters
   const std::set<FilterType> allowed_filters = {
     FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
@@ -482,6 +490,9 @@ void WeightWindows::update_weight_windows_magic(
   tally_data = xt::strided_view(tally->get_reshaped_data(),
     {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM)});
 
+  // create a mask to avoid use of empty or unconverged tally results
+  xt::xarray<bool> mask = tally_data > 0.0;
+
   // compute relative error
   auto sum_sq = xt::strided_view(tally->get_reshaped_data(),
     {xt::ellipsis(), score_index, static_cast<int>(TallyResult::SUM_SQ)});
@@ -490,6 +501,10 @@ void WeightWindows::update_weight_windows_magic(
 
   xt::xarray<double> rel_err =
     xt::sqrt((sum_sq / n - (tally_data * tally_data) / (n * n)) / (n - 1));
+  rel_err /= tally_data;
+
+  // update mask to include any relative error results
+  mask = mask && rel_err < threshold;
 
   // if ww generation is based on relative error, replace tally data with
   // relative error values
@@ -538,6 +553,8 @@ void WeightWindows::update_weight_windows_magic(
         this->id());
       fatal_error(msg);
     }
+
+    xt::filter(tally_data, mask) = -1.0;
 
     // use the index of the particle in the filter to down-select data
     int particle_idx = p_it - particles.begin();

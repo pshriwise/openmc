@@ -100,10 +100,12 @@ public:
 
   //! Update weight window boundaries using tally results
   //! \param[in] tally Pointer to the tally whose results will be used to update
-  //! weight windows \param[in] value String representing the type of value to
-  //! use for weight window generation (one of "mean" or "rel_err") \param[in]
-  //! threshold Relative error threshold. Results over this threshold will be
-  //! ignored
+  //! weight windows
+  //! \param[in] value String representing the type of value to
+  //! use for weight window generation (one of "mean" or "rel_err")
+  //! \param[in] threshold Relative error threshold. Results over this threshold
+  //! will be ignored \param[in] ratio Ratio of upper to lower weight window
+  //! bounds
   void update_weight_windows_magic(const Tally* tally,
     const std::string& value = "mean", double threshold = 1.0,
     double ratio = 5.0);
