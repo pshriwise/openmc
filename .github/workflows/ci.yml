@@ -120,6 +120,10 @@ jobs:
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+
       - name: after_success
         shell: bash
         run: |
