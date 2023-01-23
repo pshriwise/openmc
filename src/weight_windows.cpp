@@ -384,7 +384,7 @@ void WeightWindows::check_bounds(const T& bounds) const
 {
   // check that the number of weight window entries is correct
   auto dims = this->bounds_size();
-  if (bounds.size() != dims[0]*dims[1]) {
+  if (bounds.size() != dims[0] * dims[1]) {
     auto err_msg =
       fmt::format("In weight window domain {} the number of spatial "
                   "energy/spatial bins ({}) does not match the number "
@@ -394,7 +394,8 @@ void WeightWindows::check_bounds(const T& bounds) const
   }
 }
 
-void WeightWindows::set_weight_windows(const xt::xtensor<double, 2>& lower_bounds,
+void WeightWindows::set_weight_windows(
+  const xt::xtensor<double, 2>& lower_bounds,
   const xt::xtensor<double, 2>& upper_bounds)
 {
 
@@ -518,8 +519,10 @@ void WeightWindows::update_weight_windows_magic(
     // use the index of the particle in the filter to down-select data
     int particle_idx = p_it - particles.begin();
 
-    // move particle data axis to the front of the view for both the mean and sum_sq
-    std::array<int, 1> particle_transpose = {filter_indices[FilterType::PARTICLE]};
+    // move particle data axis to the front of the view for both the mean and
+    // sum_sq
+    std::array<int, 1> particle_transpose = {
+      filter_indices[FilterType::PARTICLE]};
     mean = xt::transpose(mean, particle_transpose);
     sum_sq = xt::transpose(sum_sq, particle_transpose);
 
@@ -531,67 +534,58 @@ void WeightWindows::update_weight_windows_magic(
   // build the transpose information to re-order data by filter type
   std::vector<int> transpose;
 
-  if (filter_indices.count(FilterType::MESH)) {
-    transpose.push_back(filter_indices[FilterType::MESH]);
-  } else {
-    fatal_error("A mesh filter is required for a tally to update weight window bounds");
-  }
-
   if (filter_indices.count(FilterType::ENERGY)) {
     transpose.push_back(filter_indices[FilterType::ENERGY]);
   }
+
+  if (filter_indices.count(FilterType::MESH)) {
+    transpose.push_back(filter_indices[FilterType::MESH]);
+  } else {
+    fatal_error(
+      "A mesh filter is required for a tally to update weight window bounds");
+  }
+
   ////
-  // at this point, the view of the mean and sum_sq is always 2D and matches the size of the
-  // bound data for this weight window class
+  // at this point, the view of the mean and sum_sq is always 2D and matches the
+  // size of the bound data for this weight window class
   ////
 
   // transpose the scorew_view so that the order is:
-  // mesh bins, energy groups (same as the structure of the bounds on the class' data member)
-  // mean = xt::transpose(mean, transpose);
+  // mesh bins, energy groups (same as the structure of the bounds on the class'
+  // data member) mean = xt::transpose(mean, transpose);
 
-  // up to this point the data arrays are views into the tally results (no computation has been performed)
-  // now we'll switch references to the tally's bounds to avoid allocating additional memory
-  auto& new_bounds = this->lower_ww_;
-  auto& new_rel_err = this->upper_ww_;
+  // up to this point the data arrays are views into the tally results (no
+  // computation has been performed) now we'll switch references to the tally's
+  // bounds to avoid allocating additional memory
+  auto& new_bounds  = this->lower_ww_;
+  // xtensor<double, 2> new_rel_err = this->upper_ww_;
 
-  // atleast_2d always inserts new axes at the front. We want that to be the energy axis for now
+  // atleast_2d always inserts new axes at the front. We want that to be the
+  // energy axis for now
   new_bounds = xt::atleast_2d(xt::transpose(mean, transpose));
+  new_bounds = xt::transpose(new_bounds);
   // new_rel_err = xt::transpose(rel_err, transpose);
 
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  if (!tally->has_filter(FilterType::ENERGY)) {
-    double tally_max = *std::max_element(new_bounds.begin(), new_bounds.end());
-
-    if (tally_max > 0.0) new_bounds /= tally_max;
-
-    for (int i = 0; i < new_bounds.size(); i++) {
-      new_bounds[i] /= mesh_vols[i];
-    }
-  } else {
-    // for each energy group (if they exist), normalize
-    // data using the max flux value and generate weight windows
-    const auto& e_filter =
-      model::tally_filters[tally->filters(filter_indices[FilterType::ENERGY])];
-      int e_bins = e_filter->n_bins();
-//    int e_bins = new_bounds.shape()[0];
-    std::cout << "energy bins: " << e_bins << std::endl;
+    int e_bins = new_bounds.shape()[1];
     for (int e = 0; e < e_bins; e++) {
       // select all
       auto group_view = xt::view(new_bounds, xt::all(), e);
 
-      double group_max = *std::max_element(group_view.begin(), group_view.end());
-
-      // normalize values in this energy group by the maximum value for this group
-      if (group_max > 0.0) group_view /= group_max;
+      double group_max =
+        *std::max_element(group_view.begin(), group_view.end());
+      // normalize values in this energy group by the maximum value for this
+      // group
+      if (group_max > 0.0)
+        group_view /= group_max;
 
       // divide by volume of mesh elements
       for (int i = 0; i < group_view.size(); i++) {
         group_view[i] /= mesh_vols[i];
       }
     }
-  }
 
   // update the bounds of this weight window class
   lower_ww_ = new_bounds;
