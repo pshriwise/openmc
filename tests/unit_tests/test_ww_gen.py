@@ -86,6 +86,7 @@ pf = openmc.ParticleFilter(['neutron', 'photon'])
 
 filters = [mf, ef, pf]
 
+
 def labels(params):
     out = []
     for p in params:
@@ -97,6 +98,7 @@ def labels(params):
             out.append('energy')
     return "filters:" + '-'.join(out)
 
+
 @pytest.mark.parametrize("filters", permutations(filters), ids=labels)
 def test_ww_gen(run_in_tmpdir, filters, model):
 
@@ -106,6 +108,9 @@ def test_ww_gen(run_in_tmpdir, filters, model):
     model.tallies = openmc.Tallies([tally])
 
     model.export_to_model_xml()
+
+    ref_lower = None
+    ref_upper = None
     # test weight window generation capability
     with openmc.lib.run_in_memory():
 
@@ -119,13 +124,25 @@ def test_ww_gen(run_in_tmpdir, filters, model):
         openmc.lib.run()
 
         # capture analog data
-        analog_mean = lib_tally.mean
-
-        openmc.lib.reset()
+        analog_mean = np.copy(lib_tally.mean)
 
         # update the weight window values using tally results
-        print(tally)
         ww.update_weight_windows_magic(lib_tally)
+
+        # make sure that the weight window update doesn't change tally values
+        np.testing.assert_equal(lib_tally.mean, analog_mean)
+
+        # check against weight windows from the previous iteration
+        # the order of filters should not change the weight window values
+        if ref_lower is None:
+            ref_lower = np.copy(ww.bounds[0])
+        else:
+            np.testing.assert_equal(ref_lower, ww.bounds[0])
+
+        if ref_upper is None:
+            ref_upper = np.copy(ww.bounds[1])
+        else:
+            np.testing.assert_equal(ref_upper, ww.bounds[1])
 
         # turn on weight windows for the subsequent run
         openmc.lib.settings.weight_windows_on = True
@@ -196,3 +213,5 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     assert np.allclose(lb_before, lb_after)
     assert np.allclose(up_before, up_after)
+
+    openmc.lib.finalize()
