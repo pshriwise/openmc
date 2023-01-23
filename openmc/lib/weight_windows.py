@@ -168,7 +168,6 @@ class WeightWindows(_FortranObjectWithID):
         upper = POINTER(c_double)()
         lower = POINTER(c_double)()
         size = c_size_t()
-        print(lower)
         _dll.openmc_weight_windows_get_bounds(self._index, lower, upper, size)
         lower_arr = as_array(lower, (size.value,))
         upper_arr = as_array(upper, (size.value,))
@@ -192,7 +191,7 @@ class WeightWindows(_FortranObjectWithID):
         tally : openmc.lib.Tally object
             The tally used to update weight window information
         value : str
-            Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev}.
+            Value type used to generate weight windows. One of {'mean', 'rel_err', 'std_dev'}.
             (default is 'mean')
         threshold : float
             Threshold for relative error of results used to generate weight window bounds
