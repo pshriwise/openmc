@@ -346,6 +346,7 @@ WeightWindow WeightWindows::get_weight_window(const Particle& p) const
   int energy_bin =
     lower_bound_index(energy_bounds_.begin(), energy_bounds_.end(), E);
 
+  mesh_bin += energy_bin * mesh->n_bins();
   // Create individual weight window
   WeightWindow ww;
   ww.lower_weight = lower_ww_[energy_bin, mesh_bin];
@@ -362,7 +363,7 @@ std::array<int, 2> WeightWindows::bounds_size() const
   int num_spatial_bins = this->mesh()->n_bins();
   int num_energy_bins =
     energy_bounds_.size() > 0 ? energy_bounds_.size() - 1 : 1;
-  return {num_spatial_bins, num_energy_bins};
+  return {num_energy_bins, num_spatial_bins};
 }
 
 template<class T>
@@ -599,7 +600,7 @@ void WeightWindows::update_weight_windows_magic(
     }
 
   // update the bounds of this weight window class
-  lower_ww_ = xt::transpose(new_bounds);
+  lower_ww_ = new_bounds;
   upper_ww_ = ratio * lower_ww_;
 }
 
