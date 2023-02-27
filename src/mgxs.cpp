@@ -114,7 +114,11 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
     for (const auto& T : temperature) {
       auto i_closest = xt::argmin(xt::abs(available_temps - T))[0];
       double temp_actual = available_temps[i_closest];
-      if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
+      bool within_tolerance =
+        std::fabs(temp_actual - T) < settings::temperature_tolerance;
+      bool within_range = (temp_actual >= settings::temperature_range[0]) &&
+                          (temp_actual <= settings::temperature_range[1]);
+      if (within_tolerance || within_range) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(),
               std::round(temp_actual)) == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
@@ -135,8 +139,12 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
                       in_name + " at temperatures that bound " +
                       std::to_string(std::round(temperature[i])));
         }
-        if ((available_temps[j] <= temperature[i]) &&
-            (temperature[i] < available_temps[j + 1])) {
+        bool within_interval = (available_temps[j] <= temperature[i]) &&
+                               (temperature[i] < available_temps[j + 1]);
+        bool within_range =
+          (temperature[i] >= settings::temperature_range[0]) &&
+          (temperature[i] <= settings::temperature_range[1]);
+        if (within_interval || within_range) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
                 std::round(available_temps[j])) == temps_to_read.end()) {
             temps_to_read.push_back(std::round((int)available_temps[j]));
