@@ -108,6 +108,12 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
     settings::temperature_method = TemperatureMethod::NEAREST;
   }
 
+  // add any temperatures within the specified temperature range
+  for (auto T : available_temps) {
+    if (T >= settings::temperature_range[0] && T <= settings::temperature_range[1])
+      temps_to_read.push_back(T);
+  }
+
   switch (settings::temperature_method) {
   case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
