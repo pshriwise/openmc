@@ -1404,10 +1404,16 @@ StructuredMesh::MeshDistance SphericalMesh::distance_to_grid_boundary(
 {
 
   if (i == 0) {
-    return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
-
+    // return the distance for the next surface ahead of the particle depending
+    // on its direction. If the particle is at the origin, always intersect
+    // next largest surface in the mesh
+    double norm = r0.norm();
+    if (norm == 0.0 || (r0 / norm).dot(u) > 0) {
+      return MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i]));
+    } else {
+      return MeshDistance(
+        ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1));
+    }
   } else if (i == 1) {
     return std::min(MeshDistance(sanitize_theta(ijk[i] + 1), true,
                       find_theta_crossing(r0, u, l, ijk[i])),
