@@ -5,7 +5,7 @@ import warnings
 import typing  # imported separately as py3.8 requires typing.Iterable
 # also required to prevent typing.Union namespace overwriting Union
 from typing import Optional, Sequence
-import lxml.etree as ET 
+import lxml.etree as ET
 
 import numpy as np
 import h5py
@@ -224,8 +224,8 @@ class Source:
         cv.check_value('source particle', particle, ['neutron', 'photon'])
         self._particle = particle
 
-    def to_xml_element(self) -> ET.Element:
-        """Return XML representation of the source
+    def populate_xml_element(self, element):
+        """Add necessary source information to an XML element
 
         Returns
         -------
@@ -233,7 +233,6 @@ class Source:
             XML element containing source data
 
         """
-        element = ET.Element("source")
         element.set("strength", str(self.strength))
         if self.particle != 'neutron':
             element.set("particle", self.particle)
@@ -256,6 +255,18 @@ class Source:
             dt_elem.text = self.domain_type
             id_elem = ET.SubElement(element, "domain_ids")
             id_elem.text = ' '.join(str(uid) for uid in self.domain_ids)
+
+    def to_xml_element(self) -> ET.Element:
+        """Return XML representation of the source
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = ET.Element("source")
+        self.populate_xml_element(element)
         return element
 
     @classmethod
@@ -333,6 +344,67 @@ class Source:
 
         return source
 
+class MeshSource():
+
+    def __init__(self,
+                 mesh: openmc.MeshBase,
+                 strength: Optional[float] = 1.0,
+                 sources: Optional[Iterable[Source]] = None):
+
+        self.mesh = mesh
+        self.strength = strength
+        self._sources = cv.CheckedList(openmc.Source, 'sources')
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @property
+    def strength(self):
+        return self._strength
+
+    @property
+    def sources(self):
+        return self._sources
+
+    @mesh.setter
+    def mesh(self, m):
+        cv.check_type('source mesh', m, openmc.MeshBase)
+        self._mesh = m
+
+    @sources.setter
+    def sources(self, s):
+        cv.check_iterable_type('mesh sources', s, openmc.Source)
+        self._sources = s
+        for src in self.sources:
+            if src.space is not None:
+                warnings.warn('Some sources on the mesh have '
+                              'spatial distributions that will '
+                              'be ignored at runtime.')
+
+    @strength.setter
+    def strength(self, strength):
+        cv.check_type('source strength', strength, Real)
+        cv.check_greater_than('source strength', strength, 0.0, True)
+        self._strength = strength
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh source
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = ET.Element('mesh source')
+        element.set('strength', str(self.strength))
+
+        for source in self.sources:
+            src_element = ET.SubElement(element, 'source')
+            source.populate_xml_element(src_element)
+
+        return element
 
 class ParticleType(IntEnum):
     """

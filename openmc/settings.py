@@ -623,7 +623,7 @@ class Settings:
     def source(self, source: typing.Union[Source, typing.Iterable[Source]]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(Source, 'source distributions', source)
+        self._source = cv.CheckedList((Source, MeshSource), 'source distributions', source)
 
     @output.setter
     def output(self, output: dict):
@@ -1025,7 +1025,7 @@ class Settings:
     def _create_source_subelement(self, root):
         for source in self.source:
             root.append(source.to_xml_element())
-            if isinstance(source.space, MeshSpatial):
+            if isinstance(source, Source) and isinstance(source.space, MeshSpatial):
                 path = f"./mesh[@id='{source.space.mesh.id}']"
                 if root.find(path) is None:
                     root.append(source.space.mesh.to_xml_element())
