@@ -1797,6 +1797,62 @@ class Cone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
+    @classmethod
+    def from_vectors(cls, x=0., y=0., z=0., dx=0., dy=0., dz=1., radius=1., height=1., *args, **kwargs):
+        """Create a cone surface from two vectors, a radius for the base, and a height.
+        The resulting conical surface instance will still be unbounded, but this method is convenient
+        if these components of a bounded cylinder are known.
+
+        Parameters
+        ----------
+        x : float
+            x-coordinate of the base center in [cm]
+        y : float
+            y-coordinate of the base center in [cm]
+        z : float
+            z-coordinate of the apex center in [cm]
+        r2 : float
+            Parameter related to the aperature
+        dx : float
+            x-component of the vector representing the axis of the cone.
+        dy : float
+            y-component of the vector representing the axis of the cone.
+        dz : float
+            z-component of the vector representing the axis of the cone.
+        radius : float
+            radius of the cone base in [cm]
+        height : float
+            height of the cone in [cm]
+        surface_id : int, optional
+            Unique identifier for the surface. If not specified, an identifier will
+            automatically be assigned.
+        boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+            Boundary condition that defines the behavior for particles hitting the
+            surface. Defaults to transmissive boundary condition where particles
+            freely pass through the surface.
+        name : str
+            Name of the cone. If not specified, the name will be the empty string.
+
+
+        Returns
+        -------
+        openmc.surfaces.Cone instance
+
+        """
+
+        # move the center of the base to the apex
+        axis = np.array([dx, dy, dz])
+        axis /= np.linalg.norm(axis) # ensure unit vector
+        x0, y0, z0 = np.array([x, y, z]) + axis * height
+
+        # flip the vector for the axis of rotation
+        dx0, dy0, dz0 = -axis
+
+        # compute r2
+        r2 = np.tan(radius/height)**2
+
+        return cls(x0, y0, z0, r2, dx0, dy0, dz0, *args, **kwargs)
+
     def to_xml_element(self):
         """Return XML representation of the surface
 

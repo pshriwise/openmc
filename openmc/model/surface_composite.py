@@ -57,6 +57,98 @@ class CompositeSurface(ABC):
     def __neg__(self):
         """Return the negative half-space of the composite surface."""
 
+class TruncatedCone(CompositeSurface):
+    """A cone surface truncated with one or two planes at specified distances
+    from the apex of the cylinder along the axis of rotation.
+
+    The negative space of this seurface is the section of the cone on the
+    positive of the h1 plane and the negative side of the h2 plane.
+
+    Both planes have normals oriented toward the cone aperture.
+
+    Parameters
+    ----------
+     x0 : float
+        x-coordinate of the apex in [cm]
+    y0 : float
+        y-coordinate of the apex in [cm]
+    z0 : float
+        z-coordinate of the apex in [cm]
+    r2 : float
+        Parameter related to the aperature
+    dx : float
+        x-component of the vector representing the axis of the cone.
+    dy : float
+        y-component of the vector representing the axis of the cone.
+    dz : float
+        z-component of the vector representing the axis of the cone.
+    h1 : float
+        Height at which the cone should be truncated in [cm]
+    h2 : float, optional
+        Second height at which the cone should be truncated in [cm] (optional)
+    **kwargs : dict
+        Keyword arguments passed to the :class:`openmc.Cone` and
+        :class:`openmc.Plane` constructors.
+
+    Attributes
+    ----------
+    cone : openmc.Cone
+        Cone surface
+    plane1 : openmc.Plane
+        Plane corresponding to h1
+    plane2 : openmc.Plane
+        Plane corresponding to h2
+    """
+
+    _surface_names = ('cone', 'plane1', 'plane2')
+
+    def __init__(self,
+                x0=0.,
+                y0=0.,
+                z0=0.,
+                r2=1.,
+                dx=0.,
+                dy=0.,
+                dz=1.,
+                h1=0,
+                h2=None,
+                **kwargs):
+
+        # create the cone surface
+        self.cone = openmc.Cone(x0, y0, z0, r2, dx, dy, dz, **kwargs)
+
+        r = np.array([x0, y0, z0])
+        axis = np.array([dx, dy, dz])
+
+        # compute point at a distance h1 from the apex
+        p = r + h1 * axis
+        tmp_axis = np.sign(h1) * -axis
+        # compute the d coeff of the plane
+        d = np.dot(p, tmp_axis)
+        self.plane1 = openmc.Plane(*tmp_axis, d, **kwargs)
+
+        if h2 is not None:
+            # compute a point at distance h2 from the apex
+            p = r + h2 * axis
+            tmp_axis = -np.sign(h2) * axis
+            # compute the d coeff of the plane
+            d = np.dot(p, tmp_axis)
+            self.plane2 = openmc.Plane(*tmp_axis, d, **kwargs)
+        else:
+            self.plane2 = None
+
+    def __neg__(self):
+        region = -self.cone & +self.plane1
+        if self.plane2 is not None:
+            region &= +self.plane2
+        return region
+
+    def __pos__(self):
+        region = -self.cone & -self.plane1
+        if self.plane2 is not None:
+            region |= (-self.cone & -self.plane2)
+        return region
+
 
 class CylinderSector(CompositeSurface):
     """Infinite cylindrical sector composite surface.

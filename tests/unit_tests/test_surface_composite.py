@@ -152,7 +152,6 @@ def test_cone_one_sided(axis, point_pos, point_neg, ll_true):
     # Make sure repr works
     repr(s)
 
-
 @pytest.mark.parametrize(
     "axis, indices", [
         ("X", [0, 1, 2]),
@@ -461,3 +460,26 @@ def test_cruciform_prism(axis):
         openmc.model.CruciformPrism([1.0, 0.5, 2.0, 3.0])
     with pytest.raises(ValueError):
         openmc.model.CruciformPrism([3.0, 2.0, 0.5, 1.0])
+
+def test_truncated_cone():
+
+    trc1 = openmc.model.TruncatedCone(0.0, 0.0, 0.0, # base center
+                                      1.0, # r2
+                                      0.0, 0.0, 1.0, # axis of rotation
+                                      -1.0, 1.0)
+
+    assert (0.0, 0.0, 0.9) in -trc1
+    assert (0.5, 0.6, 0.9) in -trc1
+
+    assert (0.0, 0.0, 5.0) not in -trc1
+    assert (0.0, 0.0, 5.0) in +trc1
+    assert (0.0, 0.0, -5.0) not in -trc1
+    assert (0.0, 0.0, -5.0) in +trc1
+
+    trc2 = openmc.model.TruncatedCone(0.0, 0.0, 0.0, # base center
+                                      1.0, # r2
+                                      0.0, 0.0, 1.0, # axis of rotation
+                                      5.0, 10.0)
+    assert (0.0, 0.0, 3.0) in -trc2
+    assert (0.0, 0.0, 11.0) not in -trc2
+    assert (0.0, 0.0, 11.0) in +trc2
