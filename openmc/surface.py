@@ -1798,10 +1798,10 @@ class Cone(QuadricMixin, Surface):
         return (a, b, c, d, e, f, g, h, j, k)
 
     @classmethod
-    def from_vectors(cls, x=0., y=0., z=0., dx=0., dy=0., dz=1., radius=1., height=1., *args, **kwargs):
+    def from_vectors(cls, x=0., y=0., z=0., hx=0., hy=0., hz=1., base_radius=1., *args, **kwargs):
         """Create a cone surface from two vectors, a radius for the base, and a height.
         The resulting conical surface instance will still be unbounded, but this method is convenient
-        if these components of a bounded cylinder are known.
+        if these components of a bounded cylinder are known.O
 
         Parameters
         ----------
@@ -1811,18 +1811,14 @@ class Cone(QuadricMixin, Surface):
             y-coordinate of the base center in [cm]
         z : float
             z-coordinate of the apex center in [cm]
-        r2 : float
-            Parameter related to the aperature
-        dx : float
-            x-component of the vector representing the axis of the cone.
-        dy : float
-            y-component of the vector representing the axis of the cone.
-        dz : float
-            z-component of the vector representing the axis of the cone.
-        radius : float
+        hx : float
+            x-component of the vector from the base center to the apex.
+        hy : float
+            y-component of the vector from the base center to the apex.
+        hz : float
+            z-component of the vector from the base center to the apex.
+        base_radius : float
             radius of the cone base in [cm]
-        height : float
-            height of the cone in [cm]
         surface_id : int, optional
             Unique identifier for the surface. If not specified, an identifier will
             automatically be assigned.
@@ -1841,15 +1837,16 @@ class Cone(QuadricMixin, Surface):
         """
 
         # move the center of the base to the apex
-        axis = np.array([dx, dy, dz])
-        axis /= np.linalg.norm(axis) # ensure unit vector
-        x0, y0, z0 = np.array([x, y, z]) + axis * height
+        axis = np.array([hx, hy, hz])
+        # get apex coordinates
+        x0, y0, z0 = np.array([x, y, z]) + axis
 
-        # flip the vector for the axis of rotation
-        dx0, dy0, dz0 = -axis
+        # normalized and flip the vector for the axis of rotation
+        height = np.linalg.norm(axis)
+        dx0, dy0, dz0 = -axis / height
 
         # compute r2
-        r2 = np.tan(radius/height)**2
+        r2 = np.tan(base_radius/height)**2
 
         return cls(x0, y0, z0, r2, dx0, dy0, dz0, *args, **kwargs)
 

@@ -57,6 +57,7 @@ class CompositeSurface(ABC):
     def __neg__(self):
         """Return the negative half-space of the composite surface."""
 
+
 class TruncatedCone(CompositeSurface):
     """A cone surface truncated with one or two planes at specified distances
     from the apex of the cylinder along the axis of rotation.
@@ -136,6 +137,24 @@ class TruncatedCone(CompositeSurface):
             self.plane2 = openmc.Plane(*tmp_axis, d, **kwargs)
         else:
             self.plane2 = None
+
+    @classmethod
+    def from_cone(cls, cone, h1, h2, **kwargs):
+        """Truncate an pre-defined cone.
+
+        Creates a copy of the provided cone surface and returns a
+        :class:`openmc.TruncatedCone` instance.
+
+        Parameters
+        ----------
+        cone : openmc.Cone
+            Cone surface to truncate
+        h1 : float
+            Height at which the cone should be truncated in [cm]
+        h2 : float, optional
+            Second height at which the cone should be truncated in [cm] (optional)
+        """
+        return cls(*cone.coefficients.values(), h1, h2, **kwargs)
 
     def __neg__(self):
         region = -self.cone & +self.plane1
