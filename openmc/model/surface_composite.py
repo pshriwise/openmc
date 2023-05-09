@@ -140,7 +140,7 @@ class TruncatedCone(CompositeSurface):
 
     @classmethod
     def from_cone(cls, cone, h1, h2, **kwargs):
-        """Truncate an pre-defined cone.
+        """Truncate a pre-defined cone.
 
         Creates a copy of the provided cone surface and returns a
         :class:`openmc.TruncatedCone` instance.
@@ -153,6 +153,9 @@ class TruncatedCone(CompositeSurface):
             Height at which the cone should be truncated in [cm]
         h2 : float, optional
             Second height at which the cone should be truncated in [cm] (optional)
+        **kwargs : dict
+            Keyword arguments passed to the :class:`openmc.Cone` and
+            :class:`openmc.Plane` constructors.
         """
         return cls(*cone.coefficients.values(), h1, h2, **kwargs)
 
