@@ -345,7 +345,8 @@ class Source:
         return source
 
 class MeshSource():
-
+    """
+    """
     def __init__(self,
                  mesh: openmc.MeshBase,
                  strength: Optional[float] = 1.0,
@@ -381,6 +382,7 @@ class MeshSource():
                 warnings.warn('Some sources on the mesh have '
                               'spatial distributions that will '
                               'be ignored at runtime.')
+                break
 
     @strength.setter
     def strength(self, strength):
@@ -397,7 +399,8 @@ class MeshSource():
             XML element containing source data
 
         """
-        element = ET.Element('mesh source')
+        element = ET.Element('source')
+        element.set('type', 'mesh')
         element.set('strength', str(self.strength))
 
         for source in self.sources:
