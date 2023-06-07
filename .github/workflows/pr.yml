@@ -1,0 +1,16 @@
+name: PR
+
+on:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    name: checks
+    steps:
+    - name: clang-format
+      id: clang-format
+      uses: tinybeachthor/gitbot-format@releases/v1
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        config-path: '.clang-format'
