@@ -1,16 +1,14 @@
-name: PR
+name: Format Check
 
-on:
-  pull_request:
-
+on: [push, pull_request]
 jobs:
-  checks:
+  clang-format-check:
+    name: Clang-format Check
     runs-on: ubuntu-latest
-    name: checks
     steps:
-    - name: clang-format
-      id: clang-format
-      uses: tinybeachthor/gitbot-format@releases/v1
+    - uses: actions/checkout@v3
+    - name: Run clang-format style check for C++ code.
+      uses: jidicula/clang-format-action@v4.11.0
       with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        config-path: '.clang-format'
+        clang-format-version: '13'
+        check-path: 'src'
