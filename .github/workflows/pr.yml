@@ -15,7 +15,8 @@ jobs:
           style: file
           files-changed-only: true
           verbosity: 40
-
+          thread-comments: true
+          file-annotations: false
 
       - name: Fail fast?!
         if: steps.linter.outputs.checks-failed > 0
