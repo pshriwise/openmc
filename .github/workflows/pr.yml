@@ -1,14 +1,20 @@
-name: Format Check
+name: cpp-linter
 
-on: [push, pull_request]
+on: pull_request
+
 jobs:
-  clang-format-check:
-    name: Clang-format Check
+  cpp-linter:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Run clang-format style check for C++ code.
-      uses: jidicula/clang-format-action@v4.11.0
-      with:
-        clang-format-version: '15'
-        check-path: 'src'
+      - uses: actions/checkout@v3
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: file
+
+      - name: Fail fast?!
+        if: steps.linter.outputs.checks-failed > 0
+        run: echo "Some files failed the linting checks!"
+        run: exit 1
