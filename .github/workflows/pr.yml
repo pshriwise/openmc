@@ -14,7 +14,6 @@ jobs:
         with:
           style: file
           files-changed-only: true
-          verbosity: '40'
           tidy-checks: '-*'
           version: '15'
           thread-comments: true
