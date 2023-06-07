@@ -14,9 +14,14 @@ jobs:
         with:
           style: file
           files-changed-only: true
-          verbosity: 40
+          verbosity: '40'
+          tidy-checks: '-*'
+          version: '15'
           thread-comments: true
           file-annotations: false
+          step-summary: true
+          extensions: 'cpp,h'
+          style: 'file'
 
       - name: Fail fast?!
         if: steps.linter.outputs.checks-failed > 0
