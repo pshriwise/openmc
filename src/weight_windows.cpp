@@ -223,7 +223,7 @@ void WeightWindows::set_id(int32_t id)
 WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 {
   // check for particle type
-  if (particle_type_ != p.type()) {
+  if (particle_type_!=p.type()) {
     return {};
   }
 
