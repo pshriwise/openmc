@@ -223,7 +223,9 @@ void WeightWindows::set_id(int32_t id)
 WeightWindow WeightWindows::get_weight_window(const Particle& p) const
 {
   // check for particle type
-  if (particle_type_!=p.type()) {return {};}
+  if (particle_type_ != p.type()) {
+    return {};
+  }
 
   // Get mesh index for particle's position
   const auto& mesh = this->mesh();
