@@ -17,7 +17,7 @@ jobs:
           tidy-checks: '-*'
           version: '15'
           thread-comments: true
-          file-annotations: false
+          file-annotations: true
           step-summary: true
           extensions: 'cpp,h'
 
