@@ -29,6 +29,8 @@ openmc::vector<unique_ptr<WeightWindows>> weight_windows;
 // Non-member functions
 //==============================================================================
 
+void empty_function() {};
+
 void apply_weight_windows(Particle& p)
 {
   // skip dead or no energy
