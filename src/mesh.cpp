@@ -39,10 +39,10 @@
 #include "openmc/xml_interface.h"
 
 #ifdef LIBMESH
+#include "libmesh/cell_tet4.h"
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
-#include "libmesh/cell_tet4.h"
 #endif
 
 #ifdef DAGMC
@@ -61,14 +61,8 @@ const bool LIBMESH_ENABLED = true;
 const bool LIBMESH_ENABLED = false;
 #endif
 
-std::vector<std::string> IntersectionTypeStrs = { "MISS",
-                                                  "INTERIOR",
-                                                  "EDGE0",
-                                                  "EDGE1",
-                                                  "EDGE2",
-                                                  "NODE0",
-                                                  "NODE1",
-                                                  "NODE2" };
+std::vector<std::string> IntersectionTypeStrs = {
+  "MISS", "INTERIOR", "EDGE0", "EDGE1", "EDGE2", "NODE0", "NODE1", "NODE2"};
 
 namespace model {
 
@@ -2885,153 +2879,155 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #endif
 
- const bool EXIT_EARLY = false;
+const bool EXIT_EARLY = false;
 
-
-    /* Function to return the vertex with the lowest coordinates. To force the same
-       ray-edge computation, the Plücker test needs to use consistent edge
-       representation. This would be more simple with MOAB handles instead of
-       coordinates... */
-    inline bool first( const Position& a, const Position& b )
-    {
-        if( a[0] < b[0] ) { return true; }
-        else if( a[0] == b[0] )
-        {
-            if( a[1] < b[1] ) { return true; }
-            else if( a[1] == b[1] )
-            {
-                if( a[2] < b[2] ) { return true; }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    double plucker_edge_test( const Position& vertexa, const Position& vertexb, const Position& ray,
-                              const Position& ray_normal )
-    {
-
-        double pip;
-        const double near_zero = 10 * std::numeric_limits< double >::epsilon();
-
-        if( first( vertexa, vertexb ) )
-        {
-            const Position edge        = vertexb - vertexa;
-            const Position edge_normal = edge.cross(vertexa);
-            pip                        = ray.dot(edge_normal) + ray_normal.dot(edge);
-        }
-        else
-        {
-            const Position edge        = vertexa - vertexb;
-            const Position edge_normal = edge.cross(vertexb);
-            pip                        = ray.dot(edge_normal) + ray_normal.dot(edge);
-            pip                        = -pip;
-        }
-
-        if( near_zero > fabs( pip ) ) pip = 0.0;
-
-        return pip;
-    }
-
-    bool plucker_ray_tri_intersect( const std::array<Position, 3> vertices, const Position& origin, const Position& direction,
-                                    double& dist_out, const double* neg_ray_len=nullptr,
-                                    const int* orientation=nullptr)
-    {
-        const double nonneg_ray_len = INFTY;
-        dist_out = INFTY;
-
-        const Position raya = direction;
-        const Position rayb = direction.cross(origin);
-
-        // Determine the value of the first Plucker coordinate from edge 0
-        double plucker_coord0 = plucker_edge_test(vertices[0], vertices[1], raya, rayb);
-
-        // If orientation is set, confirm that sign of plucker_coordinate indicate
-        // correct orientation of intersection
-        if( orientation && ( *orientation ) * plucker_coord0 > 0 ) { return EXIT_EARLY; }
-
-        // Determine the value of the second Plucker coordinate from edge 1
-        double plucker_coord1 = plucker_edge_test( vertices[1], vertices[2], raya, rayb );
-
-        // If orientation is set, confirm that sign of plucker_coordinate indicate
-        // correct orientation of intersection
-        if( orientation )
-        {
-            if( ( *orientation ) * plucker_coord1 > 0 ) { return EXIT_EARLY; }
-            // If the orientation is not specified, all plucker_coords must be the same sign or
-            // zero.
-        }
-        else if( ( 0.0 < plucker_coord0 && 0.0 > plucker_coord1 ) || ( 0.0 > plucker_coord0 && 0.0 < plucker_coord1 ) )
-        {
-            return EXIT_EARLY;
-        }
-
-        // Determine the value of the second Plucker coordinate from edge 2
-        double plucker_coord2 = plucker_edge_test( vertices[2], vertices[0], raya, rayb );
-
-        // If orientation is set, confirm that sign of plucker_coordinate indicate
-        // correct orientation of intersection
-        if( orientation )
-        {
-            if( ( *orientation ) * plucker_coord2 > 0 ) { return EXIT_EARLY; }
-            // If the orientation is not specified, all plucker_coords must be the same sign or
-            // zero.
-        }
-        else if( ( 0.0 < plucker_coord1 && 0.0 > plucker_coord2 ) || ( 0.0 > plucker_coord1 && 0.0 < plucker_coord2 ) ||
-                 ( 0.0 < plucker_coord0 && 0.0 > plucker_coord2 ) || ( 0.0 > plucker_coord0 && 0.0 < plucker_coord2 ) )
-        {
-            return EXIT_EARLY;
-        }
-
-        // check for coplanar case to avoid dividing by zero
-        if( 0.0 == plucker_coord0 && 0.0 == plucker_coord1 && 0.0 == plucker_coord2 ) { return EXIT_EARLY; }
-
-        // get the distance to intersection
-        const double inverse_sum = 1.0 / ( plucker_coord0 + plucker_coord1 + plucker_coord2 );
-        assert( 0.0 != inverse_sum );
-        const Position intersection( plucker_coord0 * inverse_sum * vertices[2] +
-                                     plucker_coord1 * inverse_sum * vertices[0] +
-                                     plucker_coord2 * inverse_sum * vertices[1] );
-
-        // To minimize numerical error, get index of largest magnitude direction.
-        int idx            = 0;
-        double max_abs_dir = 0;
-        for( unsigned int i = 0; i < 3; ++i )
-        {
-            if( fabs( direction[i] ) > max_abs_dir )
-            {
-                idx         = i;
-                max_abs_dir = fabs( direction[i] );
-            }
-        }
-        const double dist = ( intersection[idx] - origin[idx] ) / direction[idx];
-
-        // is the intersection within distance limits?
-        // if( ( nonneg_ray_len && nonneg_ray_len < dist ) ||  // intersection is beyond positive limit
-        //     ( neg_ray_len && *neg_ray_len >= dist ) ||       // intersection is behind negative limit
-        //     ( !neg_ray_len && 0 > dist ) )
-        // {  // Unless a neg_ray_len is used, don't return negative distances
-        //     return EXIT_EARLY;
-        // }
-
-        dist_out = dist;
-
-        // if( type )
-        //     *type = type_list[( ( 0.0 == plucker_coord2 ) << 2 ) + ( ( 0.0 == plucker_coord1 ) << 1 ) +
-        //                       ( 0.0 == plucker_coord0 )];
-
+/* Function to return the vertex with the lowest coordinates. To force the same
+   ray-edge computation, the Plücker test needs to use consistent edge
+   representation. This would be more simple with MOAB handles instead of
+   coordinates... */
+inline bool first(const Position& a, const Position& b)
+{
+  if (a[0] < b[0]) {
+    return true;
+  } else if (a[0] == b[0]) {
+    if (a[1] < b[1]) {
+      return true;
+    } else if (a[1] == b[1]) {
+      if (a[2] < b[2]) {
         return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
     }
+  } else {
+    return false;
+  }
+}
+
+double plucker_edge_test(const Position& vertexa, const Position& vertexb,
+  const Position& ray, const Position& ray_normal)
+{
+
+  double pip;
+  const double near_zero = 10 * std::numeric_limits<double>::epsilon();
+
+  if (first(vertexa, vertexb)) {
+    const Position edge = vertexb - vertexa;
+    const Position edge_normal = edge.cross(vertexa);
+    pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+  } else {
+    const Position edge = vertexa - vertexb;
+    const Position edge_normal = edge.cross(vertexb);
+    pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+    pip = -pip;
+  }
+
+  if (near_zero > fabs(pip))
+    pip = 0.0;
+
+  return pip;
+}
+
+bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
+  const Position& origin, const Position& direction, double& dist_out,
+  const double* neg_ray_len = nullptr, const int* orientation = nullptr)
+{
+  const double nonneg_ray_len = INFTY;
+  dist_out = INFTY;
+
+  const Position raya = direction;
+  const Position rayb = direction.cross(origin);
+
+  // Determine the value of the first Plucker coordinate from edge 0
+  double plucker_coord0 =
+    plucker_edge_test(vertices[0], vertices[1], raya, rayb);
+
+  // If orientation is set, confirm that sign of plucker_coordinate indicate
+  // correct orientation of intersection
+  if (orientation && (*orientation) * plucker_coord0 > 0) {
+    return EXIT_EARLY;
+  }
+
+  // Determine the value of the second Plucker coordinate from edge 1
+  double plucker_coord1 =
+    plucker_edge_test(vertices[1], vertices[2], raya, rayb);
+
+  // If orientation is set, confirm that sign of plucker_coordinate indicate
+  // correct orientation of intersection
+  if (orientation) {
+    if ((*orientation) * plucker_coord1 > 0) {
+      return EXIT_EARLY;
+    }
+    // If the orientation is not specified, all plucker_coords must be the same
+    // sign or zero.
+  } else if ((0.0 < plucker_coord0 && 0.0 > plucker_coord1) ||
+             (0.0 > plucker_coord0 && 0.0 < plucker_coord1)) {
+    return EXIT_EARLY;
+  }
+
+  // Determine the value of the second Plucker coordinate from edge 2
+  double plucker_coord2 =
+    plucker_edge_test(vertices[2], vertices[0], raya, rayb);
+
+  // If orientation is set, confirm that sign of plucker_coordinate indicate
+  // correct orientation of intersection
+  if (orientation) {
+    if ((*orientation) * plucker_coord2 > 0) {
+      return EXIT_EARLY;
+    }
+    // If the orientation is not specified, all plucker_coords must be the same
+    // sign or zero.
+  } else if ((0.0 < plucker_coord1 && 0.0 > plucker_coord2) ||
+             (0.0 > plucker_coord1 && 0.0 < plucker_coord2) ||
+             (0.0 < plucker_coord0 && 0.0 > plucker_coord2) ||
+             (0.0 > plucker_coord0 && 0.0 < plucker_coord2)) {
+    return EXIT_EARLY;
+  }
+
+  // check for coplanar case to avoid dividing by zero
+  if (0.0 == plucker_coord0 && 0.0 == plucker_coord1 && 0.0 == plucker_coord2) {
+    return EXIT_EARLY;
+  }
+
+  // get the distance to intersection
+  const double inverse_sum =
+    1.0 / (plucker_coord0 + plucker_coord1 + plucker_coord2);
+  assert(0.0 != inverse_sum);
+  const Position intersection(plucker_coord0 * inverse_sum * vertices[2] +
+                              plucker_coord1 * inverse_sum * vertices[0] +
+                              plucker_coord2 * inverse_sum * vertices[1]);
+
+  // To minimize numerical error, get index of largest magnitude direction.
+  int idx = 0;
+  double max_abs_dir = 0;
+  for (unsigned int i = 0; i < 3; ++i) {
+    if (fabs(direction[i]) > max_abs_dir) {
+      idx = i;
+      max_abs_dir = fabs(direction[i]);
+    }
+  }
+  const double dist = (intersection[idx] - origin[idx]) / direction[idx];
+
+  // is the intersection within distance limits?
+  // if( ( nonneg_ray_len && nonneg_ray_len < dist ) ||  // intersection is
+  // beyond positive limit
+  //     ( neg_ray_len && *neg_ray_len >= dist ) ||       // intersection is
+  //     behind negative limit ( !neg_ray_len && 0 > dist ) )
+  // {  // Unless a neg_ray_len is used, don't return negative distances
+  //     return EXIT_EARLY;
+  // }
+
+  dist_out = dist;
+
+  // if( type )
+  //     *type = type_list[( ( 0.0 == plucker_coord2 ) << 2 ) + ( ( 0.0 ==
+  //     plucker_coord1 ) << 1 ) +
+  //                       ( 0.0 == plucker_coord0 )];
+
+  return true;
+}
 
 // bool first(const Position& v0, const Position& v1) {
 //   if( v0[0] < v1[0] ) { return true; }
@@ -3048,7 +3044,8 @@ void MOABMesh::write(const std::string& base_filename) const
 //   }
 // }
 
-// double plucker_edge_test(const Position& v0, const Position& v1, const Position& u, const Position& ray_cross) {
+// double plucker_edge_test(const Position& v0, const Position& v1, const
+// Position& u, const Position& ray_cross) {
 //   double pip;
 //   if (first(v0, v1)) {
 //     const Position edge = v1 - v0;
@@ -3065,8 +3062,8 @@ void MOABMesh::write(const std::string& base_filename) const
 //   return pip;
 // }
 
-// IntersectionType plucker_intersect(const std::array<Position, 3> coords, const Position& r, const Direction& u,
-// double& dist_out) {
+// IntersectionType plucker_intersect(const std::array<Position, 3> coords,
+// const Position& r, const Direction& u, double& dist_out) {
 //   dist_out = INFTY;
 
 //   const Position ray_cross = u.cross(r);
@@ -3076,13 +3073,17 @@ void MOABMesh::write(const std::string& base_filename) const
 //   double plucker2 = plucker_edge_test(coords[2], coords[0], u, ray_cross);
 
 //   // check on the correct side of all edges
-//   if (plucker0 > 0.0 || plucker1 > 0.0 || plucker2 > 0.0) return IntersectionType::MISS;
+//   if (plucker0 > 0.0 || plucker1 > 0.0 || plucker2 > 0.0) return
+//   IntersectionType::MISS;
 
-//   if ( (0.0 < plucker1 && 0.0 > plucker2) || (0.0 > plucker1 && 0.0 < plucker2) ||
-//        (0.0 < plucker0 && 0.0 > plucker2) || (0.0 > plucker0 && 0.0 < plucker2) ) return IntersectionType::MISS;
+//   if ( (0.0 < plucker1 && 0.0 > plucker2) || (0.0 > plucker1 && 0.0 <
+//   plucker2) ||
+//        (0.0 < plucker0 && 0.0 > plucker2) || (0.0 > plucker0 && 0.0 <
+//        plucker2) ) return IntersectionType::MISS;
 
 //   // check for a copanar intersection
-//   if (plucker0 == 0.0 && plucker1 == 0.0 && plucker2 == 0.0) return IntersectionType::MISS;
+//   if (plucker0 == 0.0 && plucker1 == 0.0 && plucker2 == 0.0) return
+//   IntersectionType::MISS;
 
 //   // compute the distance to intersection
 //   const double inv_sum = 1.0 / (plucker0 + plucker1 + plucker2);
@@ -3108,7 +3109,6 @@ void MOABMesh::write(const std::string& base_filename) const
 
 //   return IntersectionType::INTERIOR;
 // }
-
 
 #ifdef LIBMESH
 
@@ -3400,7 +3400,8 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
   const auto& elem = get_element_from_bin(bin);
   const auto& tet = (const libMesh::Tet4&)elem;
   // write_message(fmt::format("Element ID: {}", elem.id()), 10);
-  // write_message(fmt::format("Element on boundary {}", elem.on_boundary()), 10);
+  // write_message(fmt::format("Element on boundary {}", elem.on_boundary()),
+  // 10);
 
   // auto ec_tmp = elem.centroid();
   // const Position elem_centroid {ec_tmp(0), ec_tmp(1), ec_tmp(2)};
@@ -3413,16 +3414,17 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
     std::array<Position, 3> coords;
     for (int j = 0; j < 3; j++) {
       const auto& node_ref = elem.node_ref(tet.side_nodes_map[i][j]);
-      coords[j] =  {node_ref(0), node_ref(1), node_ref(2)};
+      coords[j] = {node_ref(0), node_ref(1), node_ref(2)};
     }
 
     // for (int j = 0; j < side_ptr->n_nodes(); j++) {
-    //   write_message(fmt::format("Side {}, vertex {}: {} {} {}", i, j, coords[j].x, coords[j].y, coords[j].z), 10);
+    //   write_message(fmt::format("Side {}, vertex {}: {} {} {}", i, j,
+    //   coords[j].x, coords[j].y, coords[j].z), 10);
     // }
 
-    // check that the normal of this triangle is pointed toward the element centroid
-    // auto tc_tmp = side_ptr->centroid();
-    // const Position tri_center{tc_tmp(0), tc_tmp(1), tc_tmp(2)};
+    // check that the normal of this triangle is pointed toward the element
+    // centroid auto tc_tmp = side_ptr->centroid(); const Position
+    // tri_center{tc_tmp(0), tc_tmp(1), tc_tmp(2)};
 
     // get the normal of the triangle
     const Position v1 = coords[1] - coords[0];
@@ -3432,31 +3434,35 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
 
     // const Position tri_vec = norm(tri_center - elem_centroid);
 
-    // write_message(fmt::format("Normal dot prod w/ elem center: {}", tri_vec.dot(normal)), 10);
-    // write_message(fmt::format("Normal dot prod w/ ray dir: {}", normal.dot(u)), 10);
+    // write_message(fmt::format("Normal dot prod w/ elem center: {}",
+    // tri_vec.dot(normal)), 10); write_message(fmt::format("Normal dot prod w/
+    // ray dir: {}", normal.dot(u)), 10);
 
     // perform ray-triangle intersection
     hit_types[i] = plucker_ray_tri_intersect(coords, r, u, dists[i]);
 
     // write_message(fmt::format("Plucker Test Dist: {}", dists[i]), 10);
     // write_message(fmt::format("Hit Type: {}", hit_types[i]), 10);
-    if (dists[i] <= 0.0) dists[i] = INFTY;
+    if (dists[i] <= 0.0)
+      dists[i] = INFTY;
     // if not an exiting intersection, ignore
-    if (normal.dot(u) < 0.0) dists[i] = INFTY;
+    if (normal.dot(u) < 0.0)
+      dists[i] = INFTY;
 
     if (dists[i] < INFTY) {
       // move location to intersection and check hit
       double test_dist;
       plucker_ray_tri_intersect(coords, r + u * dists[i], u, test_dist);
-      // write_message(fmt::format("Distance at intersection: {}", test_dist), 10);
+      // write_message(fmt::format("Distance at intersection: {}", test_dist),
+      // 10);
     }
-
   }
 
   int idx_out = -1;
   double min_dist = INFTY;
   for (int i = 0; i < dists.size(); i++) {
-    if (!hit_types[i]) continue;
+    if (!hit_types[i])
+      continue;
     if (dists[i] < min_dist) {
       min_dist = dists[i];
       idx_out = i;
@@ -3471,23 +3477,28 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
 
   const auto& next_elem = elem.neighbor_ptr(idx_out);
 
-  if (!next_elem) return {dists[idx_out], {-1, -1, -1}};
+  if (!next_elem)
+    return {dists[idx_out], {-1, -1, -1}};
 
   // write_message(fmt::format("Dist to intersection: {}", dists[idx_out]), 10);
-  // write_message(fmt::format("Hit Type: {}", IntersectionTypeStrs[hit_types[idx_out]]), 10);
-  // write_message(fmt::format("Will move into bin: {}", get_bin_from_element(next_elem)), 10);
+  // write_message(fmt::format("Hit Type: {}",
+  // IntersectionTypeStrs[hit_types[idx_out]]), 10);
+  // write_message(fmt::format("Will move into bin: {}",
+  // get_bin_from_element(next_elem)), 10);
   // write_message("-------------------------------", 10);
 
   return {dists[idx_out], {get_bin_from_element(next_elem)}};
   return {INFTY, {-1, -1, -1}};
 }
 
-std::pair<double, int>
-LibMesh::distance_to_mesh(const Position& r, const Direction& u) const {
+std::pair<double, int> LibMesh::distance_to_mesh(
+  const Position& r, const Direction& u) const
+{
   return {100.0, 0};
 }
 
-bool LibMesh::bin_is_valid(int bin) const {
+bool LibMesh::bin_is_valid(int bin) const
+{
   return bin >= 0 && bin < n_bins();
 }
 

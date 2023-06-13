@@ -14,8 +14,8 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
-#include "openmc/neighbor_list.h"
 #include "openmc/mesh.h"
+#include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
 #include "openmc/universe.h"
@@ -320,7 +320,7 @@ public:
   int32_t universe_;        //!< Universe # this cell is in
   int32_t fill_;            //!< Universe or lattice # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC, MESH)
+  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC, MESH)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
@@ -361,16 +361,22 @@ struct CellInstanceItem {
 
 class MeshCell : public Cell {
 public:
-  MeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx) {
+  MeshCell(int32_t mesh, int32_t element_idx)
+    : mesh_(mesh), elem_idx_(element_idx)
+  {
     geom_type_ = GeometryType::MESH;
   };
 
-  virtual bool contains(Position r, Direction u, int32_t on_surface) const override {
+  virtual bool contains(
+    Position r, Direction u, int32_t on_surface) const override
+  {
     int mesh_bin = model::meshes[mesh_]->get_bin(r);
     return mesh_bin == elem_idx_;
   };
 
-  virtual std::pair<double, int32_t> distance(Position r, Direction u, int32_t on_surface, Particle* p) const override {
+  virtual std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface, Particle* p) const override
+  {
     // TODO: Make appropriate call for distance here
     // const auto& mesh = model::meshes[mesh_];
     // return mesh->distance_to_next_bin(r, u);
@@ -384,7 +390,6 @@ public:
 protected:
   int32_t mesh_;
   int32_t elem_idx_;
-
 };
 
 class CSGCell : public Cell {

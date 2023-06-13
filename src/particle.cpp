@@ -280,10 +280,11 @@ void Particle::event_cross_surface()
   surface() = boundary().surface_index;
   n_coord() = boundary().coord_level;
 
- // check to see if the particle is in a mesh universe
+  // check to see if the particle is in a mesh universe
   if (model::universes[coord(n_coord() - 1).universe]->geom_type() ==
       GeometryType::MESH) {
-    auto univ_ptr = dynamic_cast<MeshUniverse*>(model::universes[lowest_coord().universe].get());
+    auto univ_ptr = dynamic_cast<MeshUniverse*>(
+      model::universes[lowest_coord().universe].get());
     univ_ptr->next_cell(*this);
     return;
   }

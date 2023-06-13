@@ -1007,7 +1007,6 @@ void read_cells(pugi::xml_node node)
   read_dagmc_universes(node);
   read_mesh_universes(node);
 
-
   populate_universes();
 
   // Allocate the cell overlap count if necessary.
