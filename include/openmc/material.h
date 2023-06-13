@@ -220,6 +220,9 @@ private:
 // Non-member functions
 //==============================================================================
 
+//! Get a material index with name
+int32_t get_material_by_name(const std::string& mat_name);
+
 //! Calculate Sternheimer adjustment factor
 double sternheimer_adjustment(const vector<double>& f,
   const vector<double>& e_b_sq, double e_p_sq, double n_conduction,

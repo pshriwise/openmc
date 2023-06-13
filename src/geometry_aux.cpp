@@ -16,6 +16,7 @@
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/mesh.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
@@ -67,6 +68,7 @@ void read_geometry_xml()
 void read_geometry_xml(pugi::xml_node root)
 {
   // Read surfaces, cells, lattice
+  read_meshes(root);
   read_surfaces(root);
   read_cells(root);
   read_lattices(root);
@@ -292,6 +294,12 @@ int32_t find_root_universe()
     }
   }
 
+  for (const auto& univ : model::universes) {
+    if (univ->geom_type() == GeometryType::MESH) {
+      auto mesh_univ = dynamic_cast<MeshUniverse*>(univ.get());
+    }
+  }
+
   // Figure out which universe is not in the set.  This is the root universe.
   bool root_found {false};
   int32_t root_univ;
@@ -309,7 +317,7 @@ int32_t find_root_universe()
     }
   }
   if (!root_found)
-    fatal_error("Could not find a root universe.  Make sure "
+    fatal_error("Could not find a root universe. Make sure "
                 "there are no circular dependencies in the geometry.");
 
   return root_univ;
@@ -602,6 +610,8 @@ int maximum_levels(int32_t univ)
         int32_t next_univ = *it;
         levels_below = std::max(levels_below, maximum_levels(next_univ));
       }
+      if (lat.outer_ != NO_OUTER_UNIVERSE)
+        levels_below = std::max(levels_below, maximum_levels(lat.outer_));
     }
   }
 
