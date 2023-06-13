@@ -43,7 +43,6 @@ namespace openmc {
 
 enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
-
 enum IntersectionType {
   MISS = 0,
   INTERIOR,
@@ -54,7 +53,6 @@ enum IntersectionType {
   NODE1,
   NODE2
 };
-
 
 //==============================================================================
 // Global variables
@@ -202,7 +200,10 @@ public:
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
 
-  virtual MeshStructure structure() const override { return MeshStructure::STRUCTURED; }
+  virtual MeshStructure structure() const override
+  {
+    return MeshStructure::STRUCTURED;
+  }
 
   using MeshIndex = std::array<int, 3>;
 
@@ -562,7 +563,10 @@ public:
   virtual std::string get_mesh_type() const override;
 
   // Overridden Methods
-  virtual MeshStructure structure() const override { return MeshStructure::UNSTRUCTURED; }
+  virtual MeshStructure structure() const override
+  {
+    return MeshStructure::UNSTRUCTURED;
+  }
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;

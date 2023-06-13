@@ -107,6 +107,5 @@ private:
 
 void read_mesh_universes(pugi::xml_node node);
 
-
 } // namespace openmc
 #endif // OPENMC_UNIVERSE_H

@@ -1303,10 +1303,13 @@ double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
   return delta - w_sq * (1.0 - beta_sq);
 }
 
-int32_t get_material_by_name(const std::string& mat_name) {
+int32_t get_material_by_name(const std::string& mat_name)
+{
   for (int i = 0; i < model::materials.size(); i++) {
     const auto& material = model::materials[i];
-    if (material->name() == mat_name) { return i; }
+    if (material->name() == mat_name) {
+      return i;
+    }
   }
   return -1;
 }

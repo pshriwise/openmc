@@ -314,8 +314,7 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
     auto lat_idx = coord.lattice_index();
     write_message(
       fmt::format("    Crossing lattice {}. Current position ({},{},{}). r={}",
-        lat.id_, lat_idx[0], lat_idx[1], lat_idx[2],
-        p.r()),
+        lat.id_, lat_idx[0], lat_idx[1], lat_idx[2], p.r()),
       1);
   }
 
@@ -380,16 +379,17 @@ BoundaryInfo distance_to_boundary(Particle& p)
     const Direction& u {coord.u};
     Cell& c {*model::cells[coord.cell]};
 
-   // handle mesh geometry
+    // handle mesh geometry
     if (model::universes[coord.universe]->geom_type() == GeometryType::MESH) {
 
       const auto mesh_univ =
         dynamic_cast<MeshUniverse*>(model::universes[coord.universe].get());
       const auto& mesh = model::meshes[mesh_univ->mesh()];
-      auto mesh_dist =
-        dynamic_cast<LibMesh*>(mesh.get())->distance_to_next_bin(coord.mesh_cell_index(), r, u);
-      if (info.distance == INFINITY || (info.distance - mesh_dist.first) / info.distance >=
-          FP_REL_PRECISION) {
+      auto mesh_dist = dynamic_cast<LibMesh*>(mesh.get())
+                         ->distance_to_next_bin(coord.mesh_cell_index(), r, u);
+      if (info.distance == INFINITY ||
+          (info.distance - mesh_dist.first) / info.distance >=
+            FP_REL_PRECISION) {
         info.distance = mesh_dist.first;
         info.lattice_translation = mesh_dist.second;
         info.surface_index = 0;

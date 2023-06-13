@@ -74,7 +74,6 @@ BoundingBox Universe::bounding_box() const
   return bbox;
 }
 
-
 //==============================================================================
 // MeshUniverse implementation
 //==============================================================================
@@ -107,7 +106,8 @@ MeshUniverse::MeshUniverse(pugi::xml_node node)
   create_cells(node);
 }
 
-void MeshUniverse::create_unstructured_mesh_cells() {
+void MeshUniverse::create_unstructured_mesh_cells()
+{
   // get the openmc::LibMesh mesh and libmesh mesh
   const auto& mesh = model::meshes[mesh_];
   LibMesh* mesh_ptr = dynamic_cast<LibMesh*>(mesh.get());
@@ -124,9 +124,11 @@ void MeshUniverse::create_unstructured_mesh_cells() {
     std::string lower_name = subdomain_name;
     to_lower(lower_name);
 
-    if (subdomain_name == "") continue;
+    if (subdomain_name == "")
+      continue;
     // get the elements for this subdomain id
-    auto subdomain_elements = lmesh->active_subdomain_elements_ptr_range(subdomain_id);
+    auto subdomain_elements =
+      lmesh->active_subdomain_elements_ptr_range(subdomain_id);
 
     // determine the material ID to assign for this block
     int32_t subdomain_mat_id = MATERIAL_VOID;
@@ -135,13 +137,20 @@ void MeshUniverse::create_unstructured_mesh_cells() {
       subdomain_mat_id = MATERIAL_VOID;
     } else if (mat_by_name_idx != -1) {
       subdomain_mat_id = model::materials[mat_by_name_idx]->id();
-      write_message(fmt::format("Assigning subdomain {} by name: {} with material ID {}.", subdomain_id, subdomain_name, subdomain_mat_id), 10);
-    } else if (model::material_map.find(subdomain_id) != model::material_map.end()) {
+      write_message(
+        fmt::format("Assigning subdomain {} by name: {} with material ID {}.",
+          subdomain_id, subdomain_name, subdomain_mat_id),
+        10);
+    } else if (model::material_map.find(subdomain_id) !=
+               model::material_map.end()) {
       // if no matching name is found, set cell materials by domain id
-      write_message(fmt::format("Assigning subdomain {} by ID.", subdomain_id, subdomain_name), 10);
+      write_message(fmt::format("Assigning subdomain {} by ID.", subdomain_id,
+                      subdomain_name),
+        10);
       subdomain_mat_id = subdomain_id;
     } // else {
-    //   fatal_error(fmt::format("Could not find material by name ({}) or ID ({}).", subdomain_name, subdomain_id));
+    //   fatal_error(fmt::format("Could not find material by name ({}) or ID
+    //   ({}).", subdomain_name, subdomain_id));
     // }
 
     int n_subdomain_elems {0};
@@ -156,7 +165,8 @@ void MeshUniverse::create_unstructured_mesh_cells() {
     std::cout << fmt::format("{} elements\n", n_subdomain_elems);
   }
 
-  std::cout << fmt::format("Assigned materials to {} elements.\n", mat_elements);
+  std::cout << fmt::format(
+    "Assigned materials to {} elements.\n", mat_elements);
 }
 
 void MeshUniverse::create_cells(pugi::xml_node node)
@@ -166,13 +176,16 @@ void MeshUniverse::create_cells(pugi::xml_node node)
     cell_fills = get_node_array<std::string>(node, "fills");
   }
 
-  bool structured_mesh = model::meshes[mesh_]->structure() == MeshStructure::STRUCTURED;
+  bool structured_mesh =
+    model::meshes[mesh_]->structure() == MeshStructure::STRUCTURED;
 
   int n_bins = model::meshes[mesh_]->n_bins();
-  if (cell_fills.size() != 1 && cell_fills.size() != n_bins && structured_mesh) {
-    fatal_error(fmt::format("Invalid number of cell fills provided for structured mesh "
-                            "universe {}. Must be 1 or {}",
-      id_, n_bins));
+  if (cell_fills.size() != 1 && cell_fills.size() != n_bins &&
+      structured_mesh) {
+    fatal_error(
+      fmt::format("Invalid number of cell fills provided for structured mesh "
+                  "universe {}. Must be 1 or {}",
+        id_, n_bins));
   }
 
   cells_.reserve(n_bins);
@@ -265,48 +278,39 @@ void MeshUniverse::next_cell(Particle& p) const
   const auto mesh = dynamic_cast<LibMesh*>(model::meshes[mesh_].get());
 
   int32_t next_mesh_idx = p.boundary().lattice_translation[0];
-    // mesh->get_bin_from_indices(p.boundary().lattice_translation);
+  // mesh->get_bin_from_indices(p.boundary().lattice_translation);
   int32_t next_cell_idx {C_NONE};
   if (mesh->bin_is_valid(next_mesh_idx)) {
-    if (p.coord(p.n_coord() -1).mesh_cell_index() == C_NONE) {
+    if (p.coord(p.n_coord() - 1).mesh_cell_index() == C_NONE) {
       write_message(
-        fmt::format("\tParticle {} moving into the mesh. \n\tPosition: {} {} {}",
-        p.id(),
-        p.r()[0],
-        p.r()[1],
-        p.r()[2]),
-      10
-      );
+        fmt::format(
+          "\tParticle {} moving into the mesh. \n\tPosition: {} {} {}", p.id(),
+          p.r()[0], p.r()[1], p.r()[2]),
+        10);
       // bool in_mesh;
       // auto ijk = mesh->get_indices(p.r() + p.u() * 0.01, in_mesh);
       // if (!in_mesh) {
-      //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+      //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0],
+      //   ijk[1], ijk[2]));
       // }
     }
-      write_message(
-        fmt::format("\nMoving into structured mesh cell: {} {} {}",
+    write_message(fmt::format("\nMoving into structured mesh cell: {} {} {}",
                     p.boundary().lattice_translation[0],
                     p.boundary().lattice_translation[1],
                     p.boundary().lattice_translation[2]),
-        10
-      );
+      10);
     next_cell_idx = cells_[next_mesh_idx];
   } else {
     write_message(
-      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} {} \n\tDirection: {} {} {}",
-                  p.id(),
-                  p.r()[0],
-                  p.r()[1],
-                  p.r()[2],
-                  p.u()[0],
-                  p.u()[1],
-                  p.u()[2]),
-      10
-    );
+      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
+                  "{} \n\tDirection: {} {} {}",
+        p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
+      10);
     // bool in_mesh;
     // auto ijk = mesh->get_indices(p.r() + p.u() * 0.1, in_mesh);
     // if (in_mesh) {
-    //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0], ijk[1], ijk[2]));
+    //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0],
+    //   ijk[1], ijk[2]));
     // }
     // kill particle exiting mesh for now
     p.wgt() = 0.0;

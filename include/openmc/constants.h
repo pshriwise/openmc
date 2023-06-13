@@ -51,8 +51,7 @@ constexpr double TINY_BIT {1e-8};
 constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
 constexpr double FP_COINCIDENT {1e-12};
-constexpr double NEAR_ZERO {10*std::numeric_limits<double>::epsilon()};
-
+constexpr double NEAR_ZERO {10 * std::numeric_limits<double>::epsilon()};
 
 // Coincidence tolerances
 constexpr double TORUS_TOL {1e-10};
@@ -349,7 +348,6 @@ enum class RunMode {
 enum class GeometryType { CSG, DAG, MESH };
 
 enum class MeshStructure { STRUCTURED, UNSTRUCTURED };
-
 
 } // namespace openmc
 
