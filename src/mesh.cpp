@@ -3212,7 +3212,7 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
 Position LibMesh::centroid(int bin) const
 {
   const auto& elem = this->get_element_from_bin(bin);
-  auto centroid = elem.vertex_average();
+  auto centroid = elem.centroid();
   return {centroid(0), centroid(1), centroid(2)};
 }
 

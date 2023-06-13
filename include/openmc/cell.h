@@ -318,7 +318,7 @@ public:
   std::string name_;        //!< User-defined name
   Fill type_;               //!< Material, universe, or lattice
   int32_t universe_;        //!< Universe # this cell is in
-  int32_t fill_;            //!< Universe or lattice # filling this cell
+  int32_t fill_ {C_NONE};   //!< Universe or lattice # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
   GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC, MESH)
 
@@ -365,6 +365,7 @@ public:
     : mesh_(mesh), elem_idx_(element_idx)
   {
     geom_type_ = GeometryType::MESH;
+
   };
 
   virtual bool contains(
