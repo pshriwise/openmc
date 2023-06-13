@@ -7,6 +7,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
+#include "openmc/universe.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

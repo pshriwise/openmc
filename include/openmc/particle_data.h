@@ -89,8 +89,22 @@ public:
   Direction u; //!< particle direction
   int cell {-1};
   int universe {-1};
-  int lattice {-1};
-  array<int, 3> lattice_i {{-1, -1, -1}};
+
+  int lattice_or_mesh_bin {-1};
+  array<int, 3> lattice_or_mesh_idx {{-1, -1, -1}};
+
+  int& mesh_cell_index() { return lattice_or_mesh_bin; }
+  int mesh_cell_index() const { return lattice_or_mesh_bin; }
+
+  int& lattice() { return lattice_or_mesh_bin; }
+  int lattice() const { return lattice_or_mesh_bin; }
+
+  array<int, 3>& mesh_index() { return lattice_or_mesh_idx; }
+  array<int, 3> mesh_index() const { return lattice_or_mesh_idx; }
+
+  array<int, 3>& lattice_index() { return lattice_or_mesh_idx; }
+  array<int, 3> lattice_index() const { return lattice_or_mesh_idx; }
+
   bool rotated {false}; //!< Is the level rotated?
 };
 

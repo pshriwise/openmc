@@ -45,6 +45,19 @@ namespace openmc {
 
 enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
+
+enum IntersectionType {
+  MISS = 0,
+  INTERIOR,
+  EDGE0,
+  EDGE1,
+  EDGE2,
+  NODE0,
+  NODE1,
+  NODE2
+};
+
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -82,8 +95,11 @@ public:
   virtual ~Mesh() = default;
 
   // Methods
+
   //! Perform any preparation needed to support use in mesh filters
   virtual void prepare_for_tallies() {};
+
+  virtual MeshStructure structure() const = 0;
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -117,6 +133,24 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
+  // //! Determine which mesh bin the particle will enter next
+  // //
+  // //! \param[in] bin Flat index to the current mesh bin
+  // //! \param[in] r Current position of the particle
+  // //! \param[in] u Particle direction
+  // //! \returns distance and the ijk index to the next mesh cell
+  // virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+  //   int bin, Position r, const Direction& u) const = 0;
+
+  // //! Determine the distance to a point in the mesh
+  // //
+  // //! \param[in] index ijk value of the current mesh
+  // //! \param[in] r Current position of the particle
+  // //! \param[in] u Particle direction
+  // //! \returns distance to mesh entry and bin entered
+  // virtual std::pair<double, int> distance_to_mesh(
+  //   const Position& r, const Direction& u) const = 0;
+
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
@@ -133,6 +167,9 @@ public:
 
   //! Set the mesh ID
   void set_id(int32_t id = -1);
+
+  //! Indicate if a bin value is valid
+  bool bin_is_valid(int bin) const;
 
   //! Write mesh data to an HDF5 group
   //
@@ -195,6 +232,8 @@ public:
   StructuredMesh() = default;
   StructuredMesh(pugi::xml_node node) : Mesh {node} {};
   virtual ~StructuredMesh() = default;
+
+  virtual MeshStructure structure() const override { return MeshStructure::STRUCTURED; }
 
   using MeshIndex = std::array<int, 3>;
 
@@ -312,7 +351,7 @@ public:
   //! \return MeshDistance struct with closest distance, next cell index in
   //! i-direction and min/max surface indicator
   virtual MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const = 0;
+    const Position& r, const Direction& u, double l) const = 0;
 
   //! Get a label for the mesh bin
   std::string bin_label(int bin) const override;
@@ -596,6 +635,7 @@ public:
   virtual std::string get_mesh_type() const override;
 
   // Overridden Methods
+  virtual MeshStructure structure() const override { return MeshStructure::UNSTRUCTURED; }
 
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
@@ -699,6 +739,9 @@ public:
 
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
+
+  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+    int bin, int prev_bin, Position r, const Direction& u) const;
 
   int get_bin(Position r) const override;
 
@@ -864,6 +907,13 @@ public:
     vector<int>& bins, vector<double>& lengths) const override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
+  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+    int bin, Position r, const Direction& u) const;
+
+  virtual std::pair<double, int> distance_to_mesh(
+    const Position& r, const Direction& u) const;
+
+  virtual bool bin_is_valid(int bin) const;
 
   int get_bin(Position r) const override;
 
@@ -899,7 +949,12 @@ public:
   //! \return Volume of the bin
   double volume(int bin) const override;
 
+  const libMesh::MeshBase* libmesh_mesh() const { return m_; }
+
   libMesh::MeshBase* mesh_ptr() const { return m_; };
+
+  //! Translate an element pointer to a bin index
+  int get_bin_from_element(const libMesh::Elem* elem) const;
 
 private:
   void initialize() override;
@@ -909,9 +964,6 @@ private:
 
   //! Translate a bin value to an element reference
   const libMesh::Elem& get_element_from_bin(int bin) const;
-
-  //! Translate an element pointer to a bin index
-  int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_ =
