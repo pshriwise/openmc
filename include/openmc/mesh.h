@@ -119,24 +119,6 @@ public:
   virtual void surface_bins_crossed(
     Position r0, Position r1, const Direction& u, vector<int>& bins) const = 0;
 
-  // //! Determine which mesh bin the particle will enter next
-  // //
-  // //! \param[in] bin Flat index to the current mesh bin
-  // //! \param[in] r Current position of the particle
-  // //! \param[in] u Particle direction
-  // //! \returns distance and the ijk index to the next mesh cell
-  // virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
-  //   int bin, Position r, const Direction& u) const = 0;
-
-  // //! Determine the distance to a point in the mesh
-  // //
-  // //! \param[in] index ijk value of the current mesh
-  // //! \param[in] r Current position of the particle
-  // //! \param[in] u Particle direction
-  // //! \returns distance to mesh entry and bin entered
-  // virtual std::pair<double, int> distance_to_mesh(
-  //   const Position& r, const Direction& u) const = 0;
-
   //! Get bin at a given position in space
   //
   //! \param[in] r Position to get bin for
@@ -834,9 +816,21 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
+  //! Determine which mesh bin the particle will enter next
+  //
+  //! \param[in] bin Flat index to the current mesh bin
+  //! \param[in] r Current position of the particle
+  //! \param[in] u Particle direction
+  //! \returns distance and the ijk index to the next mesh cell
   virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
     int bin, Position r, const Direction& u) const;
 
+  //! Determine the distance to a point in the mesh
+  //
+  //! \param[in] index ijk value of the current mesh
+  //! \param[in] r Current position of the particle
+  //! \param[in] u Particle direction
+  //! \returns distance to mesh entry and bin entered
   virtual std::pair<double, int> distance_to_mesh(
     const Position& r, const Direction& u) const;
 
