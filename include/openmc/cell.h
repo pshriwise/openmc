@@ -328,7 +328,6 @@ public:
     : mesh_(mesh), elem_idx_(element_idx)
   {
     geom_type_ = GeometryType::MESH;
-
   };
 
   virtual bool contains(
