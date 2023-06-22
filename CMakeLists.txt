@@ -352,6 +352,7 @@ list(APPEND libopenmc_SOURCES
   src/finalize.cpp
   src/geometry.cpp
   src/geometry_aux.cpp
+  src/geom_util.cpp
   src/hdf5_interface.cpp
   src/initialize.cpp
   src/lattice.cpp
