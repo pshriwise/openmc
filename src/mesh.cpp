@@ -3414,7 +3414,10 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
     // perform ray-triangle intersection
     hit_types[i] = plucker_ray_tri_intersect(coords, r, u, dists[i]);
 
-    if (dists[i] <= 0.0) dists[i] = INFTY;
+    // treat negative distances as a miss
+    if (dists[i] <= 0.0)
+      dists[i] = INFTY;
+
     // if not an exiting intersection, ignore
     if (normal.dot(u) < 0.0)
       dists[i] = INFTY;
