@@ -79,6 +79,8 @@ BoundingBox Universe::bounding_box() const
 // MeshUniverse implementation
 //==============================================================================
 
+#ifdef LIBMESH
+
 MeshUniverse::MeshUniverse(pugi::xml_node node)
 {
   geom_type_ = GeometryType::MESH;
@@ -339,6 +341,8 @@ void MeshUniverse::next_cell(Particle& p) const
   return;
 }
 
+#endif
+
 //==============================================================================
 // UniversePartitioner implementation
 //==============================================================================
@@ -482,13 +486,13 @@ const vector<int32_t>& UniversePartitioner::get_cells(
 
 void read_mesh_universes(pugi::xml_node node)
 {
-  vector<int> mesh_universe_ids;
+  #ifdef LIBMESH
+  int n_univs = 0;
   for (pugi::xml_node mesh_univ_node : node.children("mesh_universe")) {
     model::universes.push_back(std::make_unique<MeshUniverse>(mesh_univ_node));
-    mesh_universe_ids.push_back(model::universes.back()->id_);
-    model::universe_map[model::universes.back()->id_] =
-      model::universes.size() - 1;
+    model::universe_map[model::universes.back()->id_] = n_univs++;
   }
+  #endif
 }
 
 } // namespace openmc

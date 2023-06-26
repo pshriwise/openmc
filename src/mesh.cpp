@@ -2879,7 +2879,6 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #endif
 
-
 #ifdef LIBMESH
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
