@@ -294,11 +294,13 @@ int32_t find_root_universe()
     }
   }
 
-  for (const auto& univ : model::universes) {
-    if (univ->geom_type() == GeometryType::MESH) {
-      auto mesh_univ = dynamic_cast<MeshUniverse*>(univ.get());
-    }
-  }
+  // #ifdef LIBMESH
+  // for (const auto& univ : model::universes) {
+  //   if (univ->geom_type() == GeometryType::MESH) {
+  //     auto mesh_univ = dynamic_cast<MeshUniverse*>(univ.get());
+  //   }
+  // }
+  // #endif
 
   // Figure out which universe is not in the set.  This is the root universe.
   bool root_found {false};

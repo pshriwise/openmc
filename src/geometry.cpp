@@ -379,24 +379,25 @@ BoundaryInfo distance_to_boundary(Particle& p)
     const Direction& u {coord.u};
     Cell& c {*model::cells[coord.cell]};
 
-    // handle mesh geometry
-    if (model::universes[coord.universe]->geom_type() == GeometryType::MESH) {
+   // handle mesh geometry
+#ifdef LIBMESH
+  if (model::universes[coord.universe]->geom_type() == GeometryType::MESH) {
+    const auto mesh_univ =
+      dynamic_cast<MeshUniverse*>(model::universes[coord.universe].get());
+    const auto& mesh = model::meshes[mesh_univ->mesh()];
+    auto mesh_dist =
+      dynamic_cast<LibMesh*>(mesh.get())->distance_to_next_bin(coord.mesh_cell_index(), r, u);
 
-      const auto mesh_univ =
-        dynamic_cast<MeshUniverse*>(model::universes[coord.universe].get());
-      const auto& mesh = model::meshes[mesh_univ->mesh()];
-      auto mesh_dist = dynamic_cast<LibMesh*>(mesh.get())
-                         ->distance_to_next_bin(coord.mesh_cell_index(), r, u);
-      if (info.distance == INFINITY ||
-          (info.distance - mesh_dist.first) / info.distance >=
-            FP_REL_PRECISION) {
-        info.distance = mesh_dist.first;
-        info.lattice_translation = mesh_dist.second;
-        info.surface_index = 0;
-        info.coord_level = i + 1;
-      }
-      return info;
+    if (info.distance == INFINITY || (info.distance - mesh_dist.first) / info.distance >=
+        FP_REL_PRECISION) {
+      info.distance = mesh_dist.first;
+      info.lattice_translation = mesh_dist.second;
+      info.surface_index = 0;
+      info.coord_level = i + 1;
     }
+    return info;
+  }
+#endif
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p.surface(), &p);

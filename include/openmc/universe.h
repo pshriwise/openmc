@@ -47,6 +47,8 @@ protected:
   GeometryType geom_type_ = GeometryType::CSG;
 };
 
+#ifdef LIBMESH
+
 class MeshUniverse : public Universe {
 public:
   MeshUniverse() { geom_type_ = GeometryType::MESH; };
@@ -73,6 +75,8 @@ protected:
   int32_t mesh_;
   int32_t outer_ {C_NONE};
 };
+
+#endif
 
 //==============================================================================
 //! Speeds up geometry searches by grouping cells in a search tree.

@@ -263,6 +263,7 @@ void Particle::event_cross_surface()
   }
   n_coord_last() = n_coord();
 
+  #ifdef LIBMESH
   // check to see if the particle is in a mesh universe
   if (model::universes[coord(n_coord() - 1).universe]->geom_type() ==
       GeometryType::MESH) {
@@ -271,6 +272,7 @@ void Particle::event_cross_surface()
     univ_ptr->next_cell(*this);
     return;
   }
+  #endif
 
   if (boundary().lattice_translation[0] != 0 ||
       boundary().lattice_translation[1] != 0 ||
