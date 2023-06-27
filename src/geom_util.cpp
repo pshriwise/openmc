@@ -8,36 +8,29 @@ namespace openmc {
 
 constexpr bool EXIT_EARLY = false;
 
-double plucker_edge_test(const Position& vertexa,
-                         const Position& vertexb,
-                         const Position& ray,
-                         const Position& ray_normal)
+double plucker_edge_test(const Position& vertexa, const Position& vertexb,
+  const Position& ray, const Position& ray_normal)
 {
   double pip;
-  const double near_zero = 10 * std::numeric_limits< double >::epsilon();
-  if( lower( vertexa, vertexb ) )
-  {
-      const Position edge = vertexb - vertexa;
-      const Position edge_normal = edge.cross(vertexa);
-      pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+  const double near_zero = 10 * std::numeric_limits<double>::epsilon();
+  if (lower(vertexa, vertexb)) {
+    const Position edge = vertexb - vertexa;
+    const Position edge_normal = edge.cross(vertexa);
+    pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+  } else {
+    const Position edge = vertexa - vertexb;
+    const Position edge_normal = edge.cross(vertexb);
+    pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+    pip = -pip;
   }
-  else
-  {
-      const Position edge = vertexa - vertexb;
-      const Position edge_normal = edge.cross(vertexb);
-      pip = ray.dot(edge_normal) + ray_normal.dot(edge);
-      pip = -pip;
-  }
-  if( near_zero > fabs( pip ) ) pip = 0.0;
+  if (near_zero > fabs(pip))
+    pip = 0.0;
   return pip;
 }
 
 bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
-                               const Position& origin,
-                               const Direction& direction,
-                               double& dist_out,
-                               const double* neg_ray_len,
-                               const int* orientation)
+  const Position& origin, const Direction& direction, double& dist_out,
+  const double* neg_ray_len, const int* orientation)
 {
   const double nonneg_ray_len = INFTY;
   dist_out = INFTY;
@@ -46,54 +39,63 @@ bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
   const Position rayb = direction.cross(origin);
 
   // Determine the value of the first Plucker coordinate from edge 0
-  double plucker_coord0 = plucker_edge_test(vertices[0], vertices[1], raya, rayb);
+  double plucker_coord0 =
+    plucker_edge_test(vertices[0], vertices[1], raya, rayb);
 
   // If orientation is set, confirm that sign of plucker_coordinate indicate
   // correct orientation of intersection
-  if( orientation && ( *orientation ) * plucker_coord0 > 0 ) { return EXIT_EARLY; }
+  if (orientation && (*orientation) * plucker_coord0 > 0) {
+    return EXIT_EARLY;
+  }
 
   // Determine the value of the second Plucker coordinate from edge 1
-  double plucker_coord1 = plucker_edge_test(vertices[1], vertices[2], raya, rayb);
+  double plucker_coord1 =
+    plucker_edge_test(vertices[1], vertices[2], raya, rayb);
 
   // If orientation is set, confirm that sign of plucker_coordinate indicate
   // correct orientation of intersection
-  if( orientation )
-  {
-      if( ( *orientation ) * plucker_coord1 > 0 ) { return EXIT_EARLY; }
-      // If the orientation is not specified, all plucker_coords must be the same sign or
-      // zero.
-  }
-  else if( ( 0.0 < plucker_coord0 && 0.0 > plucker_coord1 ) || ( 0.0 > plucker_coord0 && 0.0 < plucker_coord1 ) )
-  {
+  if (orientation) {
+    if ((*orientation) * plucker_coord1 > 0) {
       return EXIT_EARLY;
+    }
+    // If the orientation is not specified, all plucker_coords must be the same
+    // sign or zero.
+  } else if ((0.0 < plucker_coord0 && 0.0 > plucker_coord1) ||
+             (0.0 > plucker_coord0 && 0.0 < plucker_coord1)) {
+    return EXIT_EARLY;
   }
 
   // Determine the value of the second Plucker coordinate from edge 2
-  double plucker_coord2 = plucker_edge_test(vertices[2], vertices[0], raya, rayb);
+  double plucker_coord2 =
+    plucker_edge_test(vertices[2], vertices[0], raya, rayb);
 
   // If orientation is set, confirm that sign of plucker_coordinate indicate
   // correct orientation of intersection
-  if( orientation )
-  {
-      if( ( *orientation ) * plucker_coord2 > 0 ) { return EXIT_EARLY; }
-      // If the orientation is not specified, all plucker_coords must be the same sign or
-      // zero.
-  }
-  else if( ( 0.0 < plucker_coord1 && 0.0 > plucker_coord2 ) || ( 0.0 > plucker_coord1 && 0.0 < plucker_coord2 ) ||
-           ( 0.0 < plucker_coord0 && 0.0 > plucker_coord2 ) || ( 0.0 > plucker_coord0 && 0.0 < plucker_coord2 ) )
-  {
+  if (orientation) {
+    if ((*orientation) * plucker_coord2 > 0) {
       return EXIT_EARLY;
+    }
+    // If the orientation is not specified, all plucker_coords must be the same
+    // sign or zero.
+  } else if ((0.0 < plucker_coord1 && 0.0 > plucker_coord2) ||
+             (0.0 > plucker_coord1 && 0.0 < plucker_coord2) ||
+             (0.0 < plucker_coord0 && 0.0 > plucker_coord2) ||
+             (0.0 > plucker_coord0 && 0.0 < plucker_coord2)) {
+    return EXIT_EARLY;
   }
 
   // check for coplanar case to avoid dividing by zero
-  if( 0.0 == plucker_coord0 && 0.0 == plucker_coord1 && 0.0 == plucker_coord2 ) { return EXIT_EARLY; }
+  if (0.0 == plucker_coord0 && 0.0 == plucker_coord1 && 0.0 == plucker_coord2) {
+    return EXIT_EARLY;
+  }
 
   // get the distance to intersection
-  const double inverse_sum = 1.0 / ( plucker_coord0 + plucker_coord1 + plucker_coord2 );
-  assert( 0.0 != inverse_sum );
-  const Position intersection( plucker_coord0 * inverse_sum * vertices[2] +
-                               plucker_coord1 * inverse_sum * vertices[0] +
-                               plucker_coord2 * inverse_sum * vertices[1] );
+  const double inverse_sum =
+    1.0 / (plucker_coord0 + plucker_coord1 + plucker_coord2);
+  assert(0.0 != inverse_sum);
+  const Position intersection(plucker_coord0 * inverse_sum * vertices[2] +
+                              plucker_coord1 * inverse_sum * vertices[0] +
+                              plucker_coord2 * inverse_sum * vertices[1]);
 
   // To minimize numerical error, get index of largest magnitude direction.
   int idx = 0;
@@ -118,7 +120,8 @@ bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
   dist_out = dist;
 
   // if( type )
-  //     *type = type_list[( ( 0.0 == plucker_coord2 ) << 2 ) + ( ( 0.0 == plucker_coord1 ) << 1 ) +
+  //     *type = type_list[( ( 0.0 == plucker_coord2 ) << 2 ) + ( ( 0.0 ==
+  //     plucker_coord1 ) << 1 ) +
   //                       ( 0.0 == plucker_coord0 )];
 
   return true;
