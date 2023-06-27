@@ -218,10 +218,13 @@ inline Position norm(const Position& a)
 
 std::ostream& operator<<(std::ostream& os, Position a);
 
-//! Determine if a position is lexicographically higher or lower than another position
-inline bool lower (const Position &a, const Position& b)
+//! Determine if a position is lexicographically higher or lower than another
+//! position
+inline bool lower(const Position& a, const Position& b)
 {
-  for (int i = 0; i < 3; i++) if (a[i] != b[i]) return a[i] < b[i];
+  for (int i = 0; i < 3; i++)
+    if (a[i] != b[i])
+      return a[i] < b[i];
   return false;
 }
 
