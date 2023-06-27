@@ -274,6 +274,11 @@ bool MeshUniverse::find_cell(Particle& p) const
   return true;
 }
 
+void MeshUniverse::set_boundary_conditions()
+{
+
+}
+
 void MeshUniverse::next_cell(Particle& p) const
 {
   auto& coord = p.coord(p.n_coord() - 1);

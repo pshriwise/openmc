@@ -64,6 +64,8 @@ public:
 
   void create_unstructured_mesh_cells();
 
+  void set_boundary_conditions();
+  
   // accessors
   int32_t& mesh() { return mesh_; }
   int32_t mesh() const { return mesh_; }
