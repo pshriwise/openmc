@@ -2150,12 +2150,6 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   }
 };
 
-std::pair<double, std::array<int, 3>> MOABMesh::distance_to_next_bin(
-  int bin, Position r, const Direction& u) const
-{
-  return {INFTY, {-1, -1, -1}};
-}
-
 moab::EntityHandle MOABMesh::get_tet(const Position& r) const
 {
   moab::CartVect pos(r.x, r.y, r.z);
