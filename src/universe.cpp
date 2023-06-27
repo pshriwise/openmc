@@ -486,13 +486,13 @@ const vector<int32_t>& UniversePartitioner::get_cells(
 
 void read_mesh_universes(pugi::xml_node node)
 {
-  #ifdef LIBMESH
+#ifdef LIBMESH
   int n_univs = 0;
   for (pugi::xml_node mesh_univ_node : node.children("mesh_universe")) {
     model::universes.push_back(std::make_unique<MeshUniverse>(mesh_univ_node));
     model::universe_map[model::universes.back()->id_] = n_univs++;
   }
-  #endif
+#endif
 }
 
 } // namespace openmc
