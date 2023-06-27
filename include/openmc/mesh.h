@@ -726,15 +726,6 @@ public:
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
-  //! Determine which mesh bin the particle will enter next
-  //
-  //! \param[in] bin Flat index to the current mesh bin
-  //! \param[in] r Current position of the particle
-  //! \param[in] u Particle direction
-  //! \returns distance and the ijk index to the next mesh cell
-  std::pair<double, std::array<int, 3>> distance_to_next_bin(
-    int bin, Position r, const Direction& u) const;
-
   int get_bin(Position r) const override;
 
   int n_bins() const override;
