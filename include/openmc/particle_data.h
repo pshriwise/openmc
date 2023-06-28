@@ -207,11 +207,20 @@ struct BoundaryInfo {
   array<int, 3>
     mesh_or_lattice_translation {}; //!< which way lattice indices will change
 
-  const array<int, 3>& lattice_translation() const { return mesh_or_lattice_translation; }
+  const array<int, 3>& lattice_translation() const
+  {
+    return mesh_or_lattice_translation;
+  }
   array<int, 3>& lattice_translation() { return mesh_or_lattice_translation; }
-  int lattice_translation(int i) const { return mesh_or_lattice_translation[i]; }
+  int lattice_translation(int i) const
+  {
+    return mesh_or_lattice_translation[i];
+  }
 
-  const array<int, 3>& mesh_translation() const { return mesh_or_lattice_translation; }
+  const array<int, 3>& mesh_translation() const
+  {
+    return mesh_or_lattice_translation;
+  }
   array<int, 3>& mesh_translation() { return mesh_or_lattice_translation; }
   int mesh_translation(int i) const { return mesh_or_lattice_translation[i]; }
 };
