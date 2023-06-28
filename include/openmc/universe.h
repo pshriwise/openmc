@@ -70,6 +70,9 @@ public:
   void set_boundary_conditions();
 
   // accessors
+  const auto& mesh_ptr() { return model::meshes[mesh_]; }
+  const auto* libmesh_ptr() { return dynamic_cast<LibMesh*>(mesh_ptr().get()); }
+
   int32_t& mesh() { return mesh_; }
   int32_t mesh() const { return mesh_; }
 
