@@ -455,7 +455,6 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
           }
         }
 
-
         info.lattice_translation() = {0, 0, 0};
         info.coord_level = i + 1;
       }

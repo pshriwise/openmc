@@ -178,7 +178,8 @@ bool MeshUniverse::is_reflecting_face(int elem_idx, int face_idx) const
   const auto* elem_ptr = lmesh->get_element_ptr_from_bin(elem_idx);
 
   std::vector<libMesh::boundary_id_type> boundary_ids;
-  lmesh->mesh_ptr()->boundary_info->boundary_ids(elem_ptr, face_idx, boundary_ids);
+  lmesh->mesh_ptr()->boundary_info->boundary_ids(
+    elem_ptr, face_idx, boundary_ids);
 
   return false;
 }
@@ -300,39 +301,26 @@ void MeshUniverse::next_cell(Particle& p) const
   int32_t next_cell_idx {C_NONE};
   if (mesh->bin_is_valid(next_mesh_idx)) {
 
-
-
-    if (p.coord(p.n_coord() -1).mesh_cell_index() == C_NONE) {
+    if (p.coord(p.n_coord() - 1).mesh_cell_index() == C_NONE) {
       write_message(
-        fmt::format("\tParticle {} moving into the mesh. \n\tPosition: {} {} {}",
-        p.id(),
-        p.r()[0],
-        p.r()[1],
-        p.r()[2]),
-      10
-      );
+        fmt::format(
+          "\tParticle {} moving into the mesh. \n\tPosition: {} {} {}", p.id(),
+          p.r()[0], p.r()[1], p.r()[2]),
+        10);
     }
-      write_message(
-        fmt::format("\nMoving into mesh cell: {} {} {}",
-                    p.boundary().mesh_translation(0),
-                    p.boundary().mesh_translation(1),
-                    p.boundary().mesh_translation(2)),
-        10
-      );
+    write_message(
+      fmt::format("\nMoving into mesh cell: {} {} {}",
+        p.boundary().mesh_translation(0), p.boundary().mesh_translation(1),
+        p.boundary().mesh_translation(2)),
+      10);
 
     next_cell_idx = cells_[next_mesh_idx];
   } else {
     write_message(
-      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} {} \n\tDirection: {} {} {}",
-                  p.id(),
-                  p.r()[0],
-                  p.r()[1],
-                  p.r()[2],
-                  p.u()[0],
-                  p.u()[1],
-                  p.u()[2]),
-      10
-    );
+      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
+                  "{} \n\tDirection: {} {} {}",
+        p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
+      10);
     p.wgt() = 0.0;
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_;
@@ -354,7 +342,6 @@ void MeshUniverse::next_cell(Particle& p) const
   p.material() = cell->material_[0];
   p.sqrtkT() = cell->sqrtkT_[0];
 }
-
 
 #endif
 
