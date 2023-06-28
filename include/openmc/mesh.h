@@ -952,15 +952,16 @@ public:
   //! Translate an element pointer to a bin index
   int get_bin_from_element(const libMesh::Elem* elem) const;
 
-private:
-  void initialize() override;
-  void set_mesh_pointer_from_filename(const std::string& filename);
-
-  // Methods
-
   //! Translate a bin value to an element reference
   const libMesh::Elem& get_element_from_bin(int bin) const;
 
+  //! Translate a bin value to an element pointer
+  const libMesh::Elem* get_element_ptr_from_bin(int bin) const;
+
+private:
+  // Methods
+  void initialize() override;
+  void set_mesh_pointer_from_filename(const std::string& filename);
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_ =
     nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is

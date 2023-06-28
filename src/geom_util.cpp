@@ -90,9 +90,10 @@ bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
   }
 
   // get the distance to intersection
-  const double inverse_sum = 1.0 / ( plucker_coord0 + plucker_coord1 + plucker_coord2 );
+  const double inverse_sum =
+    1.0 / (plucker_coord0 + plucker_coord1 + plucker_coord2);
   // TODO: replace assert with warning
-  assert( 0.0 != inverse_sum );
+  assert(0.0 != inverse_sum);
   const Position intersection(plucker_coord0 * inverse_sum * vertices[2] +
                               plucker_coord1 * inverse_sum * vertices[0] +
                               plucker_coord2 * inverse_sum * vertices[1]);
@@ -106,7 +107,7 @@ bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
       max_abs_dir = fabs(direction[i]);
     }
   }
-  dist_out = ( intersection[idx] - origin[idx] ) / direction[idx];
+  dist_out = (intersection[idx] - origin[idx]) / direction[idx];
 
   // is the intersection within distance limits?
   // if( ( nonneg_ray_len && nonneg_ray_len < dist ) ||  // intersection is

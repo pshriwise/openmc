@@ -1341,9 +1341,9 @@ void ProjectionPlot::create_output() const
               p.surface() = dist.surface_index;
               p.n_coord_last() = p.n_coord();
               p.n_coord() = dist.coord_level;
-              if (dist.lattice_translation[0] != 0 ||
-                  dist.lattice_translation[1] != 0 ||
-                  dist.lattice_translation[2] != 0) {
+              if (dist.lattice_translation(0) != 0 ||
+                  dist.lattice_translation(1) != 0 ||
+                  dist.lattice_translation(2) != 0) {
                 cross_lattice(p, dist);
               }
 

@@ -3145,6 +3145,11 @@ const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
   return m_->elem_ref(bin);
 }
 
+const libMesh::Elem* LibMesh::get_element_ptr_from_bin(int bin) const
+{
+  return m_->elem_ptr(bin);
+}
+
 double LibMesh::volume(int bin) const
 {
   return this->get_element_from_bin(bin).volume();
@@ -3209,11 +3214,8 @@ std::pair<double, std::array<int, 3>> LibMesh::distance_to_next_bin(
 
   const auto& next_elem = elem.neighbor_ptr(idx_out);
 
-  if (!next_elem)
-    return {dists[idx_out], {-1, -1, -1}};
-
+  if (!next_elem) return {dists[idx_out], {-1, -1, -1}};
   return {dists[idx_out], {get_bin_from_element(next_elem)}};
-  return {INFTY, {-1, -1, -1}};
 }
 
 std::pair<double, int> LibMesh::distance_to_mesh(
