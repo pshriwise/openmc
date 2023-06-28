@@ -59,13 +59,15 @@ public:
 
   void next_cell(Particle& p) const;
 
+  bool is_reflecting_face(int elem_idx, int face_idx) const;
+
   // setup cell instances for the mesh geometry
   void create_cells(pugi::xml_node node);
 
   void create_unstructured_mesh_cells();
 
   void set_boundary_conditions();
-  
+
   // accessors
   int32_t& mesh() { return mesh_; }
   int32_t mesh() const { return mesh_; }

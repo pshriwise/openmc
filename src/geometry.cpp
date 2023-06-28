@@ -319,9 +319,9 @@ void cross_lattice(Particle& p, const BoundaryInfo& boundary)
   }
 
   // Set the lattice indices.
-  coord.lattice_index()[0] += boundary.lattice_translation[0];
-  coord.lattice_index()[1] += boundary.lattice_translation[1];
-  coord.lattice_index()[2] += boundary.lattice_translation[2];
+  coord.lattice_index()[0] += boundary.lattice_translation(0);
+  coord.lattice_index()[1] += boundary.lattice_translation(1);
+  coord.lattice_index()[2] += boundary.lattice_translation(2);
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord(p.n_coord() - 2)};
@@ -392,7 +392,7 @@ BoundaryInfo distance_to_boundary(Particle& p)
           (info.distance - mesh_dist.first) / info.distance >=
             FP_REL_PRECISION) {
         info.distance = mesh_dist.first;
-        info.lattice_translation = mesh_dist.second;
+        info.lattice_translation() = mesh_dist.second;
         info.surface_index = 0;
         info.coord_level = i + 1;
       }
@@ -461,16 +461,15 @@ BoundaryInfo distance_to_boundary(Particle& p)
           }
         }
 
-        info.lattice_translation[0] = 0;
-        info.lattice_translation[1] = 0;
-        info.lattice_translation[2] = 0;
+
+        info.lattice_translation() = {0, 0, 0};
         info.coord_level = i + 1;
       }
     } else {
       if (d == INFINITY || (d - d_lat) / d >= FP_REL_PRECISION) {
         d = d_lat;
         info.surface_index = 0;
-        info.lattice_translation = level_lat_trans;
+        info.lattice_translation() = level_lat_trans;
         info.coord_level = i + 1;
       }
     }

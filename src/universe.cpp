@@ -171,6 +171,17 @@ void MeshUniverse::create_unstructured_mesh_cells()
     "Assigned materials to {} elements.\n", mat_elements);
 }
 
+bool MeshUniverse::is_reflecting_face(int elem_idx, int face_idx) const
+{
+  const auto* lmesh = dynamic_cast<LibMesh*>(model::meshes[mesh()].get());
+  const auto* elem_ptr = lmesh->get_element_ptr_from_bin(elem_idx);
+
+  std::vector<libMesh::boundary_id_type> boundary_ids;
+  lmesh->mesh_ptr()->boundary_info->boundary_ids(elem_ptr, face_idx, boundary_ids);
+
+  return false;
+}
+
 void MeshUniverse::create_cells(pugi::xml_node node)
 {
   vector<std::string> cell_fills;
@@ -284,66 +295,65 @@ void MeshUniverse::next_cell(Particle& p) const
   auto& coord = p.coord(p.n_coord() - 1);
   const auto mesh = dynamic_cast<LibMesh*>(model::meshes[mesh_].get());
 
-  int32_t next_mesh_idx = p.boundary().lattice_translation[0];
-  // mesh->get_bin_from_indices(p.boundary().lattice_translation);
+  int32_t next_mesh_idx = p.boundary().mesh_translation(0);
   int32_t next_cell_idx {C_NONE};
   if (mesh->bin_is_valid(next_mesh_idx)) {
-    if (p.coord(p.n_coord() - 1).mesh_cell_index() == C_NONE) {
+
+
+
+    if (p.coord(p.n_coord() -1).mesh_cell_index() == C_NONE) {
       write_message(
-        fmt::format(
-          "\tParticle {} moving into the mesh. \n\tPosition: {} {} {}", p.id(),
-          p.r()[0], p.r()[1], p.r()[2]),
-        10);
-      // bool in_mesh;
-      // auto ijk = mesh->get_indices(p.r() + p.u() * 0.01, in_mesh);
-      // if (!in_mesh) {
-      //   warning(fmt::format("Particle is not in mesh, ijk: {} {} {}", ijk[0],
-      //   ijk[1], ijk[2]));
-      // }
+        fmt::format("\tParticle {} moving into the mesh. \n\tPosition: {} {} {}",
+        p.id(),
+        p.r()[0],
+        p.r()[1],
+        p.r()[2]),
+      10
+      );
     }
-    write_message(fmt::format("\nMoving into structured mesh cell: {} {} {}",
-                    p.boundary().lattice_translation[0],
-                    p.boundary().lattice_translation[1],
-                    p.boundary().lattice_translation[2]),
-      10);
+      write_message(
+        fmt::format("\nMoving into mesh cell: {} {} {}",
+                    p.boundary().mesh_translation(0),
+                    p.boundary().mesh_translation(1),
+                    p.boundary().mesh_translation(2)),
+        10
+      );
+
     next_cell_idx = cells_[next_mesh_idx];
   } else {
     write_message(
-      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
-                  "{} \n\tDirection: {} {} {}",
-        p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
-      10);
-    // bool in_mesh;
-    // auto ijk = mesh->get_indices(p.r() + p.u() * 0.1, in_mesh);
-    // if (in_mesh) {
-    //   warning(fmt::format("Particle is in mesh, ijk: {} {} {}", ijk[0],
-    //   ijk[1], ijk[2]));
-    // }
-    // kill particle exiting mesh for now
+      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} {} \n\tDirection: {} {} {}",
+                  p.id(),
+                  p.r()[0],
+                  p.r()[1],
+                  p.r()[2],
+                  p.u()[0],
+                  p.u()[1],
+                  p.u()[2]),
+      10
+    );
     p.wgt() = 0.0;
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_;
   }
 
   // reset the lattice_translation for the boundary crossing
-  p.boundary().lattice_translation[0] = 0;
-  p.boundary().lattice_translation[1] = 0;
-  p.boundary().lattice_translation[2] = 0;
+  p.boundary().mesh_translation() = {0, 0, 0};
   // update material and temperature
   p.material_last() = p.material();
   p.sqrtkT_last() = p.sqrtkT();
   // set previous bin
   coord.mesh_cell_index() = next_mesh_idx;
   coord.cell = next_cell_idx;
-  coord.mesh_index() = p.boundary().lattice_translation;
+  coord.mesh_index() = p.boundary().mesh_translation();
   const auto& cell = model::cells.at(next_cell_idx);
   Cell* cell_ptr = model::cells.at(next_cell_idx).get();
   // TODO: Support multiple cell instances
   p.cell_instance() = 0;
   p.material() = cell->material_[0];
   p.sqrtkT() = cell->sqrtkT_[0];
-  return;
 }
+
 
 #endif
 

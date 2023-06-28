@@ -274,9 +274,9 @@ void Particle::event_cross_surface()
   }
 #endif
 
-  if (boundary().lattice_translation[0] != 0 ||
-      boundary().lattice_translation[1] != 0 ||
-      boundary().lattice_translation[2] != 0) {
+  if (boundary().lattice_translation(0) != 0 ||
+      boundary().lattice_translation(1) != 0 ||
+      boundary().lattice_translation(2) != 0) {
     // Particle crosses lattice boundary
     cross_lattice(*this, boundary());
     event() = TallyEvent::LATTICE;
