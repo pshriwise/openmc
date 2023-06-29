@@ -293,9 +293,11 @@ void MeshUniverse::set_boundary_conditions()
   const auto& boundary_info = lmesh->boundary_info;
 
   // loop over all boundary sets and print name
-  std::cout << "Number of boundary sets: " << boundary_info->n_boundary_ids() << std::endl;
+  std::cout << "Number of boundary sets: " << boundary_info->n_boundary_ids()
+            << std::endl;
   for (auto sideset_info : boundary_info->set_sideset_name_map()) {
-    std::cout << "Sideset " << sideset_info.first << " name: " << sideset_info.second << std::endl;
+    std::cout << "Sideset " << sideset_info.first
+              << " name: " << sideset_info.second << std::endl;
   }
 }
 
