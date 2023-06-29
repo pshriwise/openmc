@@ -82,6 +82,8 @@ public:
 protected:
   int32_t mesh_;
   int32_t outer_ {C_NONE};
+
+  std::set<int32_t> reflecting_boundary_ids;
 };
 
 #endif

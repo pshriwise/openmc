@@ -297,9 +297,19 @@ void MeshUniverse::set_boundary_conditions()
   std::cout << "Number of boundary sets: " << boundary_info->n_boundary_ids()
             << std::endl;
   for (auto sideset_info : boundary_info->set_sideset_name_map()) {
-    std::cout << "Sideset " << sideset_info.first
-              << " name: " << sideset_info.second << std::endl;
+    std::string name = sideset_info.second;
+    int32_t boundary_id = sideset_info.first;
+    std::cout << "Sideset " << sideset_info.first << " name: " << sideset_info.second << std::endl;
+    if (to_lower(name) == "reflecting") {
+      reflecting_boundary_ids.insert(boundary_id);
+    }
   }
+
+  std::cout << "Reflecting boundaries: ";
+  for (auto entry : reflecting_boundary_ids) {
+    std::cout << " " << entry << " ";
+  }
+  std::cout << std::endl;
 }
 
 void MeshUniverse::next_cell(Particle& p) const
