@@ -15,7 +15,7 @@ std::string to_element(const std::string& name);
 
 std::string& to_lower(std::string& str);
 
-int word_count(std::string const& str);
+int word_count(const std::string& str);
 
 vector<std::string> split(const std::string& in);
 

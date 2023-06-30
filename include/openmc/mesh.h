@@ -57,6 +57,17 @@ enum IntersectionType {
 };
 
 //==============================================================================
+// Structs
+//==============================================================================
+
+struct NextMeshCell
+{
+  double distance {INFTY};
+  int face_idx {-1};
+  std::array<int, 3> next_ijk;
+};
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -897,7 +908,7 @@ public:
   //! \param[in] r Current position of the particle
   //! \param[in] u Particle direction
   //! \returns distance and the ijk index to the next mesh cell
-  virtual std::pair<double, std::array<int, 3>> distance_to_next_bin(
+  virtual NextMeshCell distance_to_next_bin(
     int bin, Position r, const Direction& u) const;
 
   //! Determine the distance to a point in the mesh
