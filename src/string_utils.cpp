@@ -37,7 +37,7 @@ std::string& to_lower(std::string& str)
   return str;
 }
 
-int word_count(std::string const& str)
+int word_count(const std::string& str)
 {
   std::stringstream stream(str);
   std::string dum;

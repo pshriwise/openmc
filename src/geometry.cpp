@@ -388,11 +388,10 @@ BoundaryInfo distance_to_boundary(Particle& p)
       auto mesh_dist = dynamic_cast<LibMesh*>(mesh.get())
                          ->distance_to_next_bin(coord.mesh_cell_index(), r, u);
 
-      if (info.distance == INFINITY ||
-          (info.distance - mesh_dist.first) / info.distance >=
-            FP_REL_PRECISION) {
-        info.distance = mesh_dist.first;
-        info.lattice_translation() = mesh_dist.second;
+      if (info.distance == INFINITY || (info.distance - mesh_dist.distance) / info.distance >=
+          FP_REL_PRECISION) {
+        info.distance = mesh_dist.distance;
+        info.lattice_translation() = mesh_dist.next_ijk;
         info.surface_index = 0;
         info.coord_level = i + 1;
       }
