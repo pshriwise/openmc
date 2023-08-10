@@ -493,6 +493,10 @@ void Particle::cross_surface()
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
+    // update mu value of particle relative to surface normal
+    auto n = surf->normal(this->r());
+    if (this->surface() < 0) n *= -1;
+    this->mu() = this->u().dot(n);
     return;
   }
 
