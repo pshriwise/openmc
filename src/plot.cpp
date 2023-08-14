@@ -1192,11 +1192,16 @@ void ProjectionPlot::create_output() const
   // now, up_ is hard-coded to be +z.
   constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
+
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
   double vert_fov_radians = horiz_fov_radians * p1 / p0;
-  double dphi = horiz_fov_radians / p0;
-  double dmu = vert_fov_radians / p1;
+
+  // This can be changed to alter the perspective distortion effect.
+  // This is in units of cm. Most of the time does not need to be changed.
+  constexpr double focal_plane_dist = 10.0;
+  const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians );
+  const double dy = p1 / p0 * dx;
 
   size_t width = pixels_[0];
   size_t height = pixels_[1];
@@ -1274,15 +1279,14 @@ void ProjectionPlot::create_output() const
 
           // Generate the starting position/direction of the ray
           if (orthographic_width_ == 0.0) { // perspective projection
-            double this_phi =
-              -horiz_fov_radians / 2.0 + dphi * horiz + 0.5 * dphi;
-            double this_mu =
-              -vert_fov_radians / 2.0 + dmu * vert + M_PI / 2.0 + 0.5 * dmu;
             Direction camera_local_vec;
-            camera_local_vec.x = std::cos(this_phi) * std::sin(this_mu);
-            camera_local_vec.y = std::sin(this_phi) * std::sin(this_mu);
-            camera_local_vec.z = std::cos(this_mu);
+            camera_local_vec.x = focal_plane_dist;
+            camera_local_vec.y = -0.5 * dx + horiz * dx / p0;
+            camera_local_vec.z = 0.5 * dy - vert * dy / p1;
+            camera_local_vec /= camera_local_vec.norm();
+
             s.u = camera_local_vec.rotate(camera_to_model);
+
           } else { // orthographic projection
             s.u = looking_direction;
 
