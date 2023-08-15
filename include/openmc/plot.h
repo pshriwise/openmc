@@ -266,7 +266,66 @@ public:
   RGBColor meshlines_color_;      //!< Color of meshlines on the plot
 };
 
-class ProjectionPlot : public PlottableInterface {
+/*
+ * Base class for plots which create their image by tracing
+ * images from a camera through the problem geometry.
+ */
+class RayTracePlot : public PlottableInterface {
+public:
+  RayTracePlot(pugi::xml_node plot);
+
+  // Standard getters. No setting since it's done from XML.
+  const Position& camera_position() const { return camera_position_; }
+  const Position& look_at() const { return look_at_; }
+  const double& horizontal_field_of_view() const
+  {
+    return horizontal_field_of_view_;
+  }
+
+  virtual void print_info() const;
+
+protected:
+  void set_output_path(pugi::xml_node plot_node);
+
+  /*
+   * Gets the starting position and direction for the pixel corresponding
+   * to this horizontal and vertical position.
+   */
+  std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
+
+  // Max intersections before we assume ray tracing is caught in an infinite
+  // loop:
+  static const int MAX_INTERSECTIONS = 1000000;
+  std::array<int, 2> pixels_; // pixel dimension of resulting image
+
+  /* If starting the particle from outside the geometry, we have to
+   * find a distance to the boundary in a non-standard surface intersection
+   * check. It's an exhaustive search over surfaces in the top-level universe.
+   */
+  static int advance_to_boundary_from_void(Particle& p);
+
+private:
+  void set_look_at(pugi::xml_node node);
+  void set_camera_position(pugi::xml_node node);
+  void set_field_of_view(pugi::xml_node node);
+  void set_pixels(pugi::xml_node node);
+  void set_orthographic_width(pugi::xml_node node);
+
+  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
+  Position camera_position_;               // where camera is
+  Position look_at_;             // point camera is centered looking at
+  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+
+  /* The horizontal thickness, if using an orthographic projection.
+   * If set to zero, we assume using a perspective projection.
+   */
+  double orthographic_width_ {0.0};
+
+  // Cached camera-to-model matrix
+  std::vector<double> camera_to_model_;
+};
+
+class ProjectionPlot : public RayTracePlot {
 
 public:
   ProjectionPlot(pugi::xml_node plot);
@@ -275,22 +334,10 @@ public:
   virtual void print_info() const;
 
 private:
-  void set_output_path(pugi::xml_node plot_node);
-  void set_look_at(pugi::xml_node node);
-  void set_camera_position(pugi::xml_node node);
-  void set_field_of_view(pugi::xml_node node);
-  void set_pixels(pugi::xml_node node);
   void set_opacities(pugi::xml_node node);
-  void set_orthographic_width(pugi::xml_node node);
   void set_wireframe_thickness(pugi::xml_node node);
   void set_wireframe_ids(pugi::xml_node node);
   void set_wireframe_color(pugi::xml_node node);
-
-  /* If starting the particle from outside the geometry, we have to
-   * find a distance to the boundary in a non-standard surface intersection
-   * check. It's an exhaustive search over surfaces in the top-level universe.
-   */
-  static int advance_to_boundary_from_void(Particle& p);
 
   /* Checks if a vector of two TrackSegments is equivalent. We define this
    * to mean not having matching intersection lengths, but rather having
@@ -318,23 +365,8 @@ private:
     {}
   };
 
-  // Max intersections before we assume ray tracing is caught in an infinite
-  // loop:
-  static const int MAX_INTERSECTIONS = 1000000;
-
-  std::array<int, 2> pixels_;              // pixel dimension of resulting image
-  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_;               // where camera is
-  Position look_at_;             // point camera is centered looking at
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
-
   // which color IDs should be wireframed. If empty, all cells are wireframed.
   vector<int> wireframe_ids_;
-
-  /* The horizontal thickness, if using an orthographic projection.
-   * If set to zero, we assume using a perspective projection.
-   */
-  double orthographic_width_ {0.0};
 
   // Thickness of the wireframe lines. Can set to zero for no wireframe.
   int wireframe_thickness_ {1};

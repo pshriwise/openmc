@@ -1027,23 +1027,45 @@ RGBColor random_color(void)
     int(prn(&model::plotter_seed) * 255), int(prn(&model::plotter_seed) * 255)};
 }
 
-ProjectionPlot::ProjectionPlot(pugi::xml_node node) : PlottableInterface(node)
+RayTracePlot::RayTracePlot(pugi::xml_node node) : PlottableInterface(node)
 {
-  set_output_path(node);
   set_look_at(node);
   set_camera_position(node);
   set_field_of_view(node);
   set_pixels(node);
-  set_opacities(node);
   set_orthographic_width(node);
-  set_wireframe_thickness(node);
-  set_wireframe_ids(node);
-  set_wireframe_color(node);
+  set_output_path(node);
 
   if (check_for_node(node, "orthographic_width") &&
       check_for_node(node, "field_of_view"))
     fatal_error("orthographic_width and field_of_view are mutually exclusive "
                 "parameters.");
+
+  // Get centerline vector for camera-to-model. We create vectors around this
+  // that form a pixel array, and then trace rays along that.
+  auto up = up_ / up_.norm();
+  Direction looking_direction = look_at_ - camera_position_;
+  looking_direction /= looking_direction.norm();
+  if (std::abs(std::abs(looking_direction.dot(up)) - 1.0) < 1e-9)
+    fatal_error("Up vector cannot align with vector between camera position "
+                "and look_at!");
+  Direction cam_yaxis = looking_direction.cross(up);
+  cam_yaxis /= cam_yaxis.norm();
+  Direction cam_zaxis = cam_yaxis.cross(looking_direction);
+  cam_zaxis /= cam_zaxis.norm();
+
+  // Cache the camera-to-model matrix
+  camera_to_model_ = {looking_direction.x, cam_yaxis.x, cam_zaxis.x,
+    looking_direction.y, cam_yaxis.y, cam_zaxis.y, looking_direction.z,
+    cam_yaxis.z, cam_zaxis.z};
+}
+
+ProjectionPlot::ProjectionPlot(pugi::xml_node node) : RayTracePlot(node)
+{
+  set_opacities(node);
+  set_wireframe_thickness(node);
+  set_wireframe_ids(node);
+  set_wireframe_color(node);
 }
 
 void ProjectionPlot::set_wireframe_color(pugi::xml_node plot_node)
@@ -1059,7 +1081,7 @@ void ProjectionPlot::set_wireframe_color(pugi::xml_node plot_node)
   }
 }
 
-void ProjectionPlot::set_output_path(pugi::xml_node node)
+void RayTracePlot::set_output_path(pugi::xml_node node)
 {
   // Set output file path
   std::string filename;
@@ -1083,7 +1105,7 @@ void ProjectionPlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int ProjectionPlot::advance_to_boundary_from_void(Particle& p)
+int RayTracePlot::advance_to_boundary_from_void(Particle& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};
@@ -1167,32 +1189,14 @@ bool ProjectionPlot::trackstack_equivalent(
   }
 }
 
-void ProjectionPlot::create_output() const
+std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
+  int horiz, int vert) const
 {
-  // Get centerline vector for camera-to-model. We create vectors around this
-  // that form a pixel array, and then trace rays along that.
-  auto up = up_ / up_.norm();
-  Direction looking_direction = look_at_ - camera_position_;
-  looking_direction /= looking_direction.norm();
-  if (std::abs(std::abs(looking_direction.dot(up)) - 1.0) < 1e-9)
-    fatal_error("Up vector cannot align with vector between camera position "
-                "and look_at!");
-  Direction cam_yaxis = looking_direction.cross(up);
-  cam_yaxis /= cam_yaxis.norm();
-  Direction cam_zaxis = cam_yaxis.cross(looking_direction);
-  cam_zaxis /= cam_zaxis.norm();
-
-  // Transformation matrix for directions
-  std::vector<double> camera_to_model = {looking_direction.x, cam_yaxis.x,
-    cam_zaxis.x, looking_direction.y, cam_yaxis.y, cam_zaxis.y,
-    looking_direction.z, cam_yaxis.z, cam_zaxis.z};
-
   // Now we convert to the polar coordinate system with the polar angle
   // measuring the angle from the vector up_. Phi is the rotation about up_. For
   // now, up_ is hard-coded to be +z.
   constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
-
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
   double vert_fov_radians = horiz_fov_radians * p1 / p0;
@@ -1203,6 +1207,39 @@ void ProjectionPlot::create_output() const
   const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians );
   const double dy = p1 / p0 * dx;
 
+  std::pair<Position, Direction> result;
+
+  // Generate the starting position/direction of the ray
+  if (orthographic_width_ == 0.0) { // perspective projection
+    Direction camera_local_vec;
+    camera_local_vec.x = focal_plane_dist;
+    camera_local_vec.y = -0.5 * dx + horiz * dx / p0;
+    camera_local_vec.z = 0.5 * dy - vert * dy / p1;
+    camera_local_vec /= camera_local_vec.norm();
+
+    result.first = camera_position_;
+    result.second = camera_local_vec.rotate(camera_to_model_);
+  } else { // orthographic projection
+
+    double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
+    double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
+
+    Direction yaxis = {
+      camera_to_model_[1], camera_to_model_[4], camera_to_model_[7]};
+    Direction zaxis = {
+      camera_to_model_[2], camera_to_model_[5], camera_to_model_[8]};
+    result.first = camera_position_ +
+                   yaxis * x_pix_coord * orthographic_width_ +
+                   zaxis * y_pix_coord * orthographic_width_;
+    result.second = {
+      camera_to_model_[0], camera_to_model_[3], camera_to_model_[6]};
+  }
+
+  return result;
+}
+
+void ProjectionPlot::create_output() const
+{
   size_t width = pixels_[0];
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);
@@ -1255,13 +1292,8 @@ void ProjectionPlot::create_output() const
     s.particle = ParticleType::photon; // just has to be something reasonable
     s.parent_id = 1;
     s.progeny_id = 2;
-    s.r = camera_position_;
 
     Particle p;
-    s.u.x = 1.0;
-    s.u.y = 0.0;
-    s.u.z = 0.0;
-    p.from_source(&s);
 
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
@@ -1277,25 +1309,10 @@ void ProjectionPlot::create_output() const
 
         for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
 
-          // Generate the starting position/direction of the ray
-          if (orthographic_width_ == 0.0) { // perspective projection
-            Direction camera_local_vec;
-            camera_local_vec.x = focal_plane_dist;
-            camera_local_vec.y = -0.5 * dx + horiz * dx / p0;
-            camera_local_vec.z = 0.5 * dy - vert * dy / p1;
-            camera_local_vec /= camera_local_vec.norm();
-
-            s.u = camera_local_vec.rotate(camera_to_model);
-
-          } else { // orthographic projection
-            s.u = looking_direction;
-
-            double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
-            double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
-            s.r = camera_position_ +
-                  cam_yaxis * x_pix_coord * orthographic_width_ +
-                  cam_zaxis * y_pix_coord * orthographic_width_;
-          }
+          // RayTracePlot implements camera ray generation
+          std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
+          s.r = ru.first;
+          s.u = ru.second;
 
           p.from_source(&s); // put particle at camera
           bool hitsomething = false;
@@ -1460,15 +1477,20 @@ void ProjectionPlot::create_output() const
 #endif
 }
 
-void ProjectionPlot::print_info() const
+void RayTracePlot::print_info() const
 {
-  fmt::print("Plot Type: Projection\n");
   fmt::print("Camera position: {} {} {}\n", camera_position_.x,
     camera_position_.y, camera_position_.z);
   fmt::print("Look at: {} {} {}\n", look_at_.x, look_at_.y, look_at_.z);
   fmt::print(
     "Horizontal field of view: {} degrees\n", horizontal_field_of_view_);
   fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
+}
+
+void ProjectionPlot::print_info() const
+{
+  fmt::print("Plot Type: Projection\n");
+  RayTracePlot::print_info();
 }
 
 void ProjectionPlot::set_opacities(pugi::xml_node node)
@@ -1501,7 +1523,7 @@ void ProjectionPlot::set_opacities(pugi::xml_node node)
   }
 }
 
-void ProjectionPlot::set_orthographic_width(pugi::xml_node node)
+void RayTracePlot::set_orthographic_width(pugi::xml_node node)
 {
   if (check_for_node(node, "orthographic_width")) {
     double orthographic_width =
@@ -1538,7 +1560,7 @@ void ProjectionPlot::set_wireframe_ids(pugi::xml_node node)
   std::sort(wireframe_ids_.begin(), wireframe_ids_.end());
 }
 
-void ProjectionPlot::set_pixels(pugi::xml_node node)
+void RayTracePlot::set_pixels(pugi::xml_node node)
 {
   vector<int> pxls = get_node_array<int>(node, "pixels");
   if (pxls.size() != 2)
@@ -1548,7 +1570,7 @@ void ProjectionPlot::set_pixels(pugi::xml_node node)
   pixels_[1] = pxls[1];
 }
 
-void ProjectionPlot::set_camera_position(pugi::xml_node node)
+void RayTracePlot::set_camera_position(pugi::xml_node node)
 {
   vector<double> camera_pos = get_node_array<double>(node, "camera_position");
   if (camera_pos.size() != 3) {
@@ -1560,7 +1582,7 @@ void ProjectionPlot::set_camera_position(pugi::xml_node node)
   camera_position_.z = camera_pos[2];
 }
 
-void ProjectionPlot::set_look_at(pugi::xml_node node)
+void RayTracePlot::set_look_at(pugi::xml_node node)
 {
   vector<double> look_at = get_node_array<double>(node, "look_at");
   if (look_at.size() != 3) {
@@ -1571,7 +1593,7 @@ void ProjectionPlot::set_look_at(pugi::xml_node node)
   look_at_.z = look_at[2];
 }
 
-void ProjectionPlot::set_field_of_view(pugi::xml_node node)
+void RayTracePlot::set_field_of_view(pugi::xml_node node)
 {
   // Defaults to 70 degree horizontal field of view (see .h file)
   if (check_for_node(node, "field_of_view")) {
