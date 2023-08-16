@@ -391,13 +391,31 @@ int32_t DAGUniverse::implicit_complement_idx() const
 
 bool DAGUniverse::find_cell(Particle& p) const
 {
+  bool found = false;
   // if the particle isn't in any of the other DagMC
   // cells, place it in the implicit complement
-  bool found = Universe::find_cell(p);
-  if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+
+  moab::EntityHandle volume = 0;
+  double xyz[3] = {p.r_local().x, p.r_local().y, p.r_local().z};
+  double uvw[3] = {p.u_local().x, p.u_local().y, p.u_local().z};
+  moab::ErrorCode rval = dagmc_instance_->find_volume(xyz, volume, uvw);
+  if (volume != 0) {
+    p.coord(p.n_coord() - 1).cell = dagmc_instance_->index_by_handle(volume) - 1 + cell_idx_offset_;
+    p.history().reset();
     found = true;
+  } else {
+    if (!found && model::universe_map[this->id_] != model::root_universe) {
+      p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+      found = true;
+    }
   }
+  // } else {
+  //   found = Universe::find_cell(p);
+  //   if (!found && model::universe_map[this->id_] != model::root_universe) {
+  //     p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+  //     found = true;
+  //   }
+  // }
   return found;
 }
 
@@ -734,7 +752,7 @@ void check_dagmc_root_univ()
     if (dag_univ && !dag_univ->has_graveyard()) {
       warning(
         "No graveyard volume found in the DagMC model. "
-        "This may result in lost particles and rapid simulation failure.");
+        "This may result in lost particles and rapicd d simulation failure.");
     }
   }
 }
