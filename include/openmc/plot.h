@@ -1,6 +1,7 @@
 #ifndef OPENMC_PLOT_H
 #define OPENMC_PLOT_H
 
+#include <set>
 #include <sstream>
 #include <unordered_map>
 
@@ -58,6 +59,14 @@ struct RGBColor {
   bool operator==(const RGBColor& other)
   {
     return red == other.red && green == other.green && blue == other.blue;
+  }
+
+  RGBColor& operator*=(const double x)
+  {
+    red *= x;
+    green *= x;
+    blue *= x;
+    return *this;
   }
 
   // Members
@@ -373,6 +382,34 @@ private:
 
   RGBColor wireframe_color_ {BLACK}; // wireframe color
   vector<double> xs_; // macro cross section values for cell volume rendering
+};
+
+/*
+ * Plots a geometry with single-scattered Phong lighting
+ * plus a diffuse lighting contribution. Makes for a visually
+ * appealing 3D view of a geometry
+ */
+class PhongPlot : public RayTracePlot {
+public:
+  PhongPlot(pugi::xml_node plot);
+
+  virtual void create_output() const;
+  virtual void print_info() const;
+
+  /* All materials are completely transparent unless explicitly listed
+   * to be otherwise
+   */
+private:
+  void set_opaque_ids(pugi::xml_node node);
+  void set_light_position(pugi::xml_node node);
+  void set_diffuse_fraction(pugi::xml_node node);
+
+  std::vector<int> opaque_ids_;
+
+  double diffuse_fraction_ {0.1};
+
+  // By default, the light is at the camera unless otherwise specified.
+  Position light_location_;
 };
 
 //===============================================================================
