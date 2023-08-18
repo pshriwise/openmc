@@ -25,7 +25,7 @@ void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 
 void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  Direction u = surf.reflect(p.r(), p.u(), &p);
+  Direction u = surf.reflect(p.r(), p.u());
   u /= u.norm();
 
   p.cross_reflective_bc(surf, u);
