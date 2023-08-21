@@ -44,7 +44,7 @@ constexpr int32_t OVERLAP {-3};
 IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const Particle& p, int level)
+void IdData::set_value(size_t y, size_t x, const Geometron& p, int level)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -77,7 +77,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level)
+void PropertyData::set_value(size_t y, size_t x, const Geometron& p, int level)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -1107,7 +1107,7 @@ void RayTracePlot::set_output_path(pugi::xml_node node)
 // Advances to the next boundary from outside the geometry
 // Returns -1 if no intersection found, and the surface index
 // if an intersection was found.
-int RayTracePlot::advance_to_boundary_from_void(Particle& p)
+int RayTracePlot::advance_to_boundary_from_void(Geometron& p)
 {
   constexpr double scoot = 1e-5;
   double min_dist = {INFINITY};
@@ -1287,15 +1287,7 @@ void ProjectionPlot::create_output() const
     int tid = 0;
 #endif
 
-    SourceSite s; // Where particle starts from (camera)
-    s.E = 1;
-    s.wgt = 1;
-    s.delayed_group = 0;
-    s.particle = ParticleType::photon; // just has to be something reasonable
-    s.parent_id = 1;
-    s.progeny_id = 2;
-
-    Particle p;
+    Geometron p;
 
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
@@ -1313,10 +1305,8 @@ void ProjectionPlot::create_output() const
 
           // RayTracePlot implements camera ray generation
           std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
-          s.r = ru.first;
-          s.u = ru.second;
+          p.init_from_r_u(ru.first, ru.second);
 
-          p.from_source(&s); // put particle at camera
           bool hitsomething = false;
           bool intersection_found = true;
           int loop_counter = 0;
@@ -1639,15 +1629,7 @@ void PhongPlot::create_output() const
     int tid = 0;
 #endif
 
-    SourceSite s; // Where particle starts from (camera)
-    s.E = 1;
-    s.wgt = 1;
-    s.delayed_group = 0;
-    s.particle = ParticleType::photon; // just has to be something reasonable
-    s.parent_id = 1;
-    s.progeny_id = 2;
-
-    Particle p;
+    Geometron p;
 
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
@@ -1656,10 +1638,8 @@ void PhongPlot::create_output() const
 
           // RayTracePlot implements camera ray generation
           std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
-          s.r = ru.first;
-          s.u = ru.second;
+          p.init_from_r_u(ru.first, ru.second);
 
-          p.from_source(&s); // put particle at camera
           bool hitsomething = false;
           bool intersection_found = true;
           bool reflected = false;
