@@ -96,7 +96,9 @@ public:
 
   bool thread_safe_pop_back(T& elem)
   {
-    if (size_ == 0) { return false; }
+    if (size_ == 0) {
+      return false;
+    }
     elem = data_[size_ - 1];
     size_--;
     return true;

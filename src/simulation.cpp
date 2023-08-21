@@ -315,7 +315,6 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3 * simulation::work_per_rank);
-
   }
 
   // Allocate shared secondary bank
