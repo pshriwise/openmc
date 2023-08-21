@@ -421,23 +421,41 @@ void Particle::event_revive_from_secondary()
 
   // Write final position for this particle
   if (write_track()) {
-    write_particle_track(*this);
+  write_particle_track(*this);
   }
 
-#pragma omp critical(SourceBankPop)
-  {
-    // If no secondary particles, break out of event loop
-    if (!simulation::shared_secondary_bank.empty()) {
-      SourceSite s = simulation::shared_secondary_bank.back();
-      simulation::shared_secondary_bank.resize(
-        simulation::shared_secondary_bank.size() - 1);
-      from_source(s);
-      n_event() = 0;
+
+  // Check for secondary particles if this particle is dead
+
+  // If no secondary particles, break out of event loop
+  if (secondary_bank().empty())
+    return;
+
+  from_source(&secondary_bank().back());
+  secondary_bank().pop_back();
+  n_event() = 0;
+
+  // Subtract secondary particle energy from interim pulse-height results
+  if (!model::active_pulse_height_tallies.empty() &&
+      this->type() == ParticleType::photon) {
+    // Since the birth cell of the particle has not been set we
+    // have to determine it before the energy of the secondary particle can be
+    // removed from the pulse-height of this cell.
+    if (lowest_coord().cell == C_NONE) {
+      if (!exhaustive_find_cell(*this)) {
+        mark_as_lost("Could not find the cell containing particle " +
+                     std::to_string(id()));
+        return;
+      }
+      // Set birth cell attribute
+      if (cell_born() == C_NONE)
+        cell_born() = lowest_coord().cell;
     }
+    pht_secondary_particles();
   }
 
-  // Enter new particle in particle track file
-  if (write_track())
+    // Enter new particle in particle track file
+    if (write_track())
     add_particle_track(*this);
 }
 
