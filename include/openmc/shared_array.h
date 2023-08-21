@@ -88,6 +88,20 @@ public:
     return idx;
   }
 
+  void thread_safe_pop()
+  {
+#pragma omp atmoic capture seq_cst
+    size_--;
+  }
+
+  bool thread_safe_pop_back(T& elem)
+  {
+    if (size_ == 0) { return false; }
+    elem = data_[size_ - 1];
+    size_--;
+    return true;
+  }
+
   //! Free any space that was allocated for the container. Set the
   //! container's size and capacity to 0.
   void clear()

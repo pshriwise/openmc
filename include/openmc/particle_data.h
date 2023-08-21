@@ -461,6 +461,7 @@ private:
   uint64_t seeds_[N_STREAMS];
   int stream_;
 
+  // Secondary particle bank
   vector<SourceSite> secondary_bank_;
 
   int64_t current_work_;

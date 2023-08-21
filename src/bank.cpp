@@ -55,7 +55,7 @@ void init_fission_bank(int64_t max)
 
 void init_secondary_bank(int64_t max)
 {
-  simulation::shared_secondary_bank.resize(1000000);
+  simulation::shared_secondary_bank.reserve(max);
 }
 
 // Performs an O(n) sort on the fission bank, by leveraging

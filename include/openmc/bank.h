@@ -38,6 +38,8 @@ void free_memory_bank();
 
 void init_fission_bank(int64_t max);
 
+void init_secondary_bank(int64_t max);
+
 } // namespace openmc
 
 #endif // OPENMC_BANK_H
