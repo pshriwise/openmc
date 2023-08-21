@@ -414,12 +414,13 @@ bool DAGUniverse::find_cell(Particle& p) const
     if (model::universe_map[this->id_] != model::root_universe) {
       // if this isn't the root universe, place the particle in the
       // implicit complement
-      p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+      p.lowest_coord().cell = implicit_complement_idx();
       found = true;
     } else {
       // if this is the root universe, check that the particle
       // is in the implicit complement
       found = model::cells[implicit_complement_idx()]->contains(r, u, surf);
+      if (found) p.lowest_coord().cell = implicit_complement_idx();
     }
   }
 
