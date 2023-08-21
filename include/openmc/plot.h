@@ -1,7 +1,6 @@
 #ifndef OPENMC_PLOT_H
 #define OPENMC_PLOT_H
 
-#include <set>
 #include <sstream>
 #include <unordered_map>
 
