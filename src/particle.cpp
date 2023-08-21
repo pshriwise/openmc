@@ -98,7 +98,8 @@ void Particle::create_secondary(
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
-  simulation::shared_secondary_bank.thread_safe_append(bank);
+  // simulation::shared_secondary_bank.thread_safe_append(bank);
+  secondary_bank().push_back(bank);
 
   n_bank_second() += 1;
 }
@@ -421,18 +422,30 @@ void Particle::event_revive_from_secondary()
 
   // Write final position for this particle
   if (write_track()) {
-  write_particle_track(*this);
+    write_particle_track(*this);
   }
-
 
   // Check for secondary particles if this particle is dead
 
   // If no secondary particles, break out of event loop
-  if (secondary_bank().empty())
+  if (simulation::shared_secondary_bank.empty() && secondary_bank().empty())
     return;
 
-  from_source(&secondary_bank().back());
-  secondary_bank().pop_back();
+  // Try to source a secondary particle from the global shared bank
+  #pragma omp critical
+  {
+    SourceSite s;
+    if (simulation::shared_secondary_bank.thread_safe_pop_back(s)) {
+      from_source(s);
+    }
+  }
+
+  // Try to source a seondary particle from the particle's local bank
+  if (!alive() && !secondary_bank().empty()) {
+    from_source(secondary_bank().back());
+    secondary_bank().pop_back();
+  }
+
   n_event() = 0;
 
   // Subtract secondary particle energy from interim pulse-height results
@@ -441,21 +454,21 @@ void Particle::event_revive_from_secondary()
     // Since the birth cell of the particle has not been set we
     // have to determine it before the energy of the secondary particle can be
     // removed from the pulse-height of this cell.
-    if (lowest_coord().cell == C_NONE) {
+    if (coord(n_coord() - 1).cell == C_NONE) {
       if (!exhaustive_find_cell(*this)) {
         mark_as_lost("Could not find the cell containing particle " +
-                     std::to_string(id()));
+                      std::to_string(id()));
         return;
       }
       // Set birth cell attribute
       if (cell_born() == C_NONE)
-        cell_born() = lowest_coord().cell;
+        cell_born() = coord(n_coord() - 1).cell;
     }
     pht_secondary_particles();
   }
 
-    // Enter new particle in particle track file
-    if (write_track())
+  // Enter new particle in particle track file
+  if (write_track())
     add_particle_track(*this);
 }
 
