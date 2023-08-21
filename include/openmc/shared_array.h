@@ -88,12 +88,6 @@ public:
     return idx;
   }
 
-  void thread_safe_pop()
-  {
-#pragma omp atmoic capture seq_cst
-    size_--;
-  }
-
   //! Free any space that was allocated for the container. Set the
   //! container's size and capacity to 0.
   void clear()
@@ -129,21 +123,6 @@ public:
   const T* cbegin() const { return data_.get(); }
   T* end() { return data_.get() + size_; }
   const T* cend() const { return data_.get() + size_; }
-  T back()
-  {
-#pragma omp atmoic capture seq_cst
-    return data_[size_ - 1];
-  }
-  const T back() const
-  {
-#pragma omp atmoic capture seq_cst
-    return data_[size_ - 1];
-  }
-
-  bool empty() const
-  {
-    return size_ == 0;
-  }
 
 private:
   //==========================================================================
