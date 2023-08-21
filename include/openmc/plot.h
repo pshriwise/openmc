@@ -303,7 +303,6 @@ protected:
 
   // Max intersections before we assume ray tracing is caught in an infinite
   // loop:
-  static const int MAX_INTERSECTIONS = 1000000;
   std::array<int, 2> pixels_; // pixel dimension of resulting image
 
   /* If starting the particle from outside the geometry, we have to
@@ -409,6 +408,42 @@ private:
 
   // By default, the light is at the camera unless otherwise specified.
   Position light_location_;
+};
+
+// Base class that implements ray tracing logic, not necessarily through
+// defined regions of the geometry but also outside of it.
+class Ray : Geometron {
+
+public:
+  Ray() = default;
+
+  // Called at every surface intersection within the model
+  virtual void on_intersection() = 0;
+
+  /*
+   * Traces the ray through the geometry, calling on_intersection
+   * at every surface boundary.
+   */
+  void trace();
+
+private:
+  static const int MAX_INTERSECTIONS = 1000000;
+
+  bool hitsomething_ {false};
+  bool intersection_found_ {false};
+  bool first_inside_model_ {false};
+
+  unsigned event_counter_ {0};
+
+  // Records the first intersected surface on the model
+  int first_surface_ {-1};
+};
+
+class ProjectionRay : Ray {};
+
+class PhongRay : Ray {
+private:
+  bool reflected_ {false};
 };
 
 //===============================================================================
