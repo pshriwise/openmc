@@ -391,13 +391,38 @@ int32_t DAGUniverse::implicit_complement_idx() const
 
 bool DAGUniverse::find_cell(Particle& p) const
 {
-  // if the particle isn't in any of the other DagMC
-  // cells, place it in the implicit complement
-  bool found = Universe::find_cell(p);
-  if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
-    found = true;
+  bool found = false;
+  // Check for cell containment
+  Position r {p.r_local()};
+  Direction u {p.u_local()};
+  auto surf = p.surface();
+
+  // search for the containing cell, skipping the implicit complement
+  for (auto i_cell: cells_) {
+    // skip the implicit complement for now
+    if (i_cell == implicit_complement_idx())
+      continue;
+    if (model::cells[i_cell]->contains(r, u, surf)) {
+      p.lowest_coord().cell = i_cell;
+      found = true;
+      break;
+    }
   }
+  // if the particle isn't in any of the other DagMC
+  // cells, perform implicit complement checks
+  if (!found) {
+    if (model::universe_map[this->id_] != model::root_universe) {
+      // if this isn't the root universe, place the particle in the
+      // implicit complement
+      p.coord(p.n_coord() - 1).cell = implicit_complement_idx();
+      found = true;
+    } else {
+      // if this is the root universe, check that the particle
+      // is in the implicit complement
+      found = model::cells[implicit_complement_idx()]->contains(r, u, surf);
+    }
+  }
+
   return found;
 }
 
