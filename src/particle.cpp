@@ -104,6 +104,9 @@ void Particle::split(double wgt)
   bank.u = u();
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
+
+  // TODO: change where pushed based on setting
+  simulation::shared_secondary_bank.push_back(bank);
 }
 
 void Particle::from_source(SourceSite s)
@@ -452,18 +455,12 @@ void Particle::event_revive_from_secondary()
   }
 
   // Check for secondary particles if this particle is dead
-
-  // If no secondary particles, break out of event loop
-  if (simulation::shared_secondary_bank.empty() && secondary_bank().empty())
-    return;
-
-  // Try to source a secondary particle from the global shared bank
-  #pragma omp critical
-  {
-    SourceSite s;
-    if (simulation::shared_secondary_bank.thread_safe_pop_back(s)) {
-      from_source(s);
-    }
+  SourceSite s;
+  if (simulation::shared_secondary_bank.pop_back(s)) {
+    from_source(s);
+  } else if (!secondary_bank().empty()) {
+    from_source(secondary_bank().back());
+    secondary_bank().pop_back();
   }
 
   // Try to source a seondary particle from the particle's local bank
@@ -483,7 +480,7 @@ void Particle::event_revive_from_secondary()
     if (coord(n_coord() - 1).cell == C_NONE) {
       if (!exhaustive_find_cell(*this)) {
         mark_as_lost("Could not find the cell containing particle " +
-                      std::to_string(id()));
+                     std::to_string(id()));
         return;
       }
       // Set birth cell attribute
