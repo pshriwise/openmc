@@ -1663,10 +1663,13 @@ void Ray::trace()
 
       dist_ = distance_to_boundary(*this);
 
+      if (first_inside_model_) {
+        i_surface_ = first_surface_ - 1;
+        first_inside_model_ = false;
+      }
+
       // Call the specialized logic for this type of ray
       on_intersection();
-
-      first_inside_model_ = false;
 
       // Advance particle
       for (int lev = 0; lev < n_coord(); ++lev) {
