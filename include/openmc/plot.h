@@ -292,6 +292,12 @@ public:
 
   virtual void print_info() const;
 
+  /* If starting the particle from outside the geometry, we have to
+   * find a distance to the boundary in a non-standard surface intersection
+   * check. It's an exhaustive search over surfaces in the top-level universe.
+   */
+  static int advance_to_boundary_from_void(Geometron& p);
+
 protected:
   void set_output_path(pugi::xml_node plot_node);
 
@@ -304,12 +310,6 @@ protected:
   // Max intersections before we assume ray tracing is caught in an infinite
   // loop:
   std::array<int, 2> pixels_; // pixel dimension of resulting image
-
-  /* If starting the particle from outside the geometry, we have to
-   * find a distance to the boundary in a non-standard surface intersection
-   * check. It's an exhaustive search over surfaces in the top-level universe.
-   */
-  static int advance_to_boundary_from_void(Geometron& p);
 
 private:
   void set_look_at(pugi::xml_node node);
@@ -332,7 +332,10 @@ private:
   std::vector<double> camera_to_model_;
 };
 
+class ProjectionRay;
 class ProjectionPlot : public RayTracePlot {
+
+  friend class ProjectionRay;
 
 public:
   ProjectionPlot(pugi::xml_node plot);
@@ -388,6 +391,8 @@ private:
  * appealing 3D view of a geometry
  */
 class PhongPlot : public RayTracePlot {
+  friend class PhongRay;
+
 public:
   PhongPlot(pugi::xml_node plot);
 
@@ -397,6 +402,8 @@ public:
   /* All materials are completely transparent unless explicitly listed
    * to be otherwise
    */
+  bool is_id_opaque(int id) const;
+
 private:
   void set_opaque_ids(pugi::xml_node node);
   void set_light_position(pugi::xml_node node);
@@ -412,10 +419,10 @@ private:
 
 // Base class that implements ray tracing logic, not necessarily through
 // defined regions of the geometry but also outside of it.
-class Ray : Geometron {
+class Ray : public Geometron {
 
 public:
-  Ray() = default;
+  Ray(Position r, Direction u) { init_from_r_u(r, u); }
 
   // Called at every surface intersection within the model
   virtual void on_intersection() = 0;
@@ -426,10 +433,22 @@ public:
    */
   void trace();
 
+  /*
+   * Implementation code has read-only access to the distance
+   * between the ray and the next cell it's intersecting
+   */
+  const BoundaryInfo& dist() { return dist_; }
+
+  const int& first_surface() { return first_surface_; }
+
+  const bool& first_inside_model() { return first_inside_model_; }
+
+  const int& i_surface() { return i_surface_; }
+
 private:
   static const int MAX_INTERSECTIONS = 1000000;
 
-  bool hitsomething_ {false};
+  bool hit_something_ {false};
   bool intersection_found_ {false};
   bool first_inside_model_ {false};
 
@@ -437,13 +456,53 @@ private:
 
   // Records the first intersected surface on the model
   int first_surface_ {-1};
+  int i_surface_ {-1};
+
+  BoundaryInfo dist_;
 };
 
-class ProjectionRay : Ray {};
+class ProjectionRay : public Ray {
+public:
+  ProjectionRay(Position r, Direction u, const ProjectionPlot& plot,
+    vector<ProjectionPlot::TrackSegment>& line_segments)
+    : Ray(r, u), plot_(plot), line_segments_(line_segments)
+  {}
 
-class PhongRay : Ray {
+  virtual void on_intersection() override;
+
 private:
+  /* Store a reference to the plot object which is running this ray, in order
+   * to access some of the plot settings which influence the behavior where
+   * intersections are.
+   */
+  const ProjectionPlot& plot_;
+
+  /* The ray runs through the geometry, and records the lengths of ray segments
+   * and cells they lie in along the way.
+   */
+  vector<ProjectionPlot::TrackSegment>& line_segments_;
+};
+
+class PhongRay : public Ray {
+public:
+  PhongRay(Position r, Direction u, const PhongPlot& plot)
+    : Ray(r, u), plot_(plot)
+  {}
+
+  virtual void on_intersection() override;
+
+  const RGBColor& result_color() { return result_color_; }
+
+private:
+  const PhongPlot& plot_;
+
+  /* After the ray is reflected, it is moving towards the
+   * camera. It does that in order to see if the exposed surface
+   * is shadowed by something else.
+   */
   bool reflected_ {false};
+
+  RGBColor result_color_;
 };
 
 //===============================================================================

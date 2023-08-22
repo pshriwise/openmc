@@ -1303,9 +1303,10 @@ void ProjectionPlot::create_output() const
 
           // RayTracePlot implements camera ray generation
           std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
-          ProjectionRay ray(ru.first, ru.second);
 
           this_line_segments[tid][horiz].clear();
+          ProjectionRay ray(
+            ru.first, ru.second, *this, this_line_segments[tid][horiz]);
 
           ray.trace();
 
@@ -1568,9 +1569,10 @@ void PhongPlot::create_output() const
 
           // RayTracePlot implements camera ray generation
           std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
-          PhongRay ray(ru.first, ru.second);
+          PhongRay ray(ru.first, ru.second, *this);
 
           ray.trace();
+          data(horiz, vert) = ray.result_color();
         }
       } // end "if" vert in correct range
 
@@ -1602,6 +1604,11 @@ void PhongPlot::set_opaque_ids(pugi::xml_node node)
   std::sort(opaque_ids_.begin(), opaque_ids_.end());
 }
 
+bool PhongPlot::is_id_opaque(int id) const
+{
+  return std::binary_search(opaque_ids_.begin(), opaque_ids_.end(), id);
+}
+
 void PhongPlot::set_light_position(pugi::xml_node node)
 {
   if (check_for_node(node, "light_position")) {
@@ -1628,25 +1635,25 @@ void PhongPlot::set_diffuse_fraction(pugi::xml_node node)
   }
 }
 
-Ray::trace()
+void Ray::trace()
 {
-  int first_surface = -1; // surface first passed when entering the model
-  bool first_inside_model = true; // false after entering the model
-  while (intersection_found) {
+  int first_surface_ = -1;    // surface first passed when entering the model
+  first_inside_model_ = true; // false after entering the model
+  while (intersection_found_) {
     bool inside_cell = false;
 
-    int32_t i_surface = std::abs(p.surface()) - 1;
-    if (i_surface > 0 &&
-        model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
+    i_surface_ = std::abs(surface()) - 1;
+    if (i_surface_ > 0 &&
+        model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
 #ifdef DAGMC
       int32_t i_cell = next_cell(
-        i_surface, p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
+        i_surface_, cell_last(n_coord() - 1), lowest_coord().universe);
       inside_cell = i_cell >= 0;
 #else
       fatal_error("Not compiled for DAGMC, but somehow you have a DAGCell!");
 #endif
     } else {
-      inside_cell = exhaustive_find_cell(p);
+      inside_cell = exhaustive_find_cell(*this);
     }
 
     if (inside_cell) {
@@ -1654,89 +1661,93 @@ Ray::trace()
       hit_something_ = true;
       intersection_found_ = true;
 
-      auto dist = distance_to_boundary(p);
+      dist_ = distance_to_boundary(*this);
 
       // Call the specialized logic for this type of ray
       on_intersection();
 
+      first_inside_model_ = false;
+
       // Advance particle
-      for (int lev = 0; lev < p.n_coord(); ++lev) {
-        p.coord(lev).r += dist.distance * p.coord(lev).u;
+      for (int lev = 0; lev < n_coord(); ++lev) {
+        coord(lev).r += dist_.distance * coord(lev).u;
       }
-      p.surface() = dist.surface_index;
-      p.n_coord_last() = p.n_coord();
-      p.n_coord() = dist.coord_level;
-      if (dist.lattice_translation[0] != 0 ||
-          dist.lattice_translation[1] != 0 ||
-          dist.lattice_translation[2] != 0) {
-        cross_lattice(p, dist);
+      surface() = dist_.surface_index;
+      n_coord_last() = n_coord();
+      n_coord() = dist_.coord_level;
+      if (dist_.lattice_translation[0] != 0 ||
+          dist_.lattice_translation[1] != 0 ||
+          dist_.lattice_translation[2] != 0) {
+        cross_lattice(*this, dist_);
       }
 
     } else {
-      first_surface = advance_to_boundary_from_void(p);
-      intersection_found = first_surface != -1; // -1 if no surface found
+      first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
+      intersection_found_ = first_surface_ != -1; // -1 if no surface found
     }
     event_counter_++;
     if (event_counter_ > MAX_INTERSECTIONS)
-      fatal_error("Infinite loop in projection plot");
+      fatal_error("Infinite loop in ray traced plot");
   }
 }
 
-ProjectionRay::on_intersection()
+void ProjectionRay::on_intersection()
 {
   // This allows drawing wireframes with surface intersection
   // edges on the model boundary for the same cell.
-  if (first_inside_model) {
-    this_line_segments[tid][horiz].emplace_back(
-      color_by_ == PlotColorBy::mats ? p.material()
-                                     : p.coord(p.n_coord() - 1).cell,
-      0.0, first_surface);
-    first_inside_model = false;
+  if (first_inside_model()) {
+    line_segments_.emplace_back(
+      plot_.color_by_ == PlottableInterface::PlotColorBy::mats
+        ? material()
+        : lowest_coord().cell,
+      0.0, first_surface());
   }
 
-  this_line_segments[tid][horiz].emplace_back(color_by_ == PlotColorBy::mats
-                                                ? p.material()
-                                                : p.coord(p.n_coord() - 1).cell,
-    dist.distance, std::abs(dist.surface_index));
+  line_segments_.emplace_back(
+    plot_.color_by_ == PlottableInterface::PlotColorBy::mats
+      ? material()
+      : lowest_coord().cell,
+    dist().distance, std::abs(dist().surface_index));
 }
 
-PhongRay::on_intersection()
+void PhongRay::on_intersection()
 {
   // Check if we hit an opaque material or cell
-  int hit_id = color_by_ == PlotColorBy::mats ? p.material()
-                                              : p.coord(p.n_coord() - 1).cell;
+  int hit_id = plot_.color_by_ == PlottableInterface::PlotColorBy::mats
+                 ? material()
+                 : lowest_coord().cell;
 
-  if (i_surface != -1) {
-    if (!reflected) {
+  if (i_surface() != -1) { // TODO is this necessary?
+    if (!reflected_) {
       // reflect the particle and set the color to be colored by
       // the normal or the diffuse lighting contribution
-      if (std::binary_search(opaque_ids_.begin(), opaque_ids_.end(), hit_id)) {
-        reflected = true;
-        data(horiz, vert) = colors_[hit_id];
-        Direction to_light = light_location_ - p.r();
+      if (plot_.is_id_opaque(hit_id)) {
+        reflected_ = true;
+        result_color_ = plot_.colors_[hit_id];
+        Direction to_light = plot_.light_location_ - r();
         to_light /= to_light.norm();
 
         // NOTE: may need to transform to_light to the inner
         // universe or something..
-        Direction normal = model::surfaces[i_surface]->normal(p.r());
+        Direction normal = model::surfaces[i_surface()]->normal(r());
         normal /= normal.norm();
 
         double modulation =
-          diffuse_fraction_ +
-          (1.0 - diffuse_fraction_) * std::abs(normal.dot(to_light));
-        data(horiz, vert) *= modulation;
+          plot_.diffuse_fraction_ +
+          (1.0 - plot_.diffuse_fraction_) * std::abs(normal.dot(to_light));
+        result_color_ *= modulation;
 
         // Now point the particle to the camera. We now begin
         // checking to see if it's occluded by another surface
-        p.u() = to_light;
+        u() = to_light;
       }
       // If it's not facing the light, we color with the diffuse
       // contribution
     } else {
       // check if we're going to occlude the last reflected surface.
       // if so, color by the diffuse contribution instead
-      if (std::binary_search(opaque_ids_.begin(), opaque_ids_.end(), hit_id)) {
-        data(horiz, vert) = {0, 0, 0}; // TODO handle occlusion correctly
+      if (plot_.is_id_opaque(hit_id)) {
+        result_color_ = {0, 0, 0}; // TODO handle occlusion correctly
       }
 
       // TODO figure out how to kill the ray. Right now it moves to
