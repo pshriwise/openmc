@@ -1720,42 +1720,41 @@ void PhongRay::on_intersection()
                  ? material()
                  : lowest_coord().cell;
 
-  if (i_surface() != -1) { // TODO is this necessary?
-    if (!reflected_) {
-      // reflect the particle and set the color to be colored by
-      // the normal or the diffuse lighting contribution
-      if (plot_.is_id_opaque(hit_id)) {
-        reflected_ = true;
-        result_color_ = plot_.colors_[hit_id];
-        Direction to_light = plot_.light_location_ - r();
-        to_light /= to_light.norm();
+  if (!reflected_) {
+    // reflect the particle and set the color to be colored by
+    // the normal or the diffuse lighting contribution
+    if (plot_.is_id_opaque(hit_id)) {
+      reflected_ = true;
+      result_color_ = plot_.colors_[hit_id];
+      Direction to_light = plot_.light_location_ - r();
+      to_light /= to_light.norm();
 
-        // NOTE: may need to transform to_light to the inner
-        // universe or something..
-        Direction normal = model::surfaces[i_surface()]->normal(r());
-        normal /= normal.norm();
+      // NOTE: may need to transform to_light to the inner
+      // universe or something..
+      Direction normal = model::surfaces[i_surface()]->normal(r());
+      normal /= normal.norm();
 
-        double modulation =
-          plot_.diffuse_fraction_ +
-          (1.0 - plot_.diffuse_fraction_) * std::abs(normal.dot(to_light));
-        result_color_ *= modulation;
+      double modulation =
+        plot_.diffuse_fraction_ +
+        (1.0 - plot_.diffuse_fraction_) * std::abs(normal.dot(to_light));
+      result_color_ *= modulation;
 
-        // Now point the particle to the camera. We now begin
-        // checking to see if it's occluded by another surface
-        u() = to_light;
-      }
-      // If it's not facing the light, we color with the diffuse
-      // contribution
-    } else {
-      // check if we're going to occlude the last reflected surface.
-      // if so, color by the diffuse contribution instead
-      if (plot_.is_id_opaque(hit_id)) {
-        result_color_ = {0, 0, 0}; // TODO handle occlusion correctly
-      }
-
-      // TODO figure out how to kill the ray. Right now it moves to
-      // the camera until it exits the geometry.
+      // Now point the particle to the camera. We now begin
+      // checking to see if it's occluded by another surface
+      u() = to_light;
     }
+    // If it's not facing the light, we color with the diffuse
+    // contribution
+  } else {
+    // check if we're going to occlude the last reflected surface.
+    // if so, color by the diffuse contribution instead
+
+    if (plot_.is_id_opaque(hit_id)) {
+      result_color_ = {0, 0, 0}; // TODO handle occlusion correctly
+    }
+
+    // TODO figure out how to kill the ray. Right now it moves to
+    // the camera until it exits the geometry.
   }
 }
 

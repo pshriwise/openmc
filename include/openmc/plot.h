@@ -487,7 +487,9 @@ class PhongRay : public Ray {
 public:
   PhongRay(Position r, Direction u, const PhongPlot& plot)
     : Ray(r, u), plot_(plot)
-  {}
+  {
+    result_color_ = plot_.not_found_;
+  }
 
   virtual void on_intersection() override;
 
