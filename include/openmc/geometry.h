@@ -99,7 +99,7 @@ public:
   // Handles uncaught exception messages, e.g. Geometron with no ID.
   // These will not show up in the usual particle tracking, as more
   // detailed error reporting is provided in the Particle class.
-  const char* what()
+  virtual const char* what() const throw()
   {
     switch (reason) {
     case Reason::negative_lattice_distance:
@@ -110,6 +110,8 @@ public:
       return "Outside lattice but no outer region defined";
     case Reason::no_dagmc_intersection:
       return "No intersection found with DAGMC cell";
+    default:
+      return "wtf??";
     }
   }
 };

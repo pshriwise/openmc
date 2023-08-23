@@ -445,12 +445,16 @@ public:
 
   const int& i_surface() { return i_surface_; }
 
+  // Stops the ray and exits tracing when called from on_intersection
+  void stop() { stop_ = true; }
+
 private:
   static const int MAX_INTERSECTIONS = 1000000;
 
   bool hit_something_ {false};
   bool intersection_found_ {true};
   bool first_inside_model_ {false};
+  bool stop_ {false};
 
   unsigned event_counter_ {0};
 

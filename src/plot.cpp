@@ -1675,6 +1675,8 @@ void Ray::trace()
 
       // Call the specialized logic for this type of ray
       on_intersection();
+      if (stop_)
+        return;
 
       // Advance particle, prepare for next intersection
       for (int lev = 0; lev < n_coord(); ++lev) {
