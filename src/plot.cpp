@@ -1643,6 +1643,11 @@ void Ray::trace()
     bool inside_cell = false;
 
     i_surface_ = std::abs(surface()) - 1;
+
+    // This means no surface was intersected.
+    if (i_surface_ == 2147483646)
+      return;
+
     if (i_surface_ > 0 &&
         model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
 #ifdef DAGMC
@@ -1671,7 +1676,7 @@ void Ray::trace()
       // Call the specialized logic for this type of ray
       on_intersection();
 
-      // Advance particle
+      // Advance particle, prepare for next intersection
       for (int lev = 0; lev < n_coord(); ++lev) {
         coord(lev).r += dist_.distance * coord(lev).u;
       }
@@ -1733,10 +1738,16 @@ void PhongRay::on_intersection()
       // universe or something..
       Direction normal = model::surfaces[i_surface()]->normal(r());
       normal /= normal.norm();
+      if (surface() > 0) {
+        normal *= -1.0;
+      }
+
+      // Facing away from the light means no lighting
+      double dotprod = normal.dot(to_light);
+      dotprod = dotprod >= 0.0 ? dotprod : 0.0;
 
       double modulation =
-        plot_.diffuse_fraction_ +
-        (1.0 - plot_.diffuse_fraction_) * std::abs(normal.dot(to_light));
+        plot_.diffuse_fraction_ + (1.0 - plot_.diffuse_fraction_) * dotprod;
       result_color_ *= modulation;
 
       // Now point the particle to the camera. We now begin
