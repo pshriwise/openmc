@@ -1658,7 +1658,7 @@ void Ray::trace()
       fatal_error("Not compiled for DAGMC, but somehow you have a DAGCell!");
 #endif
     } else {
-      inside_cell = exhaustive_find_cell(*this);
+      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
     }
 
     if (inside_cell) {
@@ -1688,7 +1688,7 @@ void Ray::trace()
       if (dist_.lattice_translation[0] != 0 ||
           dist_.lattice_translation[1] != 0 ||
           dist_.lattice_translation[2] != 0) {
-        cross_lattice(*this, dist_);
+        cross_lattice(*this, dist_, settings::verbosity >= 10);
       }
 
     } else {
