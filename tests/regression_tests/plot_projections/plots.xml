@@ -78,7 +78,7 @@
   <plot id="8" color_by="material" type="phong">
     <look_at>0. 0. 0.</look_at>
     <camera_position>10. 10. 10.</camera_position>
-    <light_position>10. 10. 0.</light_position>
+    <light_position>0. 10. 10.</light_position>
     <pixels>200 200</pixels>
     <filename>phong_move_light.png</filename>
     <opaque_ids>1 3</opaque_ids>
