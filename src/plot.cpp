@@ -1499,8 +1499,8 @@ void RayTracePlot::set_camera_position(pugi::xml_node node)
 {
   vector<double> camera_pos = get_node_array<double>(node, "camera_position");
   if (camera_pos.size() != 3) {
-    fatal_error(
-      fmt::format("look_at element must have three floating point values"));
+    fatal_error(fmt::format(
+      "camera_position element must have three floating point values"));
   }
   camera_position_.x = camera_pos[0];
   camera_position_.y = camera_pos[1];
@@ -1635,6 +1635,11 @@ void PhongPlot::set_diffuse_fraction(pugi::xml_node node)
   }
 }
 
+void Ray::compute_distance()
+{
+  dist_ = distance_to_boundary(*this);
+}
+
 void Ray::trace()
 {
   int first_surface_ = -1;    // surface first passed when entering the model
@@ -1645,8 +1650,12 @@ void Ray::trace()
     i_surface_ = std::abs(surface()) - 1;
 
     // This means no surface was intersected.
-    if (i_surface_ == 2147483646)
+    if (i_surface_ == 2147483646) {
+      std::cout << "lost a particle, u,r=!" << std::endl;
+      std::cout << r() << std::endl;
+      std::cout << u() << std::endl;
       return;
+    }
 
     if (i_surface_ > 0 &&
         model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
@@ -1666,7 +1675,7 @@ void Ray::trace()
       hit_something_ = true;
       intersection_found_ = true;
 
-      dist_ = distance_to_boundary(*this);
+      compute_distance();
 
       if (first_inside_model_) {
         i_surface_ = first_surface_ - 1;
@@ -1755,6 +1764,18 @@ void PhongRay::on_intersection()
       // Now point the particle to the camera. We now begin
       // checking to see if it's occluded by another surface
       u() = to_light;
+
+      orig_hit_id_ = hit_id;
+
+      surface() = -surface(); // go to other side
+      bool found = exhaustive_find_cell(*this);
+      if (!found) {
+        fatal_error("Lost particle after reflection.");
+      }
+
+      // Must recalculate distance to boundary due to the
+      // direction change
+      compute_distance();
     }
     // If it's not facing the light, we color with the diffuse
     // contribution
@@ -1763,11 +1784,14 @@ void PhongRay::on_intersection()
     // if so, color by the diffuse contribution instead
 
     if (plot_.is_id_opaque(hit_id)) {
-      result_color_ = {0, 0, 0}; // TODO handle occlusion correctly
-    }
 
-    // TODO figure out how to kill the ray. Right now it moves to
-    // the camera until it exits the geometry.
+      if (orig_hit_id_ == -1)
+        fatal_error("somehow a ray got reflected but not original ID set?");
+
+      result_color_ = plot_.colors_[orig_hit_id_];
+      result_color_ *= plot_.diffuse_fraction_;
+      stop();
+    }
   }
 }
 

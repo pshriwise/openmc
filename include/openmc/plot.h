@@ -448,6 +448,9 @@ public:
   // Stops the ray and exits tracing when called from on_intersection
   void stop() { stop_ = true; }
 
+  // Sets the dist_ variable
+  void compute_distance();
+
 private:
   static const int MAX_INTERSECTIONS = 1000000;
 
@@ -507,6 +510,11 @@ private:
    * is shadowed by something else.
    */
   bool reflected_ {false};
+
+  // Have to record the first hit ID, so that if the region
+  // does get shadowed, we recall what its color should be
+  // when tracing from the surface to the light.
+  int orig_hit_id_ {-1};
 
   RGBColor result_color_;
 };
