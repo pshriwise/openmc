@@ -1747,7 +1747,7 @@ void PhongRay::on_intersection()
 
       // NOTE: may need to transform to_light to the inner
       // universe or something..
-      Direction normal = model::surfaces[i_surface()]->normal(r());
+      Direction normal = model::surfaces[i_surface()]->normal(r_local());
       normal /= normal.norm();
       if (surface() > 0) {
         normal *= -1.0;
@@ -1768,6 +1768,10 @@ void PhongRay::on_intersection()
       orig_hit_id_ = hit_id;
 
       surface() = -surface(); // go to other side
+
+      // Must fully restart coordinate search. Why? Not sure.
+      clear();
+
       bool found = exhaustive_find_cell(*this);
       if (!found) {
         fatal_error("Lost particle after reflection.");
