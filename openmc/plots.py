@@ -471,6 +471,15 @@ class PlotBase(IDManagerMixin):
         for domain in domains:
             self.colors[domain] = np.random.randint(0, 256, (3,))
 
+    def _colors_to_xml(self, element):
+        for domain, color in sorted(self._colors.items(),
+                                    key=lambda x: self._get_id(x[0])):
+            subelement = ET.SubElement(element, "color")
+            subelement.set("id", str(self._get_id(domain)))
+            if isinstance(color, str):
+                color = _SVG_COLORS[color.lower()]
+            subelement.set("rgb", ' '.join(str(x) for x in color))
+
     def to_xml_element(self):
         """Save common plot attributes to XML element
 
@@ -797,13 +806,7 @@ class Plot(PlotBase):
         subelement.text = ' '.join(map(str, self._width))
 
         if self._colors:
-            for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: PlotBase._get_id(x[0])):
-                subelement = ET.SubElement(element, "color")
-                subelement.set("id", str(PlotBase._get_id(domain)))
-                if isinstance(color, str):
-                    color = _SVG_COLORS[color.lower()]
-                subelement.set("rgb", ' '.join(str(x) for x in color))
+            self._colors_to_xml(element)
 
         if self._show_overlaps:
             subelement = ET.SubElement(element, "show_overlaps")
@@ -1102,7 +1105,6 @@ class RayTracePlot(PlotBase):
 
         element = super().to_xml_element()
         element.set("id", str(self._id))
-        element.set("type", "projection")
 
         subelement = ET.SubElement(element, "camera_position")
         subelement.text = ' '.join(map(str, self._camera_position))
@@ -1432,6 +1434,7 @@ class PhongPlot(RayTracePlot):
 
         """
         element = super().to_xml_element()
+        element.set("type", "phong")
 
         # no light position means put it at the camera
         if self._light_position:
@@ -1446,7 +1449,10 @@ class PhongPlot(RayTracePlot):
         self._check_domains_consistent_with_color_by(self._opaque_domains)
         subelement = ET.SubElement(element, "opaque_ids")
         subelement.text = ' '.join(
-            [domain.id for domain in self._opaque_domains])
+            [str(domain.id) for domain in self._opaque_domains])
+
+        if self._colors:
+            self._colors_to_xml(element)
 
         return element
 
@@ -1496,13 +1502,14 @@ class Plots(cv.CheckedList):
 
     Parameters
     ----------
-    plots : Iterable of openmc.Plot or openmc.ProjectionPlot
+    plots : Iterable of openmc.Plot, openmc.ProjectionPlot,
+              or openmc.PhongPlot
         plots to add to the collection
 
     """
 
     def __init__(self, plots=None):
-        super().__init__((Plot, ProjectionPlot), 'plots collection')
+        super().__init__((Plot, ProjectionPlot, PhongPlot), 'plots collection')
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
@@ -1512,7 +1519,8 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        plot : openmc.Plot or openmc.ProjectionPlot
+        plot : openmc.Plot, openmc.ProjectionPlot, or
+                 openmc.PhongPlot
             Plot to append
 
         """
@@ -1646,8 +1654,14 @@ class Plots(cv.CheckedList):
             plot_type = e.get('type')
             if plot_type == 'projection':
                 plots.append(ProjectionPlot.from_xml_element(e))
-            else:
+            elif plot_type == 'phong':
+                plots.append(PhongPlot.from_xml_element(e))
+            elif plot_type == 'voxel':
                 plots.append(Plot.from_xml_element(e))
+            elif plot_type == 'slice':
+                plots.append(Plot.from_xml_element(e))
+            else:
+                raise ValueError("Unknown plot type: {}".format(plot_type))
         return plots
 
     @classmethod
