@@ -1191,7 +1191,7 @@ bool ProjectionPlot::trackstack_equivalent(
 }
 
 std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
-  int horiz, int vert) const
+  int horiz, int vert, bool sample) const
 {
   // Now we convert to the polar coordinate system with the polar angle
   // measuring the angle from the vector up_. Phi is the rotation about up_. For
@@ -1200,6 +1200,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
+
   double vert_fov_radians = horiz_fov_radians * p1 / p0;
 
   // focal_plane_dist can be changed to alter the perspective distortion
@@ -1215,16 +1216,30 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   if (orthographic_width_ == 0.0) { // perspective projection
     Direction camera_local_vec;
     camera_local_vec.x = focal_plane_dist;
-    camera_local_vec.y = -0.5 * dx + horiz * dx / p0;
-    camera_local_vec.z = 0.5 * dy - vert * dy / p1;
-    camera_local_vec /= camera_local_vec.norm();
 
+    double h = static_cast<double>(horiz);
+    double v = static_cast<double>(vert);
+
+    if (sample) {
+      h += ((double)std::rand() / (double)RAND_MAX) - 0.5;
+      v += ((double)std::rand() / (double)RAND_MAX) - 0.5;
+    }
+
+    camera_local_vec.y = -0.5 * dx + h * dx / p0;
+    camera_local_vec.z = 0.5 * dy - v * dy / p1;
+    camera_local_vec /= camera_local_vec.norm();
     result.first = camera_position_;
     result.second = camera_local_vec.rotate(camera_to_model_);
   } else { // orthographic projection
 
     double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
-    double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p0;
+    double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p1;
+
+    // perturb the pixel position slightly if requested
+    if (sample) {
+      x_pix_coord += ((double)std::rand() / (double)RAND_MAX) - 0.5;
+      y_pix_coord += ((double)std::rand() / (double)RAND_MAX) - 0.5;
+    }
 
     Direction yaxis = {
       camera_to_model_[1], camera_to_model_[4], camera_to_model_[7]};
@@ -1638,18 +1653,26 @@ void Ray::trace()
       return;
     }
 
-    if (i_surface_ > 0 &&
-        model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
-#ifdef DAGMC
-      int32_t i_cell = next_cell(
-        i_surface_, cell_last(n_coord() - 1), lowest_coord().universe);
-      inside_cell = i_cell >= 0;
-#else
-      fatal_error("Not compiled for DAGMC, but somehow you have a DAGCell!");
-#endif
-    } else {
-      inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
-    }
+    r() += u() * 1e-03;
+
+    inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    //     if (i_surface_ > 0 &&
+    //         model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
+    // #ifdef DAGMC
+    //       int32_t i_cell = next_cell(
+    //                                  i_surface_, lowest_coord().cell,
+    //                                  lowest_coord().universe);
+    //       inside_cell = i_cell >= 0;
+    //       this->lowest_coord().cell = i_cell;
+    //       this->material() = model::cells[i_cell]->material_[0];
+    // #else
+    //       fatal_error("Not compiled for DAGMC, but somehow you have a
+    //       DAGCell!");
+    // #endif
+    //     } else {
+    //       inside_cell = exhaustive_find_cell(*this, settings::verbosity >=
+    //       10);
+    //     }
 
     if (inside_cell) {
 
@@ -1746,7 +1769,7 @@ void PhongRay::on_intersection()
 
       Direction normal = model::surfaces.at(i_surface())->normal(r_local());
       normal /= normal.norm();
-      if (surface() > 0) {
+      if (surf->geom_type_ != GeometryType::DAG && surface() > 0) {
         normal *= -1.0;
       }
 
@@ -1771,6 +1794,8 @@ void PhongRay::on_intersection()
 
       bool found = exhaustive_find_cell(*this);
       if (!found) {
+        // stop();
+        // return;
         fatal_error("Lost particle after reflection.");
       }
 

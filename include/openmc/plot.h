@@ -68,8 +68,16 @@ struct RGBColor {
     return *this;
   }
 
+  RGBColor& operator+=(const RGBColor& other)
+  {
+    red += other.red;
+    green += other.green;
+    blue += other.blue;
+    return *this;
+  }
+
   // Members
-  uint8_t red, green, blue;
+  int red, green, blue;
 };
 
 // some default colors
@@ -305,7 +313,8 @@ protected:
    * Gets the starting position and direction for the pixel corresponding
    * to this horizontal and vertical position.
    */
-  std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
+  std::pair<Position, Direction> get_pixel_ray(
+    int horiz, int vert, bool sample = false) const;
 
   // Max intersections before we assume ray tracing is caught in an infinite
   // loop:
