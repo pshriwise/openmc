@@ -106,7 +106,10 @@ void Particle::split(double wgt)
   bank.time = time();
 
   // TODO: change where pushed based on setting
-  simulation::shared_secondary_bank.push_back(bank);
+  if (settings::shared_secondary_bank)
+    simulation::shared_secondary_bank.push_back(bank);
+  else
+    secondary_bank().push_back(bank);
 }
 
 void Particle::from_source(SourceSite s)

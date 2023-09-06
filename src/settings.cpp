@@ -119,6 +119,7 @@ double res_scat_energy_max {1000.0};
 vector<std::string> res_scat_nuclides;
 RunMode run_mode {RunMode::UNSET};
 SolverType solver_type {SolverType::MONTE_CARLO};
+bool shared_secondary_bank {false};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
@@ -1070,6 +1071,12 @@ void read_settings_xml(pugi::xml_node root)
           "<tabular_legendre> element must contain a value greater than 1");
       }
     }
+  }
+
+  // Check whether create delayed neutrons in fission
+  if (check_for_node(root, "shared_secondary_bank")) {
+    shared_secondary_bank =
+      get_node_value_bool(root, "shared_secondary_bank");
   }
 
   // Check whether create delayed neutrons in fission
