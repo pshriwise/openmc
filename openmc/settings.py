@@ -326,6 +326,7 @@ class Settings:
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'volume calculations')
 
+        self._shared_secondary_bank = None
         self._create_fission_neutrons = None
         self._create_delayed_neutrons = None
         self._delayed_photon_scaling = None
@@ -872,6 +873,15 @@ class Settings:
             VolumeCalculation, 'stochastic volume calculations', vol_calcs)
 
     @property
+    def shared_secondary_bank(self) -> bool:
+        return self._shared_secondary_bank
+
+    @shared_secondary_bank.setter
+    def shared_secondary_bank(self, v: bool):
+        cv.check_type('shared secondary bank', v, bool)
+        self._shared_secondary_bank = v
+
+    @property
     def create_fission_neutrons(self) -> bool:
         return self._create_fission_neutrons
 
@@ -1321,6 +1331,11 @@ class Settings:
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
+    def _create_shared_secondary_bank_subelement(self, root):
+        if self._shared_secondary_bank is not None:
+            elem = ET.SubElement(root, "shared_secondary_bank")
+            elem.text = str(self._shared_secondary_bank).lower()
+
     def _create_create_delayed_neutrons_subelement(self, root):
        if self._create_delayed_neutrons is not None:
            elem = ET.SubElement(root, "create_delayed_neutrons")
@@ -1699,6 +1714,11 @@ class Settings:
         if text is not None:
             self.create_fission_neutrons = text in ('true', '1')
 
+    def _shared_secondary_bank_from_xml_element(self, root):
+        text = get_text(root, 'shared_secondary_bank')
+        if text is not None:
+            self.shared_secondary_bank = text in ('true', '1')
+
     def _create_delayed_neutrons_from_xml_element(self, root):
         text = get_text(root, 'create_delayed_neutrons')
         if text is not None:
@@ -1758,6 +1778,11 @@ class Settings:
                 value = value in ('true', '1')
                 self.weight_window_checkpoints[key] = value
 
+    def _weight_windows_file_from_xml_element(self, root):
+        text = get_text(root, 'weight_windows_file')
+        if text is not None:
+            self.weight_windows_file = text
+
     def _max_splits_from_xml_element(self, root):
         text = get_text(root, 'max_splits')
         if text is not None:
@@ -1816,6 +1841,7 @@ class Settings:
         self._create_resonance_scattering_subelement(element)
         self._create_volume_calcs_subelement(element)
         self._create_create_fission_neutrons_subelement(element)
+        self._create_shared_secondary_bank_subelement(element)
         self._create_create_delayed_neutrons_subelement(element)
         self._create_delayed_photon_scaling_subelement(element)
         self._create_event_based_subelement(element)
@@ -1919,6 +1945,7 @@ class Settings:
         settings._ufs_mesh_from_xml_element(elem, meshes)
         settings._resonance_scattering_from_xml_element(elem)
         settings._create_fission_neutrons_from_xml_element(elem)
+        settings._shared_secondary_bank_from_xml_element(elem)
         settings._create_delayed_neutrons_from_xml_element(elem)
         settings._delayed_photon_scaling_from_xml_element(elem)
         settings._event_based_from_xml_element(elem)
@@ -1929,6 +1956,7 @@ class Settings:
         settings._weight_windows_from_xml_element(elem, meshes)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
+        settings._weight_windows_file_from_xml_element(elem)
         settings._max_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
 
