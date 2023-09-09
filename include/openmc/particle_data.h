@@ -279,12 +279,6 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
-#ifdef DAGMC
-  // DagMC state variables
-  moab::DagMC::RayHistory& history() { return history_; }
-  Direction& last_dir() { return last_dir_; }
-#endif
-
   // material of current and last cell
   int& material() { return material_; }
   const int& material() const { return material_; }
@@ -318,8 +312,15 @@ private:
   double sqrtkT_last_ {0.0};
 
 #ifdef DAGMC
+public:
+  // DagMC state variables
+  moab::DagMC::RayHistory& history() { return history_; }
+  Direction& last_dir() { return last_dir_; }
+
+private:
   moab::DagMC::RayHistory history_;
   Direction last_dir_;
+
 #endif
 };
 
