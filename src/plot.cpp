@@ -1203,8 +1203,9 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   double p1 = static_cast<double>(pixels_[1]);
   double vert_fov_radians = horiz_fov_radians * p1 / p0;
 
-  // This can be changed to alter the perspective distortion effect.
-  // This is in units of cm. Most of the time does not need to be changed.
+  // focal_plane_dist can be changed to alter the perspective distortion
+  // effect. This is in units of cm. This seems to look good most of the
+  // time. TODO let this variable be set through XML.
   constexpr double focal_plane_dist = 10.0;
   const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians );
   const double dy = p1 / p0 * dx;
@@ -1551,36 +1552,18 @@ void PhongPlot::create_output() const
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);
 
-#pragma omp parallel
-  {
+#pragma omp parallel for schedule(dynamic) collapse(2)
+  for (int horiz=0; horiz<pixels_[0]; ++horiz) {
+    for (int vert=0; vert<pixels_[1]; ++vert) {
 
-#ifdef _OPENMP
-    const int n_threads = omp_get_max_threads();
-    const int tid = omp_get_thread_num();
-#else
-    int n_threads = 1;
-    int tid = 0;
-#endif
+      // RayTracePlot implements camera ray generation
+      std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
+      PhongRay ray(ru.first, ru.second, *this);
 
-    int vert = tid;
-    for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
-      if (vert < pixels_[1]) {
-        for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
-
-          // RayTracePlot implements camera ray generation
-          std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
-          PhongRay ray(ru.first, ru.second, *this);
-
-          ray.trace();
-          data(horiz, vert) = ray.result_color();
-        }
-      } // end "if" vert in correct range
-
-      // TODO: can maybe remove this barrier
-#pragma omp barrier
-      vert += n_threads;
+      ray.trace();
+      data(horiz, vert) = ray.result_color();
     }
-  } // end omp parallel
+  }
 
 #ifdef USE_LIBPNG
   output_png(path_plot(), data);
