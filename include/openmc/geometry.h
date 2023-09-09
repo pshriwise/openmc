@@ -111,7 +111,7 @@ public:
     case Reason::no_dagmc_intersection:
       return "No intersection found with DAGMC cell";
     default:
-      return "wtf??";
+      return "unknown reason for particle loss";
     }
   }
 };
