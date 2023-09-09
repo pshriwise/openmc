@@ -1109,8 +1109,7 @@ void RayTracePlot::set_output_path(pugi::xml_node node)
 // if an intersection was found.
 int RayTracePlot::advance_to_boundary_from_void(Geometron& p)
 {
-  constexpr double scoot = 1e-5;
-  double min_dist = {INFINITY};
+  double min_dist {INFINITY};
   auto coord = p.coord(0);
   Universe* uni = model::universes[model::root_universe].get();
   int intersected_surface = -1;
@@ -1125,7 +1124,7 @@ int RayTracePlot::advance_to_boundary_from_void(Geometron& p)
     return -1;
   else { // advance the particle
     for (int j = 0; j < p.n_coord(); ++j)
-      p.coord(j).r += (min_dist + scoot) * p.coord(j).u;
+      p.coord(j).r += (min_dist + TINY_BIT) * p.coord(j).u;
     return std::abs(intersected_surface);
   }
 }
@@ -1632,11 +1631,10 @@ void Ray::trace()
 
     i_surface_ = std::abs(surface()) - 1;
 
-    // This means no surface was intersected.
-    if (i_surface_ == 2147483646) {
-      std::cout << "lost a particle, u,r=!" << std::endl;
-      std::cout << r() << std::endl;
-      std::cout << u() << std::endl;
+    // This means no surface was intersected. See cell.cpp
+    // and search for numeric_limits to see where we return it.
+    if (surface() == std::numeric_limits<int>::max()) {
+      warning(fmt::format("Lost a ray, r = {}, u = {}", u, r));
       return;
     }
 
