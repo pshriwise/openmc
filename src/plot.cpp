@@ -1634,7 +1634,7 @@ void Ray::trace()
     // This means no surface was intersected. See cell.cpp
     // and search for numeric_limits to see where we return it.
     if (surface() == std::numeric_limits<int>::max()) {
-      warning(fmt::format("Lost a ray, r = {}, u = {}", u, r));
+      warning(fmt::format("Lost a ray, r = {}, u = {}", r(), u()));
       return;
     }
 
