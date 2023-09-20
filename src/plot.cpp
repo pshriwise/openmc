@@ -1726,9 +1726,20 @@ void PhongRay::on_intersection()
       Direction to_light = plot_.light_location_ - r();
       to_light /= to_light.norm();
 
-      // NOTE: may need to transform to_light to the inner
-      // universe or something..
-      Direction normal = model::surfaces[i_surface()]->normal(r_local());
+      // Not sure what can cause this error. Color as an error and proceed
+      // from there. It seems to happen only for a few pixels on the outer
+      // boundary of a hex lattice. TODO
+      //
+      // We cannot detect it in the outer loop, and it only matters here, so
+      // that's why the error handling is a little different than for a lost
+      // ray.
+      if (i_surface() == -1) {
+        result_color_ = plot_.overlap_color_;
+        stop();
+        return;
+      }
+
+      Direction normal = model::surfaces.at(i_surface())->normal(r_local());
       normal /= normal.norm();
       if (surface() > 0) {
         normal *= -1.0;
