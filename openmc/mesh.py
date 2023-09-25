@@ -257,7 +257,12 @@ class StructuredMesh(MeshBase):
         vertices = self.vertices
         s0 = (slice(None),) + (slice(0, -1),)*ndim
         s1 = (slice(None),) + (slice(1, None),)*ndim
-        return (vertices[s0] + vertices[s1]) / 2
+        centroids = (vertices[s0] + vertices[s1]) / 2
+
+        if isinstance(self, (CylindricalMesh, SphericalMesh)):
+            centroids = self._convert_to_cartesian(centroids, self.origin)
+
+        return centroids
 
     @property
     def num_mesh_cells(self):
@@ -1439,6 +1444,10 @@ class CylindricalMesh(StructuredMesh):
             num=dimension[2]+1
         )
         origin = (cached_bb.center[0], cached_bb.center[1], z_grid[0])
+
+        # make z-grid relative to the origin
+        z_grid -= origin[2]
+
         mesh = cls(
             r_grid=r_grid,
             z_grid=z_grid,
