@@ -1206,7 +1206,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   // effect. This is in units of cm. This seems to look good most of the
   // time. TODO let this variable be set through XML.
   constexpr double focal_plane_dist = 10.0;
-  const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians );
+  const double dx = 2.0 * focal_plane_dist * std::tan(0.5 * horiz_fov_radians);
   const double dy = p1 / p0 * dx;
 
   std::pair<Position, Direction> result;
@@ -1552,8 +1552,8 @@ void PhongPlot::create_output() const
   ImageData data({width, height}, not_found_);
 
 #pragma omp parallel for schedule(dynamic) collapse(2)
-  for (int horiz=0; horiz<pixels_[0]; ++horiz) {
-    for (int vert=0; vert<pixels_[1]; ++vert) {
+  for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+    for (int vert = 0; vert < pixels_[1]; ++vert) {
 
       // RayTracePlot implements camera ray generation
       std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
@@ -1703,6 +1703,11 @@ void ProjectionRay::on_intersection()
       0.0, first_surface());
   }
 
+  // This records a tuple with the following info
+  //
+  // 1) ID (material or cell depending on color_by_)
+  // 2) Distance traveled by the ray through that ID
+  // 3) Index of the intersected surface (starting from 1)
   line_segments_.emplace_back(
     plot_.color_by_ == PlottableInterface::PlotColorBy::mats
       ? material()
