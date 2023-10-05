@@ -616,7 +616,9 @@ std::pair<double, int32_t> DAGCell::distance(
     // isn't found in a volume that is not the implicit complement. In the case
     // that the DAGMC model is the root universe of the geometry, even a missing
     // intersection in the implicit complement should trigger this condition.
-    throw ParticleLost(ParticleLost::Reason::no_dagmc_intersection, id_);
+    p->mark_as_lost(fmt::format(
+      "No intersection found with DAGMC cell {}, filled with material {}", id_,
+      material_id));
   }
 
   return {dist, surf_idx};

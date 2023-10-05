@@ -201,6 +201,17 @@ class Geometron {
 public:
   Geometron();
 
+  // Geometron does not store any ID info, so give some reasonable behavior
+  // here. The Particle class redefines this. This is only here for the error
+  // reporting behavior that occurs in geometry.cpp. The explanation for
+  // mark_as_lost is the same.
+  int64_t id() { return 0; }
+  void mark_as_lost(const char* message);
+  void mark_as_lost(const std::string& message)
+  {
+    mark_as_lost(message.c_str());
+  }
+
   // resets all coordinate levels for the particle
   void clear()
   {
