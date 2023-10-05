@@ -1654,25 +1654,7 @@ void Ray::trace()
     }
 
     r() += u() * 1e-03;
-
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
-    //     if (i_surface_ > 0 &&
-    //         model::surfaces[i_surface_]->geom_type_ == GeometryType::DAG) {
-    // #ifdef DAGMC
-    //       int32_t i_cell = next_cell(
-    //                                  i_surface_, lowest_coord().cell,
-    //                                  lowest_coord().universe);
-    //       inside_cell = i_cell >= 0;
-    //       this->lowest_coord().cell = i_cell;
-    //       this->material() = model::cells[i_cell]->material_[0];
-    // #else
-    //       fatal_error("Not compiled for DAGMC, but somehow you have a
-    //       DAGCell!");
-    // #endif
-    //     } else {
-    //       inside_cell = exhaustive_find_cell(*this, settings::verbosity >=
-    //       10);
-    //     }
 
     if (inside_cell) {
 
@@ -1794,8 +1776,6 @@ void PhongRay::on_intersection()
 
       bool found = exhaustive_find_cell(*this);
       if (!found) {
-        // stop();
-        // return;
         fatal_error("Lost particle after reflection.");
       }
 
