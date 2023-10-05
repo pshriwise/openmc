@@ -205,12 +205,9 @@ public:
   // here. The Particle class redefines this. This is only here for the error
   // reporting behavior that occurs in geometry.cpp. The explanation for
   // mark_as_lost is the same.
-  int64_t id() { return 0; }
-  void mark_as_lost(const char* message);
-  void mark_as_lost(const std::string& message)
-  {
-    mark_as_lost(message.c_str());
-  }
+  virtual void mark_as_lost(const char* message);
+  virtual void mark_as_lost(const std::string& message);
+  virtual void mark_as_lost(const std::stringstream& message);
 
   // resets all coordinate levels for the particle
   void clear()
@@ -232,6 +229,13 @@ public:
     r_last() = r_a;
     u_last() = u_a;
   }
+
+  // Unique ID. This is not geometric info, but the
+  // error reporting in geometry.cpp requires this.
+  // We could save this to implement it in Particle,
+  // but that would require virtuals.
+  int64_t& id() { return id_; }
+  const int64_t& id() const { return id_; }
 
   // Number of current coordinate levels
   int& n_coord() { return n_coord_; }
@@ -301,6 +305,8 @@ public:
   double& sqrtkT_last() { return sqrtkT_last_; }
 
 private:
+  int64_t id_ {-1};
+
   int n_coord_ {1};
   int cell_instance_;
   vector<LocalCoord> coord_;
@@ -380,7 +386,6 @@ private:
   MacroXS macro_xs_;
   CacheDataMG mg_xs_cache_;
 
-  int64_t id_;
   ParticleType type_ {ParticleType::neutron};
 
   double E_;
@@ -470,10 +475,6 @@ public:
   // Multigroup macroscopic cross sections
   CacheDataMG& mg_xs_cache() { return mg_xs_cache_; }
   const CacheDataMG& mg_xs_cache() const { return mg_xs_cache_; }
-
-  // Unique ID
-  int64_t& id() { return id_; }
-  const int64_t& id() const { return id_; }
 
   // Particle type (n, p, e, gamma, etc)
   ParticleType& type() { return type_; }
