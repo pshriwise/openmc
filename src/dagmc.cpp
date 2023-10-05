@@ -616,9 +616,10 @@ std::pair<double, int32_t> DAGCell::distance(
     // isn't found in a volume that is not the implicit complement. In the case
     // that the DAGMC model is the root universe of the geometry, even a missing
     // intersection in the implicit complement should trigger this condition.
+
     p->mark_as_lost(fmt::format(
       "No intersection found with DAGMC cell {}, filled with material {}", id_,
-      material_id));
+      model::materials.at(material_[0])->id()));
   }
 
   return {dist, surf_idx};
@@ -693,13 +694,13 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u) const
+Direction DAGSurface::reflect(Position r, Direction u, Geometron* p) const
 {
   moab::ErrorCode rval;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
   return u.reflect(dir);
 }

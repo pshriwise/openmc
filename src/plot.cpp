@@ -1749,8 +1749,11 @@ void PhongRay::on_intersection()
         return;
       }
 
-      Direction normal = model::surfaces.at(i_surface())->normal(r_local());
+      const auto& surf = model::surfaces.at(i_surface());
+      Direction normal = surf->normal(r_local());
       normal /= normal.norm();
+      // adjust surface normal depending on which side of the surface the
+      // ray is on for DAGMC geometry
       if (surf->geom_type_ != GeometryType::DAG && surface() > 0) {
         normal *= -1.0;
       }
