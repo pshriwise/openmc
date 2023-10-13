@@ -84,29 +84,6 @@ def calc_pn(n, x):
     return pnx
 
 
-def evaluate_legendre(data, x):
-    """ Finds the value of f(x) given a set of Legendre coefficients
-    and the value of x.
-
-    Parameters
-    ----------
-    data : iterable of float
-        Legendre coefficients
-    x : float
-        Independent variable to evaluate the Legendre at
-
-    Returns
-    -------
-    float
-        Corresponding Legendre expansion result
-
-    """
-
-    data_arr = np.array(data, dtype=np.float64)
-    return _dll.evaluate_legendre(len(data),
-                                  data_arr.ctypes.data_as(POINTER(c_double)), x)
-
-
 def calc_rn(n, uvw):
     """ Calculate the n-th order real Spherical Harmonics for a given angle;
     all Rn,m values are provided for all n (where -n <= m <= n).
