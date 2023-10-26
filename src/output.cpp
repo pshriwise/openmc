@@ -430,6 +430,13 @@ void print_runtime()
   if (settings::verbosity < 6)
     return;
 
+  double time_find_cell = std::accumulate(simulation::time_find_cell.begin(), simulation::time_find_cell.end(), 0.0,
+                                          [](const double& total, Timer& timer) { return total + timer.elapsed(); });
+  double time_distance_to_boundary = std::accumulate(simulation::time_distance_to_boundary.begin(), simulation::time_distance_to_boundary.end(), 0.0,
+                                          [](const double& total, Timer& timer) { return total + timer.elapsed(); });
+  double time_cross_surface = std::accumulate(simulation::time_cross_surface.begin(), simulation::time_cross_surface.end(), 0.0,
+                                          [](const double& total, Timer& timer) { return total + timer.elapsed(); });
+
   // display time elapsed for various sections
   show_time("Total time for initialization", time_initialize.elapsed());
   show_time("Reading cross sections", time_read_xs.elapsed(), 1);
@@ -456,6 +463,9 @@ void print_runtime()
   show_time("Time accumulating tallies", time_tallies.elapsed(), 1);
   show_time("Time writing statepoints", time_statepoint.elapsed(), 1);
   show_time("Total time for finalization", time_finalize.elapsed());
+  show_time("Total time in find cell:", time_find_cell);
+  show_time("Total time in dist. to boundary:", time_distance_to_boundary);
+  show_time("Total time in surface crossings:", time_cross_surface);
   show_time("Total time elapsed", time_total.elapsed());
 
   // Calculate particle rate in active/inactive batches

@@ -1,3 +1,6 @@
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include "openmc/timer.h"
 
 namespace openmc {
@@ -26,6 +29,9 @@ Timer time_event_advance_particle;
 Timer time_event_surface_crossing;
 Timer time_event_collision;
 Timer time_event_death;
+std::vector<Timer> time_find_cell;
+std::vector<Timer> time_distance_to_boundary;
+std::vector<Timer> time_cross_surface;
 
 } // namespace simulation
 
@@ -67,6 +73,19 @@ double Timer::elapsed()
 
 void reset_timers()
 {
+#ifdef _OPENMP
+  int n_threads = omp_get_max_threads();
+#else
+  int n_threads = 1;
+#endif
+
+  simulation::time_find_cell.resize(n_threads);
+  for (auto& t : simulation::time_find_cell) t.reset();
+  simulation::time_distance_to_boundary.resize(n_threads);
+  for (auto& t : simulation::time_distance_to_boundary) t.reset();
+  simulation::time_cross_surface.resize(n_threads);
+  for (auto& t : simulation::time_cross_surface) t.reset();
+
   simulation::time_active.reset();
   simulation::time_bank.reset();
   simulation::time_bank_sample.reset();

@@ -2,6 +2,7 @@
 #define OPENMC_TIMER_H
 
 #include <chrono>
+#include <vector>
 
 namespace openmc {
 
@@ -31,6 +32,9 @@ extern Timer time_event_advance_particle;
 extern Timer time_event_surface_crossing;
 extern Timer time_event_collision;
 extern Timer time_event_death;
+extern std::vector<Timer> time_find_cell;
+extern std::vector<Timer> time_distance_to_boundary;
+extern std::vector<Timer> time_cross_surface;
 
 } // namespace simulation
 

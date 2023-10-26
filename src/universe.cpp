@@ -1,7 +1,12 @@
 #include "openmc/universe.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <set>
 
+#include "openmc/timer.h"
 #include "openmc/hdf5_interface.h"
 
 namespace openmc {
@@ -38,6 +43,12 @@ void Universe::to_hdf5(hid_t universes_group) const
 
 bool Universe::find_cell(Particle& p) const
 {
+#ifdef _OPENMP
+  int thread_num = omp_get_thread_num();
+#else
+  int thread_num = 0;
+#endif
+  simulation::time_find_cell[thread_num].start();
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
@@ -52,9 +63,11 @@ bool Universe::find_cell(Particle& p) const
     // Check if this cell contains the particle
     if (model::cells[i_cell]->contains(r, u, surf)) {
       p.lowest_coord().cell = i_cell;
+      simulation::time_find_cell[thread_num].stop();
       return true;
     }
   }
+  simulation::time_find_cell[thread_num].stop();
   return false;
 }
 

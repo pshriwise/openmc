@@ -29,6 +29,7 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
+#include "openmc/timer.h"
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
 
@@ -196,7 +197,14 @@ void Particle::event_calculate_xs()
 void Particle::event_advance()
 {
   // Find the distance to the nearest boundary
+#ifdef _OPENMP
+  int thread_num = omp_get_thread_num();
+#else
+  int thread_num = 0;
+#endif
+  simulation::time_distance_to_boundary[thread_num].start();
   boundary() = distance_to_boundary(*this);
+  simulation::time_distance_to_boundary[thread_num].stop();
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
@@ -254,6 +262,12 @@ void Particle::event_advance()
 
 void Particle::event_cross_surface()
 {
+#ifdef _OPENMP
+  int thread_num = omp_get_thread_num();
+#else
+  int thread_num = 0;
+#endif
+  simulation::time_cross_surface[thread_num].start();
   // Set surface that particle is on and adjust coordinate levels
   surface() = boundary().surface_index;
   n_coord() = boundary().coord_level;
@@ -282,6 +296,7 @@ void Particle::event_cross_surface()
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
+  simulation::time_cross_surface[thread_num].stop();
 }
 
 void Particle::event_collide()

@@ -69,6 +69,8 @@ int openmc_simulation_init()
 {
   using namespace openmc;
 
+  reset_timers();
+
   // Skip if simulation has already been initialized
   if (simulation::initialized)
     return 0;

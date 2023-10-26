@@ -12,7 +12,6 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
-
 namespace openmc {
 
 //==============================================================================
