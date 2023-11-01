@@ -41,6 +41,8 @@ extern "C" int total_gen;          //!< total number of generations simulated
 extern double total_weight;        //!< Total source weight in a batch
 extern int64_t work_per_rank;      //!< number of particles per MPI rank
 
+extern size_t max_secondary_size; //!< maximum secondary bank size during simulation
+
 extern const RegularMesh* entropy_mesh;
 extern const RegularMesh* ufs_mesh;
 

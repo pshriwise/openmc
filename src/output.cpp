@@ -458,6 +458,8 @@ void print_runtime()
   show_time("Total time for finalization", time_finalize.elapsed());
   show_time("Total time elapsed", time_total.elapsed());
 
+  write_message(fmt::format("Maximum shared secondary bank size: {}", simulation::max_secondary_size));
+
   // Calculate particle rate in active/inactive batches
   int n_active = simulation::current_batch - settings::n_inactive;
   double speed_inactive = 0.0;
