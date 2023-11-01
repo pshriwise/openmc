@@ -305,6 +305,18 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
     }
     write_dataset(runtime_group, "active batches", time_active.elapsed());
+
+    double t_find_cell = std::accumulate(simulation::time_find_cell.begin(), simulation::time_find_cell.end(), 0.0,
+                                            [](const double& total, Timer& timer) { return total + timer.elapsed(); });
+    double t_distance_to_boundary = std::accumulate(simulation::time_distance_to_boundary.begin(), simulation::time_distance_to_boundary.end(), 0.0,
+                                            [](const double& total, Timer& timer) { return total + timer.elapsed(); });
+    double t_cross_surface = std::accumulate(simulation::time_cross_surface.begin(), simulation::time_cross_surface.end(), 0.0,
+                                            [](const double& total, Timer& timer) { return total + timer.elapsed(); });
+
+    write_dataset(runtime_group, "find cell", t_find_cell);
+    write_dataset(runtime_group, "distance to boundary", t_distance_to_boundary);
+    write_dataset(runtime_group, "cross surface", t_cross_surface);
+
     if (settings::run_mode == RunMode::EIGENVALUE) {
       write_dataset(
         runtime_group, "synchronizing fission bank", time_bank.elapsed());
