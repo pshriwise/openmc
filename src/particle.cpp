@@ -458,6 +458,7 @@ void Particle::event_revive_from_secondary()
   }
 
   // Check for secondary particles if this particle is dead
+  simulation::max_secondary_size = std::max(simulation::max_secondary_size, simulation::shared_secondary_bank.size());
   SourceSite s;
   if (simulation::shared_secondary_bank.pop_back(s)) {
     from_source(s);
@@ -465,6 +466,7 @@ void Particle::event_revive_from_secondary()
     from_source(secondary_bank().back());
     secondary_bank().pop_back();
   }
+
 
   // Try to source a seondary particle from the particle's local bank
   if (!alive() && !secondary_bank().empty()) {

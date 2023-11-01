@@ -78,6 +78,10 @@ public:
     mutex_.unlock();
   }
 
+  size_t size() {
+    return vec_.size();
+  }
+
 private:
   std::vector<value_type> vec_;
   OpenMPMutex mutex_;

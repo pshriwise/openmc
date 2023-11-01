@@ -41,6 +41,7 @@
 #include <cmath>
 #include <string>
 
+
 //==============================================================================
 // C API functions
 //==============================================================================
@@ -313,6 +314,8 @@ int ssw_current_file;
 int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
+
+size_t max_secondary_size {0};
 
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
