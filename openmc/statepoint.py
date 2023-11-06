@@ -415,7 +415,10 @@ class StatePoint:
 
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
-                    tally._sp_filename = self._f.filename
+
+                    if 'results' in group:
+                        tally._sp_filename = self._f.filename
+
                     tally.name = group['name'][()].decode() if 'name' in group else ''
 
                     # Check if tally has multiply_density attribute

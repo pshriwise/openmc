@@ -254,13 +254,15 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(file_id, "global_tallies", simulation::global_tallies);
 
       // Write tallies
-      if (model::active_tallies.size() > 0) {
+      if (true) {
         // Indicate that tallies are on
         write_attribute(file_id, "tallies_present", 1);
 
         // Write all tally results
         for (const auto& tally : model::tallies) {
           if (!tally->writable_)
+            continue;
+          if (!tally->active_)
             continue;
           // Write sum and sum_sq for each bin
           std::string name = "tally " + std::to_string(tally->id_);
@@ -922,9 +924,6 @@ void write_tally_results_nr(hid_t file_id)
   }
 
   for (const auto& t : model::tallies) {
-    // Skip any tallies that are not active
-    if (!t->active_)
-      continue;
     if (!t->writable_)
       continue;
 
