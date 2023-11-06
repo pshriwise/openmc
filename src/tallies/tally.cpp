@@ -1448,4 +1448,9 @@ extern "C" int openmc_remove_tally(int32_t index)
   return 0;
 }
 
+extern "C" int openmc_setup_active_tallies() {
+  setup_active_tallies();
+  return 0;
+}
+
 } // namespace openmc

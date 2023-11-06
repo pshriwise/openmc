@@ -62,6 +62,9 @@ _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
                             c_double, _array_1d_int, c_bool]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
+# _dll.openmc_setup_active_tallies.argtypes = None
+_dll.openmc_setup_active_tallies.restype = c_int
+_dll.openmc_setup_active_tallies.errcheck = _error_handler
 _dll.openmc_is_statepoint_batch.restype = c_bool
 _dll.openmc_master.restype = c_bool
 _dll.openmc_next_batch.argtypes = [POINTER(c_int)]
@@ -567,6 +570,8 @@ def statepoint_write(filename=None, write_source=True):
         filename = c_char_p(filename.encode())
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
+def setup_active_tallies():
+    _dll.openmc_setup_active_tallies()
 
 @contextmanager
 def run_in_memory(**kwargs):
