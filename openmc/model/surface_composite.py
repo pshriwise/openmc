@@ -1493,6 +1493,8 @@ class HexagonalPrism(CompositeSurface):
         # Create container for boundary arguments
         bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
 
+        self.orientation = orientation
+
         if orientation == 'y':
             # Left and right planes
             self.plane_max = openmc.XPlane(x + sqrt(3.)/2*l, **bc_args)
@@ -1603,4 +1605,58 @@ class HexagonalPrism(CompositeSurface):
             )
             prism &= ~corners
 
+        return prism
+
+
+class RightHexagonalPrism(HexagonalPrism):
+    """Hexagonal prism comoposed of six planar surfaces
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    edge_length : float
+        Length of a side of the hexagon in [cm]
+    orientation : {'x', 'y'}
+        An 'x' orientation means that two sides of the hexagon are parallel to
+        the x-axis and a 'y' orientation means that two sides of the hexagon are
+        parallel to the y-axis.
+    origin : Iterable of two floats
+        Origin of the prism.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the hexagonal prism.
+    albedo : float, optional
+        Albedo of the prism's surfaces as a ratio of particle weight after
+        interaction with the surface to the initial weight. Values must be
+        positive. Only applicable if the boundary type is 'reflective',
+        'periodic', or 'white'.
+    corner_radius : float
+        Prism corner radius in units of [cm].
+
+    """
+    _surface_names = ('plane_max', 'plane_min', 'upper_right', 'upper_left',
+                      'lower_right', 'lower_left', 'lower_z', 'upper_z')
+
+    def __init__(
+            self,
+            edge_length: float = 1.,
+            orientation: str = 'y',
+            origin: Sequence[float] = (0., 0.),
+            boundary_type: str = 'transmission',
+            albedo: float = 1.,
+            corner_radius: float = 0.,
+            lower_z: float = 0.,
+            upper_z: float = 1.
+    ):
+        super().__init__(edge_length, orientation, origin, boundary_type, albedo, corner_radius)
+        check_type('lower_z', lower_z, Real)
+        check_type('upper_z', upper_z, Real)
+        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+        self.lower_z = openmc.ZPlane(lower_z, **bc_args)
+        self.upper_z = openmc.ZPlane(upper_z, **bc_args)
+
+    def __neg__(self) -> openmc.Region:
+        prism = super().__neg__()
+        prism &= +self.lower_z & -self.upper_z
         return prism
