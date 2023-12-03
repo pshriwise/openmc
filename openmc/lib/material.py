@@ -5,6 +5,8 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
+import openmc
+
 from openmc.exceptions import AllocationError, InvalidIDError, OpenMCError
 from . import _dll, Nuclide
 from .core import _FortranObjectWithID
@@ -289,6 +291,20 @@ class Material(_FortranObjectWithID):
 
         _dll.openmc_material_set_densities(self._index, len(nuclides), nucs, dp)
 
+    def to_python_material(self):
+        material = openmc.Material(material_id=self.id, name=self.name)
+
+        material.temperature = self.temperature
+
+        if self.volume is not None:
+            material.volume = self.volume
+
+        nuclides, densities = self._get_densities()
+        for nuclide, density in zip(nuclides, densities):
+            material.add_nuclide(nuclide, density, 'ao')
+
+        return material
+
 
 class _MaterialMapping(Mapping):
     def __getitem__(self, key):
@@ -309,5 +325,10 @@ class _MaterialMapping(Mapping):
 
     def __repr__(self):
         return repr(dict(self))
+
+    def export_to_xml(self):
+        materials = openmc.Materials([m.to_python_material() for m in self.values()])
+        materials.export_to_xml()
+
 
 materials = _MaterialMapping()

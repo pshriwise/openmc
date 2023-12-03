@@ -254,7 +254,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(file_id, "global_tallies", simulation::global_tallies);
 
       // Write tallies
-      if (model::active_tallies.size() > 0) {
+      if (model::tallies.size() > 0) {
         // Indicate that tallies are on
         write_attribute(file_id, "tallies_present", 1);
 
@@ -933,8 +933,6 @@ void write_tally_results_nr(hid_t file_id)
 
   for (const auto& t : model::tallies) {
     // Skip any tallies that are not active
-    if (!t->active_)
-      continue;
     if (!t->writable_)
       continue;
 
@@ -998,6 +996,14 @@ void write_tally_results_nr(hid_t file_id)
 
     close_group(tallies_group);
   }
+}
+
+extern "C" int openmc_statepoint_load(const char* filename) {
+  const char*  tmp = settings::path_statepoint_c;
+  if (filename)  settings::path_statepoint_c = filename;
+  load_state_point();
+  settings::path_statepoint_c = tmp;
+  return 0;
 }
 
 } // namespace openmc

@@ -572,6 +572,11 @@ def statepoint_write(filename=None, write_source=True):
         filename = c_char_p(filename.encode())
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
+def statepoint_load(filename=None):
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+    _dll.openmc_statepoint_load(filename)
+
 
 def statepoint_load(filename: PathLike):
     """Load a statepoint file.
