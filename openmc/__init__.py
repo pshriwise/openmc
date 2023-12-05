@@ -40,3 +40,31 @@ from openmc.model import Model
 
 
 __version__ = '0.14.1-dev'
+
+
+_FILTER_TYPE_MAP = _FILTER_TYPE_MAP = {
+    'azimuthal': AzimuthalFilter,
+    'cell': CellFilter,
+    'cellborn': CellBornFilter,
+    'cellfrom': CellFromFilter,
+    'cellinstance': CellInstanceFilter,
+    'delayedgroup': DelayedGroupFilter,
+    'distribcell': DistribcellFilter,
+    'energy': EnergyFilter,
+    'energyout': EnergyoutFilter,
+    'energyfunction': EnergyFunctionFilter,
+    'legendre': LegendreFilter,
+    'material': MaterialFilter,
+    'materialfrom': MaterialFromFilter,
+    'mesh': MeshFilter,
+    'meshsurface': MeshSurfaceFilter,
+    'mu': MuFilter,
+    'particle': ParticleFilter,
+    'polar': PolarFilter,
+    'sphericalharmonics': SphericalHarmonicsFilter,
+    'spatiallegendre': SpatialLegendreFilter,
+    'surface': SurfaceFilter,
+    'universe': UniverseFilter,
+    'zernike': ZernikeFilter,
+    'zernikeradial': ZernikeRadialFilter
+}

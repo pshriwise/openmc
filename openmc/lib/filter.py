@@ -1,11 +1,14 @@
+from abc import abstractmethod
 from collections.abc import Mapping
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, \
     create_string_buffer, c_size_t
+from functools import lru_cache
 from weakref import WeakValueDictionary
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
+import openmc
 from openmc.exceptions import AllocationError, InvalidIDError
 from openmc.data.function import INTERPOLATION_SCHEME
 from openmc import ParticleType
@@ -191,6 +194,25 @@ class Filter(_FortranObjectWithID):
         _dll.openmc_filter_get_num_bins(self._index, n)
         return n.value
 
+    @lru_cache
+    def as_python_object(self):
+        try:
+            filter_class = openmc._FILTER_TYPE_MAP[self.filter_type]
+            filter = filter_class([], filter_id=self.id)
+            self._populate_python_object(filter)
+            return filter
+        except KeyError:
+            raise ValueError(f'Could not find filter type {self.filter_type}.')
+
+    def _populate_python_object(self, filter):
+        raise NotImplementedError(f'Python object conversion not supported for "{self.filter_type}" filter.')
+
+
+class ExpansionFilter(Filter):
+
+    def _populate_python_object(self, filter):
+        filter.order = self.order
+
 
 class EnergyFilter(Filter):
     filter_type = 'energy'
@@ -216,6 +238,9 @@ class EnergyFilter(Filter):
         _dll.openmc_energy_filter_set_bins(
             self._index, len(energies), energies_p)
 
+    def _populate_python_object(self, filter):
+        filter._bins = self.bins
+
 
 class CollisionFilter(Filter):
     filter_type = 'collision'
@@ -238,6 +263,9 @@ class CellFilter(Filter):
         n = c_int32()
         _dll.openmc_cell_filter_get_bins(self._index, cells, n)
         return as_array(cells, (n.value,))
+
+    def _populate_python_object(self, filter):
+        filter._bins = self.bins
 
 
 class CellbornFilter(Filter):
@@ -318,8 +346,13 @@ class EnergyFunctionFilter(Filter):
         cfunc(self._index, n, array_p)
         return as_array(array_p, (n.value, ))
 
+    def _populate_python_object(self, filter):
+        filter.energy = self.energy
+        filter.y = self.y
+        filter.interpolation = self.interpolation
 
-class LegendreFilter(Filter):
+
+class LegendreFilter(ExpansionFilter):
     filter_type = 'legendre'
 
     def __init__(self, order=None, uid=None, new=True, index=None):
@@ -359,6 +392,9 @@ class MaterialFilter(Filter):
         n = len(materials)
         bins = (c_int32*n)(*(m._index for m in materials))
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
+
+    def _populate_python_object(self, filter):
+        filter._bins = [m.id for m in self.bins]
 
 
 class MaterialFromFilter(Filter):
@@ -420,6 +456,9 @@ class MeshFilter(Filter):
     @translation.setter
     def translation(self, translation):
         _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
+
+    def _populate_python_object(self, filter):
+        filter._bins = self.mesh.id
 
 
 class MeshBornFilter(Filter):
@@ -535,6 +574,9 @@ class MeshSurfaceFilter(Filter):
     def translation(self, translation):
         _dll.openmc_meshsurface_filter_set_translation(self._index, (c_double*3)(*translation))
 
+    def _populate_python_object(self, filter):
+        filter._bins = self.mesh.id
+
 
 class MuFilter(Filter):
     filter_type = 'mu'
@@ -550,12 +592,15 @@ class ParticleFilter(Filter):
             self._index, particle_i.ctypes.data_as(POINTER(c_int)))
         return [ParticleType(i) for i in particle_i]
 
+    def _populate_python_object(self, filter):
+        filter._bins = [int(p) for p in self.bins]
+
 
 class PolarFilter(Filter):
     filter_type = 'polar'
 
 
-class SphericalHarmonicsFilter(Filter):
+class SphericalHarmonicsFilter(ExpansionFilter):
     filter_type = 'sphericalharmonics'
 
     def __init__(self, order=None, uid=None, new=True, index=None):
@@ -574,7 +619,7 @@ class SphericalHarmonicsFilter(Filter):
         _dll.openmc_sphharm_filter_set_order(self._index, order)
 
 
-class SpatialLegendreFilter(Filter):
+class SpatialLegendreFilter(ExpansionFilter):
     filter_type = 'spatiallegendre'
 
     def __init__(self, order=None, uid=None, new=True, index=None):
@@ -601,7 +646,7 @@ class UniverseFilter(Filter):
     filter_type = 'universe'
 
 
-class ZernikeFilter(Filter):
+class ZernikeFilter(ExpansionFilter):
     filter_type = 'zernike'
 
     def __init__(self, order=None, uid=None, new=True, index=None):

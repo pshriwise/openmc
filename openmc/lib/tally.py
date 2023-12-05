@@ -6,6 +6,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 import scipy.stats
 
+import openmc
 from openmc.exceptions import AllocationError, InvalidIDError
 from openmc.data.reaction import REACTION_NAME
 from . import _dll, Nuclide
@@ -431,6 +432,18 @@ class Tally(_FortranObjectWithID):
             half_width *= scipy.stats.t.ppf(1 - alpha/2, n - 1)
         return half_width
 
+    def as_python_object(self):
+        out = openmc.Tally(tally_id=self.id)
+        # create python filters and set tally
+        out.filters = [f.as_python_object() for f in self.filters]
+        out.scores = self.scores
+        out.nuclides = self.nuclides
+        if out.estimator is not None:
+            out.estimator = out.estimator
+        out.multiply_density = self.multiply_density
+
+        return out
+
 
 class _TallyMapping(Mapping):
     def __getitem__(self, key):
@@ -455,5 +468,8 @@ class _TallyMapping(Mapping):
     def __delitem__(self, key):
         """Delete a tally from tally vector and remove the ID,index pair from tally"""
         _dll.openmc_remove_tally(self[key]._index)
+
+    def export_to_xml(self):
+        openmc.Tallies([t.as_python_object() for t in self.values()]).export_to_xml()
 
 tallies = _TallyMapping()
