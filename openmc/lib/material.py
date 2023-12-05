@@ -291,7 +291,7 @@ class Material(_FortranObjectWithID):
 
         _dll.openmc_material_set_densities(self._index, len(nuclides), nucs, dp)
 
-    def to_python_material(self):
+    def as_python_material(self):
         material = openmc.Material(material_id=self.id, name=self.name)
 
         material.temperature = self.temperature
@@ -327,7 +327,7 @@ class _MaterialMapping(Mapping):
         return repr(dict(self))
 
     def export_to_xml(self):
-        materials = openmc.Materials([m.to_python_material() for m in self.values()])
+        materials = openmc.Materials([m.as_python_material() for m in self.values()])
         materials.export_to_xml()
 
 
