@@ -572,7 +572,17 @@ def statepoint_write(filename=None, write_source=True):
         filename = c_char_p(filename.encode())
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
+
 def statepoint_load(filename=None):
+    """Load a statepoint file.
+
+    Parameters
+    ----------
+    filename : str or None
+        Path to the statepoint to load. If None is passed, a default name that
+        contains the current batch will be written.
+
+    """
     if filename is not None:
         filename = c_char_p(str(filename).encode())
     _dll.openmc_statepoint_load(filename)
