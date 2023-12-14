@@ -678,6 +678,7 @@ void write_tallies()
           auto& match {filter_matches[i_filt]};
           fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
             filt.text_label(match.i_bin_));
+          tallies_out.flush();
         }
         indent += 2;
       }
