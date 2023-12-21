@@ -76,7 +76,8 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         self._local_indexes = asarray(mat_indexes)
 
         # Tally group-wise fission reaction rates
-        self._fission_rate_tally = Tally()
+        if self._fission_rate_tally is None:
+            self._fission_rate_tally = Tally()
         self._fission_rate_tally.writable = False
         self._fission_rate_tally.scores = ['fission']
         self._fission_rate_tally.filters = [MaterialFilter(materials)]
@@ -172,7 +173,8 @@ class DirectReactionRateHelper(ReactionRateHelper):
             Reaction identifiers, e.g. ``"(n, fission)"``, ``"(n, gamma)"``,
             needed for the reaction rate tally.
         """
-        self._rate_tally = Tally()
+        if self._rate_tally is None:
+            self._rate_tally = Tally()
         self._rate_tally.writable = False
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
@@ -295,7 +297,8 @@ class FluxCollapseHelper(ReactionRateHelper):
         self._scores = scores
 
         # Create flux tally with material and energy filters
-        self._flux_tally = Tally()
+        if self._flux_tally is None:
+            self._flux_tally = Tally()
         self._flux_tally.writable = False
         self._flux_tally.filters = [
             MaterialFilter(materials),
@@ -306,7 +309,8 @@ class FluxCollapseHelper(ReactionRateHelper):
 
         # Create reaction rate tally
         if self._reactions_direct:
-            self._rate_tally = Tally()
+            if self._rate_tally is None:
+                self._rate_tally = Tally()
             self._rate_tally.writable = False
             self._rate_tally.scores = self._reactions_direct
             self._rate_tally.filters = [MaterialFilter(materials)]
@@ -526,7 +530,8 @@ class EnergyScoreHelper(EnergyNormalizationHelper):
         is :attr:`score`
 
         """
-        self._tally = Tally()
+        if self._tally is None:
+            self._tally = Tally()
         self._tally.writable = False
         self._tally.scores = [self.score]
 
@@ -909,11 +914,11 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
 
         func_filter = EnergyFunctionFilter()
         func_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
-        weighted_tally = Tally()
-        weighted_tally.writable = False
-        weighted_tally.scores = ['fission']
-        weighted_tally.filters = filters + [func_filter]
-        self._weighted_tally = weighted_tally
+        if self._weighted_tally is None:
+            self._weighted_tally = Tally()
+        self._weighted_tally.writable = False
+        self._weighted_tally.scores = ['fission']
+        self._weighted_tally.filters = filters + [func_filter]
 
     def update_tally_nuclides(self, nuclides):
         """Tally nuclides with non-zero density and multiple yields
