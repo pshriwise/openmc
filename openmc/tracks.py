@@ -87,6 +87,18 @@ class Track(Sequence):
     def __len__(self):
         return len(self.particle_tracks)
 
+    def __eq__(self, other):
+        if not isinstance(other, Track):
+            raise ValueError(f'Type {type(other)} is not {type(self)}')
+
+        if len(self.particle_tracks) != len(other.particle_tracks):
+            return False
+
+        for track, other_track in zip(self, other):
+            if track.states.size != other_track.states.size or any(track.states != other_track.states):
+                return False
+        return True
+
     def filter(self, particle=None, state_filter=None):
         """Filter particle tracks by given criteria
 
@@ -220,6 +232,18 @@ class Tracks(list):
             for dset_name in sorted(fh, key=_identifier):
                 dset = fh[dset_name]
                 self.append(Track(dset))
+
+    def __eq__(self, other):
+        if not isinstance(other, Tracks):
+            raise ValueError(f'Type {type(other)} cannot be compared to type {type(self)}')
+
+        if len(self) != len(other):
+            return False
+
+        for t, other_t in zip(self, other):
+            if t != other_t:
+                return False
+        return True
 
     def filter(self, particle=None, state_filter=None):
         """Filter tracks by given criteria
