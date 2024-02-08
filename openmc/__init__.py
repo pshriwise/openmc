@@ -38,10 +38,6 @@ from .config import *
 # Import a few names from the model module
 from openmc.model import Model
 
-
-__version__ = '0.14.1-dev'
-
-
 _FILTER_TYPE_MAP = _FILTER_TYPE_MAP = {
     'azimuthal': AzimuthalFilter,
     'cell': CellFilter,
@@ -68,3 +64,5 @@ _FILTER_TYPE_MAP = _FILTER_TYPE_MAP = {
     'zernike': ZernikeFilter,
     'zernikeradial': ZernikeRadialFilter
 }
+
+__version__ = '0.14.1-dev'
