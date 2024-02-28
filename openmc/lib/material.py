@@ -296,6 +296,8 @@ class Material(_FortranObjectWithID):
 
         material.temperature = self.temperature
 
+        material.depletable = self.depletable
+
         if self.volume is not None:
             material.volume = self.volume
 
