@@ -34,6 +34,7 @@ option(OPENMC_BUILD_TESTS     "Build tests"                                     
 option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                         OFF)
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
+option(OPENMC_USE_XDG         "Enable support for XDG discretized CAD geometry"      OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
@@ -135,6 +136,16 @@ if(OPENMC_USE_DAGMC)
     message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
   endif()
 endif()
+
+#===============================================================================
+# XDG Geometry Support
+#===============================================================================
+
+if(OPENMC_USE_XDG)
+  find_package(XDG REQUIRED PATH_SUFFIXES lib/cmake)
+  message(STATUS "Found XDG: ${XDG_DIR} (version ${XDG_VERSION})")
+endif()
+
 
 #===============================================================================
 # libMesh Unstructured Mesh Support
@@ -340,6 +351,7 @@ list(APPEND libopenmc_SOURCES
   src/cmfd_solver.cpp
   src/cross_sections.cpp
   src/dagmc.cpp
+#  src/xdg.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
@@ -513,6 +525,11 @@ if(OPENMC_USE_DAGMC)
 elseif(OPENMC_USE_UWUW)
   set(OPENMC_USE_UWUW OFF)
   message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
+endif()
+
+if(OPENMC_USE_XDG)
+  target_compile_definitions(libopenmc PRIVATE xdg)
+  target_link_libraries(libopenmc xdg)
 endif()
 
 if(OPENMC_USE_LIBMESH)
