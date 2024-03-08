@@ -522,7 +522,7 @@ endif()
 
 if(OPENMC_USE_XDG)
   target_compile_definitions(libopenmc PRIVATE xdg)
-  target_link_libraries(libopenmc xdg)
+  target_link_libraries(libopenmc xdg::xdg)
 endif()
 
 if(OPENMC_USE_LIBMESH)
