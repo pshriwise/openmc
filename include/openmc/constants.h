@@ -348,7 +348,7 @@ enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 //==============================================================================
 // Geometry Constants
 
-enum class GeometryType { CSG, DAG };
+enum class GeometryType { CSG, DAG, XDG };
 
 // a surface token cannot be zero due to the unsigned nature of zero for integer
 // representations. This value represents no surface.
