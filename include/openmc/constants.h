@@ -343,7 +343,7 @@ enum class RunMode {
 //==============================================================================
 // Geometry Constants
 
-enum class GeometryType { CSG, DAG };
+enum class GeometryType { CSG, DAG, XDG };
 
 } // namespace openmc
 

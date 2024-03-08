@@ -353,7 +353,7 @@ list(APPEND libopenmc_SOURCES
   src/cmfd_solver.cpp
   src/cross_sections.cpp
   src/dagmc.cpp
-#  src/xdg.cpp
+  src/xdg.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
@@ -521,7 +521,7 @@ if(OPENMC_USE_DAGMC)
 endif()
 
 if(OPENMC_USE_XDG)
-  target_compile_definitions(libopenmc PRIVATE xdg)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_XDG)
   target_link_libraries(libopenmc xdg::xdg)
 endif()
 

@@ -12,6 +12,10 @@
 #include "DagMC.hpp"
 #endif
 
+#ifdef OPENMC_XDG
+#include "xdg/xdg.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -302,6 +306,11 @@ public:
   Direction& last_dir() { return last_dir_; }
 #endif
 
+// XDG state variables
+#ifdef OPENMC_XDG
+  std::vector<xdg::MeshID>& xdg_prev_elements() { return xdg_prev_elements_; }
+#endif
+
   // material of current and last cell
   int& material() { return material_; }
   const int& material() const { return material_; }
@@ -342,6 +351,11 @@ private:
 #ifdef DAGMC
   moab::DagMC::RayHistory history_;
   Direction last_dir_;
+#endif
+
+// XDG state variables
+#ifdef OPENMC_XDG
+  std::vector<xdg::MeshID> xdg_prev_elements_;
 #endif
 };
 
