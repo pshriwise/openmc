@@ -744,7 +744,6 @@ Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 
 void read_dagmc_universes(pugi::xml_node node)
 {
-  return;
   for (pugi::xml_node dag_node : node.children("dagmc_universe")) {
     model::universes.push_back(std::make_unique<DAGUniverse>(dag_node));
     model::universe_map[model::universes.back()->id_] =
