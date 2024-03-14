@@ -14,8 +14,7 @@ extern "C" const bool XDG_ENABLED;
 
 namespace openmc {
 
-void read_dagmc_universes(pugi::xml_node node);
-void check_dagmc_root_univ();
+void read_xdg_universes(pugi::xml_node node);
 
 } // namespace openmc
 
