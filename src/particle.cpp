@@ -36,6 +36,10 @@
 #include "DagMC.hpp"
 #endif
 
+#ifdef OPENMC_XDG
+#include "openmc/xdg.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -550,6 +554,12 @@ void Particle::cross_surface(const Surface& surf)
     history().reset();
 #endif
 
+// if we're crossing a CSG surface, make sure the DAG history is reset
+#ifdef OPENMC_XDG
+  if (surf->geom_type_ == GeometryType::CSG)
+    xdg_prev_elements().clear();
+#endif
+
   // Handle any applicable boundary conditions.
   if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
       settings::run_mode != RunMode::VOLUME) {
@@ -581,6 +591,23 @@ void Particle::cross_surface(const Surface& surf)
     material() = cell->material(cell_instance());
     sqrtkT() = cell->sqrtkT(cell_instance());
     density_mult() = cell->density_mult(cell_instance());
+    return;
+  }
+#endif
+
+#ifdef OPENMC_XDG
+  // in XDG, we know what the next cell should be
+  if (surf->geom_type_ == GeometryType::XDG) {
+    int32_t i_cell =
+      xdg_next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe);
+    // save material and temp
+    material_last() = material();
+    sqrtkT_last() = sqrtkT();
+    // set new cell value
+    lowest_coord().cell = i_cell;
+    cell_instance() = 0;
+    material() = model::cells[i_cell]->material_[0];
+    sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
     return;
   }
 #endif
