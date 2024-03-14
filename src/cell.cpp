@@ -22,6 +22,7 @@
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/settings.h"
+#include "openmc/xdg.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -1003,7 +1004,9 @@ void read_cells(pugi::xml_node node)
     }
   }
 
+  // read CAD-based geometry universes
   read_dagmc_universes(node);
+  read_xdg_universes(node);
 
   populate_universes();
 
