@@ -110,9 +110,7 @@ void XDGUniverse::initialize()
   geom_type() = GeometryType::XDG;
 
   init_xdg();
-
   init_metadata();
-
   init_geometry();
 }
 
@@ -135,11 +133,6 @@ void XDGUniverse::init_xdg()
 void XDGUniverse::init_metadata()
 {
   xdg_instance_->mesh_manager()->parse_metadata();
-  // std::vector<std::string> keywords {"temp"};
-  // std::map<std::string, std::string> dum;
-  // std::string delimiters = ":/";
-  // moab::ErrorCode rval;
-  // rval = xdg_instance_->parse_properties(keywords, dum, delimiters.c_str());
 }
 
 void XDGUniverse::init_geometry()
@@ -192,9 +185,9 @@ void XDGUniverse::init_geometry()
       // read the temperature from the file (assumed to be in K)
       xdg::Property xdg_temperature = xdg_ptr()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::TEMPERATURE);
       double temperature = std::stod(xdg_temperature.value);
-      c->sqrtkT_.push_back(temperature);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * temperature));
     } else { // otherwise, set the temperature as usual
-      const auto& mat = model::materials[c->material_[0]];
+      const auto& mat = model::materials[model::material_map[c->material_[0]]];
       if (mat->temperature() > 0.0) {
         c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
       } else {
@@ -251,7 +244,7 @@ void XDGUniverse::init_geometry()
     auto in_map = model::surface_map.find(s->id_);
     if (in_map == model::surface_map.end()) {
       model::surface_map[s->id_] = model::surfaces.size();
-      surface_index_map_[surface] = model::surfaces.size();
+      surface_index_map_[surface] = model::surfaces.size() + 1;
     } else {
       warning(fmt::format("XDG Surface IDs: {}", xdg_ids_for_dim(2)));
       fatal_error(fmt::format("Surface ID {} exists in both Universe {} "
@@ -474,8 +467,9 @@ std::pair<double, int32_t> XDGCell::distance(
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir, &p->xdg_prev_elements());
-  if (result.second != 0) {
+  if (result.second > 0) {
     surf_idx = xdg_univ->surface_index(result.second);
+    dist = result.first;
   } else if (xdg_id() != xdg_ptr()->mesh_manager()->implicit_complement() || is_root_universe(xdg_univ->id_)) {
     // surface boundary conditions are ignored for projection plotting, meaning
     // that the particle may move through the graveyard (bounding) volume and
@@ -564,11 +558,6 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
 void read_xdg_universes(pugi::xml_node node)
 {
   for (pugi::xml_node dag_node : node.children("xdg_universe")) {
-    model::universes.push_back(std::make_unique<XDGUniverse>(dag_node));
-    model::universe_map[model::universes.back()->id_] =
-      model::universes.size() - 1;
-  }
-  for (pugi::xml_node dag_node : node.children("dag_universe")) {
     model::universes.push_back(std::make_unique<XDGUniverse>(dag_node));
     model::universe_map[model::universes.back()->id_] =
       model::universes.size() - 1;
