@@ -114,6 +114,10 @@ class BoundingBox:
             )
 
     @property
+    def finite(self) -> bool:
+        return not np.any(np.isinf(self._bounds))
+
+    @property
     def center(self) -> np.ndarray:
         return (self[0] + self[1]) / 2
 

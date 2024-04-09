@@ -90,6 +90,46 @@ class UniverseBase(ABC, IDManagerMixin):
         else:
             raise ValueError('No volume information found for this universe.')
 
+    def get_homogenized_material(self, samples=1_000_000, **vc_kwargs):
+        """Return a homogenized material for the universe.
+
+        Parameters
+        ----------
+        samples : int
+            Number of stochastic volume calculation samples
+        **vc_kwargs
+            Keyword arguments passed to :meth:`openmc.VolumeCalculation.run`
+
+        Returns
+        -------
+        openmc.Material
+            Homogenized material for the universe
+
+        """
+        if not self.bounding_box.finite:
+            raise ValueError(
+                "Cannot calculate volumes for universe with an infinite bounding box")
+        model = openmc.Model()
+        clone = self.clone(clone_materials=True, clone_regions=False)
+        model.geometry = openmc.Geometry(root=clone)
+        materials = list(clone.get_all_materials().values())
+
+        model.settings.volume_calculations = openmc.VolumeCalculation(materials, samples, *self.bounding_box)
+
+        vc_kwargs['apply_volumes'] = True
+        model.calculate_volumes(**vc_kwargs)
+
+        vol_fracs= np.array([m.volume for m in materials])
+        vol_fracs /= vol_fracs.sum()
+
+        # remove sab tables in the cloned materials
+        for m in materials:
+            if m._sab:
+                warnings.warn(f'Removing the following S(a,b) tables from homogenized material definition: {m._sab}')
+            m._sab = []
+
+        return openmc.Material.mix_materials(materials, vol_fracs)
+
     def get_all_universes(self):
         """Return all universes that are contained within this one.
 

@@ -212,3 +212,15 @@ def test_get_nuclide_densities():
     universe = openmc.Universe(cells=[cell])
     with pytest.raises(RuntimeError):
         universe.get_nuclide_densities()
+
+def test_homogenize():
+    model = openmc.examples.pwr_pin_cell()
+
+    top = openmc.ZPlane(z0=0.5)
+    bottom = openmc.ZPlane(z0=-0.5)
+
+    for cell in model.geometry.get_all_cells().values():
+        cell.region &= -top & +bottom
+
+    homogenized_material = model.geometry.root_universe.get_homogenized_material()
+    assert len(homogenized_material.nuclides) == 12
