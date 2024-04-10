@@ -136,7 +136,9 @@ public:
   //! \param[in] surf MOAB handle to the DAGMC surface set
   int32_t surface_index(moab::EntityHandle surf) const;
 
-  void next_cell(GeometryState& p) const;
+  //! Determine the next volume for a particle in this universe
+  //! \param[in,out] g The geometry state of the particle
+  void next_cell(GeometryState& g) const;
 
   //! Generate a string representing the ranges of IDs present in the DAGMC
   //! model. Contiguous chunks of IDs are represented as a range (i.e. 1-10). If
@@ -179,6 +181,7 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+  bool overlaps_ {true}; //! Indicates if the DAGMC geometry in this universe has overlapping volumes
 };
 
 //==============================================================================

@@ -552,18 +552,6 @@ void Particle::cross_surface()
 
     dag_univ->next_cell(*this);
     return;
-    // int32_t i_cell =
-    //   next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
-    //   1;
-    // // save material and temp
-    // material_last() = material();
-    // sqrtkT_last() = sqrtkT();
-    // // set new cell value
-    // lowest_coord().cell = i_cell;
-    // cell_instance() = 0;
-    // material() = model::cells[i_cell]->material_[0];
-    // sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
-    // return;
   }
 #endif
 

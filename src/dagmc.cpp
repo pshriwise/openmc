@@ -778,11 +778,26 @@ void DAGUniverse::next_cell(GeometryState& g) const {
     return;
   }
 
+  // update the geometry state
   int32_t cell_index = this->cell_index(next_vol) - 1;
+
+  if (overlaps_ && cell_index == this->implicit_complement_idx()) {
+    Position r = g.r_local();
+    g.r_local() += TINY_BIT * g.u();
+    this->find_cell(g);
+    g.r_local() = r;
+  } else {
+    g.lowest_coord().cell = cell_index;
+  }
+
+  if (settings::verbosity >= 10) {
+    write_message(fmt::format("Particle moved to DAGMC cell {}", model::cells[g.lowest_coord().cell]->id_), 10);
+    write_message(fmt::format("Particle position is now ({}, {}, {})", g.r().x, g.r().y, g.r().z), 10);
+  }
+
 
   g.material_last() = g.material();
   g.sqrtkT_last() = g.sqrtkT();
-  g.lowest_coord().cell = cell_index;
   g.cell_instance() = 0;
   g.material() = model::cells[cell_index]->material_[0];
   g.sqrtkT() = model::cells[cell_index]->sqrtkT_[0];
@@ -802,7 +817,6 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
     cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
   if (rval != moab::MB_SUCCESS)
     return -1;
-
   return univp->cell_index(new_vol);
 }
 
