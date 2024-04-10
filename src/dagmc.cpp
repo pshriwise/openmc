@@ -766,6 +766,28 @@ void check_dagmc_root_univ()
   }
 }
 
+void DAGUniverse::next_cell(GeometryState& g) const {
+  auto cellp = dynamic_cast<DAGCell*>(model::cells[g.lowest_coord().cell].get());
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[std::abs(g.surface()) - 1].get());
+  moab::EntityHandle surf = surfp->mesh_handle();
+  moab::EntityHandle vol = cellp->mesh_handle();
+  moab::EntityHandle next_vol;
+  moab::ErrorCode rval = cellp->dagmc_ptr()->next_vol(surf, vol, next_vol);
+  if (rval != moab::MB_SUCCESS) {
+    g.lowest_coord().cell = -1;
+    return;
+  }
+
+  int32_t cell_index = this->cell_index(next_vol) - 1;
+
+  g.material_last() = g.material();
+  g.sqrtkT_last() = g.sqrtkT();
+  g.lowest_coord().cell = cell_index;
+  g.cell_instance() = 0;
+  g.material() = model::cells[cell_index]->material_[0];
+  g.sqrtkT() = model::cells[cell_index]->sqrtkT_[0];
+}
+
 int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
 {
   auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());

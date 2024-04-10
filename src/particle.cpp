@@ -545,18 +545,25 @@ void Particle::cross_surface()
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type_ == GeometryType::DAG) {
-    int32_t i_cell =
-      next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
-      1;
-    // save material and temp
-    material_last() = material();
-    sqrtkT_last() = sqrtkT();
-    // set new cell value
-    lowest_coord().cell = i_cell;
-    cell_instance() = 0;
-    material() = model::cells[i_cell]->material_[0];
-    sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
+    auto dag_univ = dynamic_cast<DAGUniverse*>(model::universes[lowest_coord().universe].get());
+    if (!dag_univ) {
+      fatal_error(fmt::format("DAGMC surface {} found in non-DAGMC universe.", surf->id_));
+    }
+
+    dag_univ->next_cell(*this);
     return;
+    // int32_t i_cell =
+    //   next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe) -
+    //   1;
+    // // save material and temp
+    // material_last() = material();
+    // sqrtkT_last() = sqrtkT();
+    // // set new cell value
+    // lowest_coord().cell = i_cell;
+    // cell_instance() = 0;
+    // material() = model::cells[i_cell]->material_[0];
+    // sqrtkT() = model::cells[i_cell]->sqrtkT_[0];
+    // return;
   }
 #endif
 

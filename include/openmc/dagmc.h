@@ -136,6 +136,8 @@ public:
   //! \param[in] surf MOAB handle to the DAGMC surface set
   int32_t surface_index(moab::EntityHandle surf) const;
 
+  void next_cell(GeometryState& p) const;
+
   //! Generate a string representing the ranges of IDs present in the DAGMC
   //! model. Contiguous chunks of IDs are represented as a range (i.e. 1-10). If
   //! there is a single ID a chunk, it will be represented as a single number
