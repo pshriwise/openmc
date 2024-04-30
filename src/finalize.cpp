@@ -187,6 +187,8 @@ int openmc_reset()
   simulation::k_col_abs = 0.0;
   simulation::k_col_tra = 0.0;
   simulation::k_abs_tra = 0.0;
+  simulation::keff = 1.0;
+  simulation::keff_std = std::numeric_limits<double>::infinity();
   simulation::k_sum = {0.0, 0.0};
   simulation::satisfy_triggers = false;
 

@@ -34,6 +34,7 @@ def pincell_model():
     filter4 = openmc.CellFilter(list(cells.values()))
     zernike_tally.filters = [filter3, filter4]
     zernike_tally.scores = ['fission']
+    zernike_tally.estimator = 'collision'
     pincell.tallies.append(zernike_tally)
 
     # Add an energy function tally
@@ -501,6 +502,9 @@ def test_reset(lib_run):
 
         # Reset and run 3 more batches.  Check the number of realizations.
         openmc.lib.reset()
+        assert all(openmc.lib.tallies[2].std_dev == np.inf)
+        assert openmc.lib.keff() == (1.0, np.inf)
+
         for i in range(3):
             openmc.lib.next_batch()
         assert openmc.lib.num_realizations() == 3
