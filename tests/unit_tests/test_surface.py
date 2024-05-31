@@ -4,6 +4,7 @@ from random import uniform, seed
 import numpy as np
 import math
 import openmc
+#import openmc.lib
 import pytest
 
 
@@ -753,3 +754,36 @@ def test_ztorus():
     assert isinstance(sr, openmc.YTorus)
     sr = s.rotate((0., 90., 0.))
     assert isinstance(sr, openmc.XTorus)
+
+def test_boundingbox_consistency():
+    
+    s19 = openmc.YCylinder(0, 0, 17.7)
+    s48 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 11.45)
+    s58 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 14.35)
+    s62 = openmc.Plane(6.123233995736766e-17, 1.0, 6.123233995736766e-17, 1.5999999999999999)
+    s64 = openmc.Plane(6.123233995736766e-17, 1.0, 6.123233995736766e-17, -1.3)
+    s65 = openmc.Plane(-0.7071067811865475, 6.123233995736766e-17, 0.7071067811865476, 1.45)
+    s68 = openmc.Plane(-0.7071067811865475, 6.123233995736766e-17, 0.7071067811865476, -1.45)
+    s101 = openmc.YPlane(5.6, boundary_type='vacuum')
+
+    region = +s64 & -s101 & -s19 & +s48 & (+s58 | +s62 | -s64 | +s65 | -s68)
+    cell = openmc.Cell(region=region)
+
+    univ = openmc.Universe(cells=[cell])
+    geometry = openmc.Geometry(root=univ)
+    settings = openmc.Settings(particles=100, batches=100)
+    model = openmc.model.Model(geometry=geometry, settings=settings)
+    model.export_to_model_xml()
+
+    openmc.lib.init()
+    #print(cell.bounding_box)
+    py_lowerleft, py_upperright = cell.bounding_box
+    assert tuple(py_lowerleft) == (-17.7, -1.3, -17.7)
+    assert tuple(py_upperright) == (17.7, 5.6, 17.7)
+    #print(openmc.lib.cells[1].bounding_box)
+
+    cpp_lowerleft, cpp_upperright = openmc.lib.cells[1].bounding_box
+    assert tuple(cpp_lowerleft) == (-17.7, -inf, -17.7)
+    assert tuple(cpp_upperright) == (17.7, 5.6, 17.7)
+
+    openmc.lib.finalize()
