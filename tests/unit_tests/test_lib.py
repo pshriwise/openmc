@@ -1025,4 +1025,6 @@ def test_boundingbox_consistency():
     assert tuple(cpp_lowerleft) == (-17.7, -inf, -17.7)
     assert tuple(cpp_upperright) == (17.7, 5.6, 17.7)
 
+    assert 1 == 0
+
     openmc.lib.finalize()

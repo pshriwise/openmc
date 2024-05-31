@@ -756,7 +756,8 @@ def test_ztorus():
     assert isinstance(sr, openmc.XTorus)
 
 def test_boundingbox_consistency():
-    
+    import openmc.lib
+
     s19 = openmc.YCylinder(0, 0, 17.7)
     s48 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 11.45)
     s58 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 14.35)
@@ -783,7 +784,7 @@ def test_boundingbox_consistency():
     #print(openmc.lib.cells[1].bounding_box)
 
     cpp_lowerleft, cpp_upperright = openmc.lib.cells[1].bounding_box
-    assert tuple(cpp_lowerleft) == (-17.7, -inf, -17.7)
+    assert tuple(cpp_lowerleft) == (-17.7, -1.3, -17.7)
     assert tuple(cpp_upperright) == (17.7, 5.6, 17.7)
 
     openmc.lib.finalize()
