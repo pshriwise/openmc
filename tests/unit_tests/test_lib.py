@@ -995,7 +995,7 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     openmc.lib.finalize()
 
 def test_boundingbox_consistency():
-    
+
     s19 = openmc.YCylinder(0, 0, 17.7)
     s48 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 11.45)
     s58 = openmc.Plane(0.7071067811865476, 6.123233995736766e-17, 0.7071067811865476, 14.35)
@@ -1021,8 +1021,8 @@ def test_boundingbox_consistency():
     assert tuple(py_upperright) == (17.7, 5.6, 17.7)
     #print(openmc.lib.cells[1].bounding_box)
 
-    cpp_lowerleft, cpp_upperright = openmc.lib.cells[1].bounding_box
-    assert tuple(cpp_lowerleft) == (-17.7, -inf, -17.7)
+    cpp_lowerleft, cpp_upperright = openmc.lib.cells[cell.id].bounding_box
+    assert tuple(cpp_lowerleft) == (-17.7, -np.inf, -17.7)
     assert tuple(cpp_upperright) == (17.7, 5.6, 17.7)
 
     assert 1 == 0
