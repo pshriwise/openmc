@@ -739,6 +739,10 @@ class Universe(UniverseBase):
                     mat = None
 
                 if mat is not None:
+                    if mat._num_instances is None:
+                        mat._num_instances = 0
+                        mat._paths = []
+
                     mat._num_instances += 1
                     if not instances_only:
                         mat._paths.append(f'{cell_path}->m{mat.id}')
