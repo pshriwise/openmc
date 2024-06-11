@@ -2,7 +2,7 @@ from math import log10
 
 import numpy as np
 import openmc
-import to_cubit_journal
+from openmc import to_cubit_journal
 
 ###############################################################################
 # Create materials for the problem

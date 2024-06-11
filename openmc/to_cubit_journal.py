@@ -1,11 +1,12 @@
 import math
 import sys
+import openmc
 from openmc.region import Region, Complement, Intersection, Union
 from openmc.surface import Halfspace, Quadric
 from openmc.lattice import Lattice, HexLattice
 from numpy.linalg import matrix_rank
 import numpy as np
-            
+
 ELLIPSOID = 1
 ONE_SHEET_HYPERBOLOID = 2
 TWO_SHEET_HYPERBOLOID = 3
@@ -19,30 +20,30 @@ PARABOLIC_CYLINDER = 9
 def characterize_general_quadratic( surface ): #s surface
     gq_tol = 1e-6
     equivalence_tol = 1e-8
-    a = surface.coefficients['a']  
-    b = surface.coefficients['b']  
-    c = surface.coefficients['c']  
-    d = surface.coefficients['d']  
-    e = surface.coefficients['e']  
-    f = surface.coefficients['f']  
-    g = surface.coefficients['g']  
-    h = surface.coefficients['h']  
-    j = surface.coefficients['j']  
-    k = surface.coefficients['k']  
+    a = surface.coefficients['a']
+    b = surface.coefficients['b']
+    c = surface.coefficients['c']
+    d = surface.coefficients['d']
+    e = surface.coefficients['e']
+    f = surface.coefficients['f']
+    g = surface.coefficients['g']
+    h = surface.coefficients['h']
+    j = surface.coefficients['j']
+    k = surface.coefficients['k']
     #coefficient matrix
     Aa = np.matrix([
-               [a, d/2, f/2], 
+               [a, d/2, f/2],
                [d/2, b, e/2],
                [f/2, e/2, c]])
     #hessian matrix
     Ac = np.matrix([
-               [a, d/2, f/2, g/2], 
+               [a, d/2, f/2, g/2],
                [d/2, b, e/2, h/2],
                [f/2, e/2, c, j/2],
                [g/2, h/2, j/2, k]])
     rank_Aa = matrix_rank( Aa )
     rank_Ac = matrix_rank( Ac )
-    
+
     det_Ac = np.linalg.det(Ac)
     if np.abs( det_Ac ) < gq_tol:
         delta = 0
@@ -100,19 +101,19 @@ def characterize_general_quadratic( surface ): #s surface
             return find_type( rAa, rAc, D, S, 0 )
         else:
             raise "UNKNOWN QUADRATIC"
-        
+
     gq_type = find_type( rank_Aa, rank_Ac, delta, S, D )
-    
+
     #set the translation
     translation = C
 
     rotation_matrix = eigen_results.eigenvectors
     eigenvalues = eigen_results.eigenvalues
-    
+
     for i in range( 0, 3 ):
         if abs(eigenvalues[i]) < gq_tol:
             eigenvalues[i] = 0
-        
+
     A_ = eigenvalues[0]
     B_ = eigenvalues[1]
     C_ = eigenvalues[2];
@@ -140,7 +141,7 @@ def characterize_general_quadratic( surface ): #s surface
         return ( gq_type, A_, B_, C_, K_, translation, rotation_matrix )
 
 
-    
+
 def flatten(S):
     if S == []:
         return S
@@ -159,14 +160,143 @@ def vector_to_euler_xyz(v):
     theta %= (2 * math.pi)
     psi %= (2 * math.pi)
 
-    oe = 180 / math.pi 
+    oe = 180 / math.pi
     return phi * oe, theta * oe, psi * oe
+
+class CubitPlane():
+
+    def __init__(self, openmc_plane, world, id_generator):
+        """Initializes the CubitPlane object
+
+        Args:
+            openmc_plane (openmc.Plane): OpenMC plane object
+            world (3-tuple of Real): Dimensions of the world bounding box
+            id_generator (generator): Common generator for Cubit body IDs
+        """
+        if not isinstance(openmc_plane, openmc.Plane):
+            raise ValueError('This class only supports OpenMC Plane objects.')
+
+        self._openmc_plane = openmc_plane
+        self._world = world
+        self._id_generator = id_generator
+
+    def __neg__(self):
+        """Produces journal file commands resulting in the negative halfspace of the plane
+
+        Returns:
+            list of str: a list of journal file commands
+        """
+        return self.cubit_volume(False)
+
+    def __pos__(self):
+        """Produces journal file commands resulting in the positive halfspace of the plane
+
+        Returns:
+            list of str: a list of journal file commands
+        """
+        return self.cubit_volume(True)
+
+    def __world_brick(self):
+        """Produces journal file commands to create a brick in Cubit
+
+        Args:
+            world (3-tuple of Real): Dimensions of the world bounding box
+
+        Returns:
+            list of str: a list of journal file commands
+        """
+        world = self._world
+        return [f"brick x {world[0]} y {world[1]} z {world[2]}"]
+
+    def cubit_volume(self, sense):
+        """Returns a list of commands to create a surface's halfspace and the final ID of the resulting volume
+
+        Args:
+            sense bool: Whichever halfspace to return
+
+        Returns:
+            tuple of str: ID of the resulting volume and list of journal file commands
+        """
+        cmds = self.__world_brick()
+        world_id_def, world_id = emit_last_id(self._id_generator, 'body')
+        cmds += world_id_def
+        normal = np.array([self._openmc_plane.coefficients[k] for k in ['a', 'b', 'c']])
+        cmds += [f"webcut body {{ {world_id} }} with general plane direction {normal[0]} {normal[1]} {normal[2]} coefficient {self._openmc_plane.coefficients['d']}"]
+        new_id_def, new_id = emit_last_id(self._id_generator, 'body')
+        cmds += new_id_def
+        if sense:
+            cmds += [f"delete volume {{ {new_id} }}"]
+            id_out = world_id
+        else:
+            cmds += [f"delete volume {{ {world_id} }}"]
+            id_out = new_id
+        return id_out, cmds
+
+
+def last_id():
+    cid = 0
+    while True:
+        cid += 1
+        yield cid
+
+def emit_last_id(id_generator, type = "body" ):
+    idn = next(id_generator)
+    ids = f"id{idn}"
+    id_def = [f'#{{ {ids} = Id("{type}") }}']
+    return id_def, ids
+
+
+def planes_to_cubit(region, world, surface_memo=None):
+    """Convert a region to a Cubit journal script
+
+    Args:
+        region openmc.Region : Region to convert to a Cubit model
+        world 3-tuple of Real : Dimensions of the world bounding box
+
+    Returns:
+        IDs of the volumes created in Cubit
+    """
+
+    id_gen = last_id()
+
+    if surface_memo is None:
+        surface_memo = {}
+
+    surfaces = region.get_surfaces()
+    for surface in surfaces:
+        if surface not in surface_memo:
+            surface_memo[surface] = CubitPlane(surfaces[surface], world, id_gen)
+
+    if not isinstance(region, (Intersection, Halfspace)):
+        raise ValueError('Only Intersections and Halfspaces are supported for now')
+
+    cubit_cmds = []
+    body_ids = []
+    if isinstance(region, Halfspace):
+        cubit_surface = surface_memo[region.surface.id]
+        body_id, surf_cmds = -cubit_surface if region.side == '-' else +cubit_surface
+        cubit_cmds += surf_cmds
+        body_ids.append(body_id)
+    else:
+        for node in region:
+            if not isinstance(node, Halfspace):
+                raise ValueError('Only Halfspace nodes are supported for now')
+            cubit_surface = surface_memo[node.surface.id]
+            body_id, surf_cmds = -cubit_surface if node.side == '-' else +cubit_surface
+            cubit_cmds += surf_cmds
+            if body_ids:
+                cubit_cmds += [f"intersect body {{ {body_ids[-1]} }} with body {{ {body_id} }}"]
+            body_ids.append(body_id)
+
+    open('cubit.jou', 'w').write('\n'.join(cubit_cmds))
+
 
 def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=None, to_cubit=False ):
     w = world
     cid = 1
+
     def lastid():
-        nonlocal cid 
+        nonlocal cid
         id = cid
         cid = cid + 1
         return id
@@ -196,6 +326,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
         python_cmd( f'#{{ {ids} = Id("{type}") }}' )
         return ids
 
+
     def rotate( id, x, y, z ):
         if nonzero( x, y, z ):
             phi, theta, psi = vector_to_euler_xyz( ( x, y, z ) )
@@ -212,7 +343,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
 
     def make_world_brick():
         pass
-        
+
     def surface_to_cubit_journal(node, w, indent = 0, inner_world = None, hex = False, ent_type = "body" ):
         def ind():
             return ' ' * (2*indent)
@@ -243,7 +374,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     cd = surface.coefficients['d']
                     n = np.array([ca, cb, cc ])
                     n_length = np.linalg.norm(n)
-                    dd = cd / n_length 
+                    dd = cd / n_length
                     cmds.append( f"body {{ { ids } }} move direction {ca} {cb} {cc} distance {dd}" )
                     return ids
                 elif surface._type == "x-plane":
@@ -265,7 +396,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     #ids = emit_get_last_id()
                     return ids
                 elif surface._type == "cylinder":
-                    h = inner_world[2] if inner_world else w[2] 
+                    h = inner_world[2] if inner_world else w[2]
                     cmds.append( f"cylinder height {h} radius {surface.coefficients['r']}")
                     ids = emit_get_last_id()
                     if node.side != '-':
@@ -289,7 +420,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     move( ids, surface.coefficients['x0'], surface.coefficients['y0'], surface.coefficients['z0'] )
                     return ids
                 elif surface._type == "x-cylinder":
-                    h = inner_world[0] if inner_world else w[0] 
+                    h = inner_world[0] if inner_world else w[0]
                     cmds.append( f"cylinder height {h} radius {surface.coefficients['r']}")
                     ids = emit_get_last_id( ent_type )
                     cmds.append( f"rotate body {{ { ids } }} about y angle 90")
@@ -313,7 +444,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     move( ids, 0, surface.coefficients['y0'], surface.coefficients['z0'] )
                     return ids
                 elif surface._type == "y-cylinder":
-                    h = inner_world[1] if inner_world else w[1] 
+                    h = inner_world[1] if inner_world else w[1]
                     cmds.append( f"cylinder height {h} radius {surface.coefficients['r']}")
                     ids = emit_get_last_id( ent_type )
                     cmds.append( f"rotate body {{ {ids} }} about x angle 90")
@@ -337,7 +468,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     move( ids, surface.coefficients['x0'], 0, surface.coefficients['z0'] )
                     return ids
                 elif surface._type == "z-cylinder":
-                    h = inner_world[2] if inner_world else w[2] 
+                    h = inner_world[2] if inner_world else w[2]
                     cmds.append( f"cylinder height {h} radius {surface.coefficients['r']}")
                     ids = emit_get_last_id( ent_type )
                     if node.side != '-':
@@ -452,7 +583,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     elif gq_type == ELLIPTIC_CYLINDER : #7
                         if A_ == 0:
                             #print( "X", gq_type, A_, B_, C_, K_ )
-                            h = inner_world[0] if inner_world else w[0] 
+                            h = inner_world[0] if inner_world else w[0]
                             r1 = math.sqrt( abs( K_/C_ ) )
                             r2 = math.sqrt( abs( K_/B_ ) )
                             cmds.append( f"cylinder height {h} Major Radius {r1} Minor Radius {r2}")
@@ -463,7 +594,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                             return ids
                         if B_ == 0:
                             #print( "Y", gq_type, A_, B_, C_, K_ )
-                            h = inner_world[1] if inner_world else w[1] 
+                            h = inner_world[1] if inner_world else w[1]
                             r1 = math.sqrt( abs( K_/A_ ) )
                             r2 = math.sqrt( abs( K_/C_ ) )
                             cmds.append( f"cylinder height {h} Major Radius {r1} Minor Radius {r2}")
@@ -473,7 +604,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                             return ids
                         if C_ == 0:
                             #print( "Z", gq_type, A_, B_, C_, K_ )
-                            h = inner_world[2] if inner_world else w[2] 
+                            h = inner_world[2] if inner_world else w[2]
                             r1 = math.sqrt( abs( K_/A_ ) )
                             r2 = math.sqrt( abs( K_/B_ ) )
                             cmds.append( f"cylinder height {h} Major Radius {r1} Minor Radius {r2}")
@@ -483,7 +614,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                     elif gq_type == ELLIPTIC_CONE : #3
                         if A_ == 0:
                             #print( "X", gq_type, A_, B_, C_, K_ )
-                            h = inner_world[0] if inner_world else w[0] 
+                            h = inner_world[0] if inner_world else w[0]
                             minor = math.sqrt( abs( -A_/C_ ) )
                             major = math.sqrt( abs( -A_/B_ ) )
                             rot_angle = - 90
@@ -491,7 +622,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                             cmds.append( f"create frustum height {h} Major Radius {major} Minor Radius {minor} top 0")
                             ids = emit_get_last_id( ent_type )
                             cmds.append( f"rotate body {{ { ids } }} about y angle -90")
-                            cmds.append( f"copy body {{ { ids } }}") 
+                            cmds.append( f"copy body {{ { ids } }}")
                             mirror = emit_get_last_id( ent_type )
                             cmds.append( f"rotate body {{ { mirror } }} about 0 0 0 angle 180")
                             cmds.append( f"unit body {{ { ids } }} {{ { mirror } }}")
@@ -500,7 +631,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                             return ids
                         if B_ == 0:
                             #print( "Y", gq_type, A_, B_, C_, K_ )
-                            h = inner_world[1] if inner_world else w[1] 
+                            h = inner_world[1] if inner_world else w[1]
                             minor = math.sqrt( abs( -B_/A_ ) )
                             major = math.sqrt( abs( -B_/C_ ) )
                             rot_angle = 90
@@ -508,7 +639,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                             cmds.append( f"create frustum height {h} Major Radius {major} Minor Radius {minor} top 0")
                             ids = emit_get_last_id( ent_type )
                             cmds.append( f"rotate body {{ { ids } }} about x angle 90")
-                            cmds.append( f"copy body {{ { ids } }}") 
+                            cmds.append( f"copy body {{ { ids } }}")
                             mirror = emit_get_last_id( ent_type )
                             cmds.append( f"rotate body {{ { mirror } }} about 0 0 0 angle 180")
                             cmds.append( f"unit body {{ { ids } }} {{ { mirror } }}")
@@ -517,14 +648,14 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                             return ids
                         if C_ == 0:
                             #print( "Z", gq_type, A_, B_, C_, K_ )
-                            h = inner_world[2] if inner_world else w[2] 
+                            h = inner_world[2] if inner_world else w[2]
                             minor = math.sqrt( abs( -C_/A_ ) )
                             major = math.sqrt( abs( -C_/B_ ) )
-                            rot_angle = 180 
+                            rot_angle = 180
                             rot_axis = 0
                             cmds.append( f"create frustum height {h} Major Radius {major} Minor Radius {minor} top 0")
                             ids = emit_get_last_id( ent_type )
-                            cmds.append( f"copy body {{ { ids } }}") 
+                            cmds.append( f"copy body {{ { ids } }}")
                             mirror = emit_get_last_id( ent_type )
                             cmds.append( f"rotate body {{ { mirror } }} about 0 0 0 angle 180")
                             cmds.append( f"unit body {{ { ids } }} {{ { mirror } }}")
@@ -669,48 +800,48 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
                                 y_pos = 0
                                 r = ring_id
                                 for i in range( r, 0, -1 ):
-                                    x_pos = x * center_to_mid_side_diameter; 
-                                    y_pos = ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter; 
+                                    x_pos = x * center_to_mid_side_diameter;
+                                    y_pos = ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter;
                                     for n, cell in us[k]._cells.items():
                                         draw_hex_cell( n, cell, x_pos, y_pos )
                                     #print( r, k, x, x_pos, y_pos )
                                     k = k + 1
                                     x = x + 1
-                                y_pos = ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter; 
+                                y_pos = ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter;
                                 for i in range( r, 0, -1 ):
-                                    x_pos = x * center_to_mid_side_diameter; 
+                                    x_pos = x * center_to_mid_side_diameter;
                                     for n, cell in us[k]._cells.items():
                                         draw_hex_cell( n, cell, x_pos, y_pos )
                                     #print( r, k, x, x_pos, y_pos )
-                                    y_pos = y_pos - side_to_side_diameter; 
+                                    y_pos = y_pos - side_to_side_diameter;
                                     k = k + 1
                                 for i in range( r, 0, -1 ):
-                                    x_pos = x * center_to_mid_side_diameter; 
-                                    y_pos = - ring_id * side_to_side_diameter + ( x ) * 0.5 * side_to_side_diameter; 
-                                    for n, cell in us[k]._cells.items():
-                                        draw_hex_cell( n, cell, x_pos, y_pos )
-                                    #print( r, k, x, x_pos, y_pos )
-                                    k = k + 1
-                                    x = x - 1
-                                for i in range( r, 0, -1 ):
-                                    x_pos = x * center_to_mid_side_diameter; 
-                                    y_pos = - ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter; 
+                                    x_pos = x * center_to_mid_side_diameter;
+                                    y_pos = - ring_id * side_to_side_diameter + ( x ) * 0.5 * side_to_side_diameter;
                                     for n, cell in us[k]._cells.items():
                                         draw_hex_cell( n, cell, x_pos, y_pos )
                                     #print( r, k, x, x_pos, y_pos )
                                     k = k + 1
                                     x = x - 1
-                                y_pos = - ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter; 
                                 for i in range( r, 0, -1 ):
-                                    x_pos = x * center_to_mid_side_diameter; 
+                                    x_pos = x * center_to_mid_side_diameter;
+                                    y_pos = - ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter;
                                     for n, cell in us[k]._cells.items():
                                         draw_hex_cell( n, cell, x_pos, y_pos )
                                     #print( r, k, x, x_pos, y_pos )
-                                    y_pos = y_pos + side_to_side_diameter; 
+                                    k = k + 1
+                                    x = x - 1
+                                y_pos = - ring_id * side_to_side_diameter - ( x ) * 0.5 * side_to_side_diameter;
+                                for i in range( r, 0, -1 ):
+                                    x_pos = x * center_to_mid_side_diameter;
+                                    for n, cell in us[k]._cells.items():
+                                        draw_hex_cell( n, cell, x_pos, y_pos )
+                                    #print( r, k, x, x_pos, y_pos )
+                                    y_pos = y_pos + side_to_side_diameter;
                                     k = k + 1
                                 for i in range( r, 0, -1 ):
-                                    x_pos = x * center_to_mid_side_diameter; 
-                                    y_pos = ring_id * side_to_side_diameter + ( x ) * 0.5 * side_to_side_diameter; 
+                                    x_pos = x * center_to_mid_side_diameter;
+                                    y_pos = ring_id * side_to_side_diameter + ( x ) * 0.5 * side_to_side_diameter;
                                     for n, cell in us[k]._cells.items():
                                         draw_hex_cell( n, cell, x_pos, y_pos )
                                     #print( r, k, x, x_pos, y_pos )
@@ -777,7 +908,7 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
         if len( r ) > 0:
             if node.name:
                 cmds.append( f"body {{ {r[0]} }} name \"{node.name}\"" )
-            else: 
+            else:
                 cmds.append( f"body {{ {r[0]} }} name \"Cell_{node.id}\"" )
         #print( r )
         return r
@@ -794,16 +925,24 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
             for x in cmds[before:after]:
                 f.write( x + "\n" )
 
-    for cell in geom.root_universe._cells.values():
-        if cells:
-            if cell.id in cells:
-                do_cell( cell )
-        else:
-            do_cell( cell )
+    all_cells = geom.get_all_cells()
+
+    if cells:
+
+        for cell in cells:
+            if isinstance(cell, openmc.Cell):
+                cell = cell.id
+
+            if cell in all_cells:
+                do_cell(all_cells[cell])
+
+    else:
+        for cell in all_cells.values():
+            do_cell(cell)
 
     if filename:
         cmds.append( f"save as \"OPENMC_TO_CUBIT.cub\" overwrite")
-        cmds.append( f"quit" )
+        # cmds.append( f"quit" )
         with open( filename, "w" ) as f:
             for x in cmds:
                 f.write( x + "\n" )
@@ -817,4 +956,3 @@ def to_cubit_journal(geom, seen=set(), world=[60,60,60], cells=None, filename=No
 
     #for x in cmds:
     #    print( x )
-

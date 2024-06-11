@@ -1762,7 +1762,7 @@ class Cone(QuadricMixin, Surface):
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     dx : float, optional
         x-component of the vector representing the axis of the cone.
@@ -1920,7 +1920,7 @@ class XCone(QuadricMixin, Surface):
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
@@ -2021,7 +2021,7 @@ class YCone(QuadricMixin, Surface):
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
         Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
+        It can be interpreted as the increase in the radius squared per cm along
         the cone's axis of revolution.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the

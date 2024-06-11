@@ -1,5 +1,5 @@
 import openmc
-import to_cubit_journal
+from openmc import to_cubit_journal
 
 ###############################################################################
 #                      Simulation Input File Parameters
