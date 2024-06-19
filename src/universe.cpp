@@ -268,7 +268,7 @@ void MeshUniverse::create_cells(pugi::xml_node node)
   outer() = model::cell_map[cell->id_];
 }
 
-bool MeshUniverse::find_cell(Particle& p) const
+bool MeshUniverse::find_cell(GeometryState& p) const
 {
   Position r {p.r_local()};
   const auto& mesh = model::meshes[mesh_];

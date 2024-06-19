@@ -56,7 +56,7 @@ public:
 
   explicit MeshUniverse(pugi::xml_node node);
 
-  virtual bool find_cell(Particle& p) const override;
+  virtual bool find_cell(GeometryState& p) const override;
 
   void next_cell(Particle& p) const;
 
