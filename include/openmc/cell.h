@@ -375,7 +375,7 @@ public:
   };
 
   virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const override
   {
     // TODO: Make appropriate call for distance here
     // const auto& mesh = model::meshes[mesh_];
