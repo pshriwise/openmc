@@ -14,7 +14,7 @@ import h5py
 
 import openmc
 import openmc.checkvalue as cv
-from openmc.checkvalue import PathLike
+from openmc.checkvalue import PathLike, CheckedDict
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
 from ._xml import get_text
@@ -80,7 +80,8 @@ class SourceBase(ABC):
 
     @constraints.setter
     def constraints(self, constraints: Optional[Dict[str, Any]]):
-        self._constraints = {}
+        self._constraints = CheckedDict(('domain_type', 'domain_ids', 'time_bounds',
+                                         'energy_bounds', 'fissionable', 'rejection_strategy'))
         if constraints is None:
             return
 

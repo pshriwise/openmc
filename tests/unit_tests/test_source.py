@@ -134,6 +134,9 @@ def test_constraints_independent(sphere_box_model, run_in_tmpdir):
         space=space, constraints={'domains': [cell1, cell2]}
     )
 
+    with pytest.raises(ValueError, match='domains'):
+        model.settings.source[0].constraints['domains'] = [cell3]
+
     # Load up model via openmc.lib and sample source
     model.export_to_model_xml()
     openmc.lib.init()

@@ -2,6 +2,7 @@ import copy
 import os
 import typing  # required to prevent typing.Union namespace overwriting Union
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 
@@ -302,6 +303,28 @@ def check_filetype_version(obj, expected_type, expected_version):
         raise IOError(f'Could not read {obj.filename} file. This most likely '
                       'means the file was produced by a different version of '
                       'OpenMC than the one you are using.')
+
+class CheckedDict(dict):
+    """A dict for which only certain keys are allowed
+
+    Parameters
+        allowed_keys: (Iterable of str)
+            Keys that are allowed in the dictionary
+    """
+
+    def __init__(self, allowed_keys):
+        self.allowed_keys = set(allowed_keys)
+        super().__init__()
+
+    def __setitem__(self, key, value):
+        if key not in self.allowed_keys and not type(key) in self.allowed_keys:
+            raise ValueError(f'Key "{key}" is not allowed in this dictionary.')
+        super().__setitem__(key, value)
+
+    def __getitem__(self, key: Any) -> Any:
+        if key not in self.allowed_keys and not type(key) in self.allowed_keys:
+            raise ValueError(f'Key "{key}" is not allowed in this dictionary.')
+        return super().__getitem__(key)
 
 
 class CheckedList(list):
