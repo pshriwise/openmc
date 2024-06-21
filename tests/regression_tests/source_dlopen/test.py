@@ -7,6 +7,7 @@ import textwrap
 import openmc
 import pytest
 
+from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
 
 
@@ -37,9 +38,10 @@ def compile_source(request):
 
     yield
 
-    # Remove local build directory when test is complete
-    shutil.rmtree('build')
-    os.remove('CMakeLists.txt')
+    if not config['build_inputs']:
+        # Remove local build directory when test is complete
+        shutil.rmtree('build')
+        os.remove('CMakeLists.txt')
 
 
 @pytest.fixture
