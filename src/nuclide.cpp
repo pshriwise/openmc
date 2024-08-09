@@ -86,7 +86,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (const auto& name : dset_names) {
     double T;
     read_dataset(kT_group, name.c_str(), T);
-    temps_available.push_back(T / K_BOLTZMANN);
+    temps_available.push_back(std::round(T / K_BOLTZMANN));
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -124,7 +124,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
 
     // Add corresponding temperatures to vector
     for (auto it = T_min_it; it != T_max_it; ++it) {
-      temps_to_read.push_back(std::round(*it));
+      temps_to_read.push_back(*it);
     }
   }
 
@@ -145,8 +145,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       }
 
       if (std::abs(T_actual - T_desired) < settings::temperature_tolerance) {
-        if (!contains(temps_to_read, std::round(T_actual))) {
-          temps_to_read.push_back(std::round(T_actual));
+        if (!contains(temps_to_read, T_actual)) {
+          temps_to_read.push_back(T_actual);
 
           // Write warning for resonance scattering data if 0K is not available
           if (std::abs(T_actual - T_desired) > 0 && T_desired == 0 &&
@@ -173,8 +173,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T_desired &&
             T_desired < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (!contains(temps_to_read, T_j)) {
             temps_to_read.push_back(T_j);
           }
@@ -191,14 +191,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         if (std::abs(T_desired - temps_available.front()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.front())) {
-            temps_to_read.push_back(std::round(temps_available.front()));
+            temps_to_read.push_back(temps_available.front());
           }
           continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
-            temps_to_read.push_back(std::round(temps_available.back()));
+            temps_to_read.push_back(temps_available.back());
           }
           continue;
         }
