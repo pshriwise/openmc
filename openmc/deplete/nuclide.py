@@ -113,7 +113,7 @@ class Nuclide:
         # Information about the nuclide
         self.name = name
         self.half_life = None
-        self.decay_energy = 0.0
+        self.decay_energies = {'light': 0.0, 'electromagnetic': 0.0, 'heavy': 0.0}
 
         # Decay paths
         self.decay_modes = []
@@ -130,6 +130,10 @@ class Nuclide:
     def __repr__(self):
         n_modes, n_rx = self.n_decay_modes, self.n_reaction_paths
         return f"<Nuclide: {self.name} ({n_modes} modes, {n_rx} reactions)>"
+
+    @property
+    def decay_energy(self):
+        return sum(self.decay_energies.values())
 
     @property
     def n_decay_modes(self):
@@ -230,7 +234,8 @@ class Nuclide:
         # Check for half-life
         if 'half_life' in element.attrib:
             nuc.half_life = float(element.get('half_life'))
-            nuc.decay_energy = float(element.get('decay_energy', '0'))
+            for key in nuc.decay_energies:
+                nuc.decay_energies[key] = float(element.get(f'{key}_energy', '0'))
 
         # Check for decay paths
         for decay_elem in element.iter('decay'):
@@ -304,7 +309,8 @@ class Nuclide:
         if self.half_life is not None:
             elem.set('half_life', str(self.half_life))
             elem.set('decay_modes', str(len(self.decay_modes)))
-            elem.set('decay_energy', str(self.decay_energy))
+            for key in self.decay_energies:
+                elem.set(f'{key}_energy', str(self.decay_energies[key]))
             for mode_type, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
                 mode_elem.set('type', mode_type)

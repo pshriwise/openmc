@@ -18,13 +18,13 @@ from tests import cdtemp
 _TEST_CHAIN = """\
 <depletion_chain>
   <nuclide name="H1" reactions="0"/>
-  <nuclide name="A" half_life="23652.0" decay_modes="2" decay_energy="0.0" reactions="2">
+  <nuclide name="A" half_life="23652.0" decay_modes="2" light_energy="0.0" electromagnetic_energy="0.0" heavy_energy="0.0" reactions="2">
     <decay type="beta1" target="B" branching_ratio="0.6"/>
     <decay type="beta2" target="C" branching_ratio="0.4"/>
     <reaction type="(n,gamma)" Q="0.0" target="C"/>
     <reaction type="(n,p)" Q="0.0" target="B"/>
   </nuclide>
-  <nuclide name="B" half_life="32904.0" decay_modes="1" decay_energy="0.0" reactions="2">
+  <nuclide name="B" half_life="32904.0" decay_modes="1" light_energy="0.0" electromagnetic_energy="0.0" heavy_energy="0.0" reactions="2">
     <decay type="beta" target="A" branching_ratio="1.0"/>
     <reaction type="(n,gamma)" Q="0.0" target="C"/>
     <reaction type="(n,d)" Q="0.0" target="A"/>

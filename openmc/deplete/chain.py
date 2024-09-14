@@ -385,7 +385,8 @@ class Chain:
 
             if not data.nuclide['stable'] and data.half_life.nominal_value != 0.0:
                 nuclide.half_life = data.half_life.nominal_value
-                nuclide.decay_energy = data.decay_energy.nominal_value
+                nuclide.decay_energies = data.average_energies
+
                 branch_ratios = []
                 branch_ids = []
                 for mode in data.modes:
@@ -1086,7 +1087,7 @@ class Chain:
             previous = self[iso]
             new_nuclide = Nuclide(previous.name)
             new_nuclide.half_life = previous.half_life
-            new_nuclide.decay_energy = previous.decay_energy
+            new_nuclide.decay_energies = previous.decay_energies
             new_nuclide.sources = previous.sources.copy()
             if hasattr(previous, '_fpy'):
                 new_nuclide._fpy = previous._fpy
