@@ -215,7 +215,6 @@ jobs:
         uses: namespacelabs/breakpoint-action@v0
         with:
           duration: 30m
-          authorized-users: HunterBelanger
 
       - name: Before
         shell: pwsh
