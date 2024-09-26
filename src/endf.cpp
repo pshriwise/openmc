@@ -309,6 +309,14 @@ double IncoherentElasticXS::operator()(double E) const
   return bound_xs_ / 2.0 * ((1 - std::exp(-4.0 * E * W)) / (2.0 * E * W));
 }
 
+double IncoherentElasticXS::max() const {
+  return (*this)(0.0);
+}
+
+double IncoherentElasticXS::max(double min_E, double max_E) const {
+  return (*this)(min_E);
+}
+
 //==============================================================================
 // Sum1D implementation
 //==============================================================================
@@ -333,6 +341,22 @@ double Sum1D::operator()(double x) const
     result += (*func)(x);
   }
   return result;
+}
+
+double Sum1D::max() const {
+  double max {0.0};
+  for (const auto& func : functions_) {
+    max = std::max(max, func->max());
+  }
+  return max;
+}
+
+double Sum1D::max(double min_E, double max_E) const {
+  double max {0.0};
+  for (const auto& func : functions_) {
+    max = std::max(max, func->max(min_E, max_E));
+  }
+  return max;
 }
 
 } // namespace openmc
