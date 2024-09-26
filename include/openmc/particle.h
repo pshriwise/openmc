@@ -75,6 +75,10 @@ public:
   //! Determine the surfaces crossed between the last and current particle position
   void trace_through_geom(double trace_dist);
 
+  //! pulse-height recording
+  void pht_collision_energy();
+  void pht_secondary_particles();
+
   //! Cross a surface and handle boundary conditions
   void cross_surface(const Surface& surf);
 
@@ -119,6 +123,8 @@ public:
   //! \param[in] ncrystal_xs Thermal scattering xs from NCrystal
   void update_neutron_xs(int i_nuclide, int i_grid = C_NONE, int i_sab = C_NONE,
     double sab_frac = 0.0, double ncrystal_xs = -1.0);
+
+  void update_majorant();
 
   bool delta_tracking_{false}; // !< Flag to indicate whether or not delta tracking is active
 };
