@@ -430,7 +430,7 @@ private:
   bool write_track_ {false};
 
   uint64_t seeds_[N_STREAMS];
-  int stream_;
+  int stream_ {STREAM_TRACKING};
 
   vector<SourceSite> secondary_bank_;
 
