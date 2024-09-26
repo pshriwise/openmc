@@ -951,22 +951,6 @@ class Settings:
     def material_cell_offsets(self) -> bool:
         return self._material_cell_offsets
 
-    @delta_tracking.setter
-    def delta_tracking(self, value):
-        cv.check_type('event_based', value, bool)
-        self._delta_tracking = value
-
-    @event_based.setter
-    def event_based(self, value):
-        cv.check_type('event based', value, bool)
-        self._event_based = value
-
-    @max_particles_in_flight.setter
-    def max_particles_in_flight(self, value):
-        cv.check_type('max particles in flight', value, Integral)
-        cv.check_greater_than('max particles in flight', value, 0)
-        self._max_particles_in_flight = value
-
     @material_cell_offsets.setter
     def material_cell_offsets(self, value: bool):
         cv.check_type('material cell offsets', value, bool)
@@ -975,6 +959,11 @@ class Settings:
     @property
     def delta_tracking(self):
         return self._delta_tracking
+
+    @delta_tracking.setter
+    def delta_tracking(self, value):
+        cv.check_type('delta_tracking', value, bool)
+        self._delta_tracking = value
 
     @property
     def log_grid_bins(self) -> int:
