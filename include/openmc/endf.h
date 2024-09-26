@@ -154,6 +154,9 @@ public:
   //! \return Function evaluated at x
   double operator()(double E) const override;
 
+  virtual double max() const override;
+  virtual double max(double min_E, double max_E) const override;
+
   const unique_ptr<Function1D>& functions(int i) const { return functions_[i]; }
 
 private:

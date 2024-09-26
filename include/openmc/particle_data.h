@@ -253,6 +253,7 @@ public:
   // Coordinates for all nesting levels
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
+  vector<LocalCoord>& coord() { return coord_; }
   const vector<LocalCoord>& coord() const { return coord_; }
 
   // Innermost universe nesting coordinates

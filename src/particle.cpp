@@ -511,7 +511,7 @@ void Particle::event_revive_from_secondary()
   if (n_event() == settings::max_particle_events && !delta_tracking_) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
-    alive() = false;
+    wgt() = 0.0;
   }
 
   // Check for secondary particles if this particle is dead

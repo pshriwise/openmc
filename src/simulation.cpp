@@ -161,8 +161,6 @@ int openmc_simulation_init()
     openmc_weight_windows_import(settings::weight_windows_file.c_str());
   }
 
-  set_majorant_xs();
-
   // Set flag indicating initialization is done
   simulation::initialized = true;
   return 0;
