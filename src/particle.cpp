@@ -254,6 +254,12 @@ void Particle::event_advance()
   bool delta_track =
     this->macro_xs().total / this->majorant() > 1 - settings::delta_threshold;
 
+  // always surface track if the current cell has a surface boundary condition
+  if (model::cells[coord(0).cell]->surface_bc_) {
+    delta_track = false;
+  }
+
+
   if ((settings::verbosity > 10 || trace()) &&
       delta_track != delta_tracking()) {
     if (delta_track)

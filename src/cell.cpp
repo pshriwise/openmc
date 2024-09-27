@@ -379,6 +379,15 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     auto rot {get_node_array<double>(cell_node, "rotation")};
     set_rotation(rot);
   }
+
+  // check for non-transmission boundary conditions in cells
+  for (const auto surf_idx : region_.surfaces()) {
+    const auto& surf = model::surfaces[std::abs(surf_idx)];
+    if (surf->bc_.get() != nullptr) {
+      surface_bc_ = true;
+      break;
+    }
+  }
 }
 
 //==============================================================================

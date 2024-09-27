@@ -321,6 +321,7 @@ public:
   int32_t fill_;            //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
   GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
+  bool surface_bc_ {false};
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
