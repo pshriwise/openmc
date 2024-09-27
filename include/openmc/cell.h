@@ -314,11 +314,12 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;       //!< Unique ID
-  std::string name_; //!< User-defined name
-  Fill type_;        //!< Material, universe, or lattice
-  int32_t universe_; //!< Universe # this cell is in
-  int32_t fill_;     //!< Universe # filling this cell
+  int32_t id_;              //!< Unique ID
+  std::string name_;        //!< User-defined name
+  Fill type_;               //!< Material, universe, or lattice
+  int32_t universe_;        //!< Universe # this cell is in
+  int32_t fill_;            //!< Universe # filling this cell
+  bool surface_bc_ {false};
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
