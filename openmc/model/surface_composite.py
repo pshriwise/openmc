@@ -52,6 +52,10 @@ class CompositeSurface(ABC):
     def _surface_names(self):
         """Iterable of attribute names corresponding to underlying surfaces."""
 
+    @property
+    def     surfaces(self):
+        return [getattr(self, name) for name in self._surface_names]
+
     @abstractmethod
     def __neg__(self) -> openmc.Region:
         """Return the negative half-space of the composite surface."""
