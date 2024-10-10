@@ -97,7 +97,6 @@ jobs:
       - name: Setup tmate debug session
         if: ${{ endsWith(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 20
         with:
           detatched: true
           
