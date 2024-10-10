@@ -95,6 +95,10 @@ jobs:
         timeout-minutes: 15
         with:
           detatched: true
+          
+      - name: Echo event
+        run: |
+          echo "${{toJSON(github.event)}}"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
