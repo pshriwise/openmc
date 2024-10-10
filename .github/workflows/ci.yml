@@ -89,6 +89,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup tmate debug session
+        if: contains(github.event.head_commit.message, '[gha-debug]')
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+        with:
+          detatched: true
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -154,11 +161,6 @@ jobs:
         run: |
           cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json --service=github
-
-      - name: Setup tmate debug session
-        if: contains(github.event.head_commit.message, '[gha-debug]')
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
 
   finish:
     needs: main
