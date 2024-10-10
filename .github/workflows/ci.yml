@@ -98,7 +98,7 @@ jobs:
         if: ${{ endsWith(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         with:
-          detatched: true
+          detached: true
           
       - name: Echo event
         run: |
