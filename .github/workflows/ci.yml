@@ -95,7 +95,7 @@ jobs:
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV      
 
       - name: Setup tmate debug session
-        if: ${{ contains(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         with:
           detached: true
