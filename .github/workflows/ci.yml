@@ -91,8 +91,8 @@ jobs:
 
       - name: Set commit message env var
         run: |
-          COMMIT_MESSAGE_HEADER=$(git log -1 --pretty=%B)
-          echo "COMMIT_MESSAGE_HEADER=${COMMIT_MESSAGE_HEADER}" >> $GITHUB_ENV      
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV      
 
       - name: Setup tmate debug session
         if: ${{ contains(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
