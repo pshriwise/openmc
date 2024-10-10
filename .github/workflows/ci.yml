@@ -95,7 +95,7 @@ jobs:
           echo "COMMIT_MESSAGE_HEADER=${COMMIT_MESSAGE_HEADER}" >> $GITHUB_ENV      
 
       - name: Setup tmate debug session
-        if: ${{ endsWith( ${{ env.COMMIT_MESSAGE_HEADER }} , '[gha-debug]') }}
+        if: ${{ endsWith(env.COMMIT_MESSAGE_HEADER, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 15
         with:
