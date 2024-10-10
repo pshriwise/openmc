@@ -89,8 +89,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set commit message env var
+        run: |
+          COMMIT_MESSAGE_HEADER=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE_HEADER=${COMMIT_MESSAGE_HEADER}" >> $GITHUB_ENV      
+
       - name: Setup tmate debug session
-        if: ${{ endsWith(github.event.head_commit.message, '[gha-debug]') }}
+        if: ${{ endsWith( ${{ env.COMMIT_MESSAGE_HEADER }} , '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 15
         with:
