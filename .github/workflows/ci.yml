@@ -96,6 +96,7 @@ jobs:
           echo "Repo: ${{ github.event.pull_request.head.repo.owner.name }}"
           echo "Repo: ${{ github.event.pull_request.head.repo.name }}"
           echo "HEAD Ref: ${{ github.event.pull_request.head.ref }}"
+          echo "Event Name: ${{ github.event_name }}"
 
       - name: Set commit message env var
         run: |
