@@ -99,7 +99,7 @@ jobs:
 
       - name: Set commit message env var
         run: |
-          COMMIT_MESSAGE=$(git log HEAD~1 -1 --pretty=%B)
+          COMMIT_MESSAGE=$(git log HEAD -1 --pretty=%B)
           echo ${COMMIT_MESSAGE}
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
