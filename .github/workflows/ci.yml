@@ -105,12 +105,6 @@ jobs:
           echo ${COMMIT_MESSAGE}
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
-      - name: Setup tmate debug session
-        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          detached: true
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -171,6 +165,11 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
+      - name: Setup tmate debug session
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }} && ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+        
       - name: after_success
         shell: bash
         run: |
