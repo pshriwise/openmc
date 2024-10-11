@@ -100,14 +100,13 @@ jobs:
       - name: Set commit message env var
         run: |
           # get the sha of the last branch commit
-          sha=$(git rev-list --parents -n 1 HEAD | cut -d" " -f 3)
-          COMMIT_MESSAGE=$(git log $sha -1 --pretty=%B)
+          BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | cut -d" " -f 3)
+          COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B)
           echo ${COMMIT_MESSAGE}
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
       - name: Setup tmate debug session
-        #if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
-        if: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         with:
           detached: true
