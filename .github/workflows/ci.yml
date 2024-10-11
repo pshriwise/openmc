@@ -95,8 +95,10 @@ jobs:
         run: |
           # get the sha of the last branch commit
           if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # use the last reference in the parents of the merge commit for pull request events
             BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | rev | cut -d" " -f 1 | rev)
           else
+            # use the current head for push events
             BRANCH_SHA=HEAD
           fi
           COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B)
