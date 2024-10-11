@@ -100,7 +100,10 @@ jobs:
       - name: Set commit message env var
         run: |
           # get the sha of the last branch commit
-          BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | rev | cut -d" " -f 1 | rev)
+          if: ${{ github.event.name == 'pull_request' }}
+            BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | rev | cut -d" " -f 1 | rev)
+          else:
+            BRANCH_SHA=HEAD
           COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B)
           echo ${COMMIT_MESSAGE}
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
