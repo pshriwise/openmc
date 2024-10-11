@@ -91,6 +91,10 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Payload info
+        run: |
+          echo "Repo: ${{ github.event.pull_request.head.repo }}"
+
       - name: Set commit message env var
         run: |
           COMMIT_MESSAGE=$(git log HEAD~1 -1 --pretty=%B)
