@@ -92,5 +92,4 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
 def test_asymmetric_lattice():
     harness = AsymmetricLatticeTestHarness('statepoint.10.h5')
-    raise ValueError('artificial failure')
     harness.main()
