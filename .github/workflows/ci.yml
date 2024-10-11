@@ -93,7 +93,7 @@ jobs:
 
       - name: Payload info
         run: |
-          echo "Repo: ${{ github.event.pull_request.head.repo.owner }}"
+          echo "Repo: ${{ github.event.pull_request.head.repo.owner.name }}"
           echo "Repo: ${{ github.event.pull_request.head.repo.name }}"
           echo "HEAD Ref: ${{ github.event.pull_request.head.ref }}"
 
