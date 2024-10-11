@@ -94,6 +94,7 @@ jobs:
       - name: Payload info
         run: |
           echo "Repo: ${{ github.event.pull_request.head.repo.commits_url }}"
+          echo "HEAD Ref: ${{ github.event.pull_request.head.ref }}"
 
       - name: Set commit message env var
         run: |
