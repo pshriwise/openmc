@@ -166,7 +166,7 @@ jobs:
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: Setup tmate debug session
-        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }} && ${{ failure() }}
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') && failure() }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 15
         
