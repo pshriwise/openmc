@@ -88,6 +88,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set commit message env var
+        run: |
+          # get the sha of the last branch commit
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # use the last reference in the parents of the merge commit for pull request events
+            BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | rev | cut -d" " -f 1 | rev)
+          else
+            # use the current head for push events
+            BRANCH_SHA=HEAD
+          fi
+          COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B)
+          echo ${COMMIT_MESSAGE}
+          echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -149,6 +165,12 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
+      - name: Setup tmate debug session
+        continue-on-error: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 10
+        
       - name: after_success
         shell: bash
         run: |
