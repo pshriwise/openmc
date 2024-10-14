@@ -344,6 +344,51 @@ void Particle::event_advance()
   }
 }
 
+int Particle::advance_to_boundary_from_void()
+{
+
+  double min_dist {INFINITY};
+  auto coord = this->coord(0);
+  Universe* uni = model::universes[model::root_universe].get();
+  // invert direction to find the nearest surface
+  int intersected_surface = -1;
+  for (auto c_i : uni->cells_) {
+    auto dist = model::cells.at(c_i)->distance(coord.r, -coord.u, 0, this);
+    if (dist.first < min_dist) {
+      min_dist = dist.first;
+      intersected_surface = dist.second;
+    }
+  }
+
+  double max_dist = (coord.r - r_last()).norm();
+
+  if (max_dist > 1e10) {
+    fatal_error(fmt::format("Particle {}: Distance to last collision is too large. This is likely "
+                            "due to a bug in the geometry or a particle starting outside the "
+                            "geometry.",
+                            id()));
+  }
+
+  // write_message(fmt::format("Distance to problem re-entry: {}", min_dist));
+  // write_message(fmt::format("Distance to last collision: {}", max_dist));
+  if (min_dist > max_dist) {
+    fatal_error(fmt::format("Particle {}: Distance to boundary of the problem is greater than "
+                            "the distance to the last collision. This is likely due to a bug in "
+                            "the geometry or a particle starting outside the geometry.",
+                            id()));
+  }
+
+  // move the particle to the boundary
+  for (auto& c : this->coord()) {
+    c.r += min_dist * -c.u;
+  }
+  delta_tracking() = false;
+  boundary().surface_index = intersected_surface;
+  boundary().coord_level = 0;
+  boundary().lattice_translation = {0, 0, 0};
+  event_cross_surface();
+}
+
 void Particle::trace_through_geom(double trace_dist)
 {
 
@@ -421,6 +466,8 @@ void Particle::event_delta_advance()
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
     wgt() = 0.0;
+    // right now this is just a diagnostic
+    advance_to_boundary_from_void();
     // score to global leakage tally
     keff_tally_leakage() += wgt();
     // coord() = coord_cache;
