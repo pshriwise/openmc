@@ -236,19 +236,23 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   check_element_types();
 
   size_t n_bins = this->n_sources();
-  std::vector<double> strengths(n_bins, 1.0);
+  std::vector<double> strengths;
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
-  if (check_for_node(node, "strengths")) {
+  if (check_for_node(node, "strengths"))
     strengths = get_node_array<double>(node, "strengths");
-    if (strengths.size() != n_bins) {
-      fatal_error(
-        fmt::format("Number of entries in the source strengths array {} does "
-                    "not match the number of entities in mesh {} ({}).",
-          strengths.size(), mesh_id, n_bins));
-    }
+  else
+    strengths.resize(n_bins, 1.0);
+
+  // at this point, the strengths should have the same length as the number of
+  // elements in the mesh regardless of their source (XML or default)
+  if (strengths.size() != n_bins) {
+    fatal_error(
+      fmt::format("Number of entries in the source strengths array {} does "
+                  "not match the number of entities in mesh {} ({}).",
+        strengths.size(), mesh_id, n_bins));
   }
 
   if (get_node_value_bool(node, "volume_normalized")) {
