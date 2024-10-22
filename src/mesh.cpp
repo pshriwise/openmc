@@ -2580,14 +2580,14 @@ int MOABMesh::get_bin(Position r) const
 
 void MOABMesh::compute_barycentric_data(const moab::Range& tets)
 {
-  moab::ErrorCode rval;
-
   baryc_data_.clear();
   baryc_data_.resize(tets.size());
 
   // compute the barycentric data for each tet element
   // and store it as a 3x3 matrix
+  #pragma omp parallel for shared(baryc_data_)
   for (auto& tet : tets) {
+    moab::ErrorCode rval;
     vector<moab::EntityHandle> verts;
     rval = mbi_->get_connectivity(&tet, 1, verts);
     if (rval != moab::MB_SUCCESS) {
