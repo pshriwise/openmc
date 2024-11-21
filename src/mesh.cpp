@@ -2410,6 +2410,132 @@ void MOABMesh::intersect_track(const moab::CartVect& start,
   std::sort(hits.begin(), hits.end());
 }
 
+constexpr bool EXIT_EARLY = false;
+
+
+inline bool lower(const Position& a, const Position& b)
+{
+  for (int i = 0; i < 3; i++)
+  if (a[i] != b[i])
+      return a[i] < b[i];
+  return false;
+}
+
+double plucker_edge_test(const Position& vertexa, const Position& vertexb,
+  const Position& ray, const Position& ray_normal)
+{
+  double pip;
+  const double near_zero = 10 * std::numeric_limits<double>::epsilon();
+  if (lower(vertexa, vertexb)) {
+    const Position edge = vertexb - vertexa;
+    const Position edge_normal = edge.cross(vertexa);
+    pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+  } else {
+    const Position edge = vertexa - vertexb;
+    const Position edge_normal = edge.cross(vertexb);
+    pip = ray.dot(edge_normal) + ray_normal.dot(edge);
+    pip = -pip;
+  }
+  if (near_zero > fabs(pip))
+    pip = 0.0;
+  return pip;
+}
+
+bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
+                               const Position& origin,
+                               const Direction& direction,
+                               double& dist_out,
+                               const double nonneg_ray_len,
+                               const double* neg_ray_len,
+                               const int* orientation)
+{
+  dist_out = INFTY;
+
+  const Position raya = direction;
+  const Position rayb = direction.cross(origin);
+
+  // Determine the value of the first Plucker coordinate from edge 0
+  double plucker_coord0 =
+    plucker_edge_test(vertices[0], vertices[1], raya, rayb);
+
+  // If orientation is set, confirm that sign of plucker_coordinate indicate
+  // correct orientation of intersection
+  if (orientation && (*orientation) * plucker_coord0 > 0) {
+    return EXIT_EARLY;
+  }
+
+  // Determine the value of the second Plucker coordinate from edge 1
+  double plucker_coord1 =
+    plucker_edge_test(vertices[1], vertices[2], raya, rayb);
+
+  // If orientation is set, confirm that sign of plucker_coordinate indicate
+  // correct orientation of intersection
+  if (orientation) {
+    if ((*orientation) * plucker_coord1 > 0) {
+      return EXIT_EARLY;
+    }
+    // If the orientation is not specified, all plucker_coords must be the same
+    // sign or zero.
+  } else if ((0.0 < plucker_coord0 && 0.0 > plucker_coord1) ||
+             (0.0 > plucker_coord0 && 0.0 < plucker_coord1)) {
+    return EXIT_EARLY;
+  }
+
+  // Determine the value of the second Plucker coordinate from edge 2
+  double plucker_coord2 =
+    plucker_edge_test(vertices[2], vertices[0], raya, rayb);
+
+  // If orientation is set, confirm that sign of plucker_coordinate indicate
+  // correct orientation of intersection
+  if (orientation) {
+    if ((*orientation) * plucker_coord2 > 0) {
+      return EXIT_EARLY;
+    }
+    // If the orientation is not specified, all plucker_coords must be the same
+    // sign or zero.
+  } else if ((0.0 < plucker_coord1 && 0.0 > plucker_coord2) ||
+             (0.0 > plucker_coord1 && 0.0 < plucker_coord2) ||
+             (0.0 < plucker_coord0 && 0.0 > plucker_coord2) ||
+             (0.0 > plucker_coord0 && 0.0 < plucker_coord2)) {
+    return EXIT_EARLY;
+  }
+
+  // check for coplanar case to avoid dividing by zero
+  if (0.0 == plucker_coord0 && 0.0 == plucker_coord1 && 0.0 == plucker_coord2) {
+    return EXIT_EARLY;
+  }
+
+  // get the distance to intersection
+  const double inverse_sum =
+    1.0 / (plucker_coord0 + plucker_coord1 + plucker_coord2);
+  // TODO: replace assert with warning
+  assert(0.0 != inverse_sum);
+  const Position intersection(plucker_coord0 * inverse_sum * vertices[2] +
+                              plucker_coord1 * inverse_sum * vertices[0] +
+                              plucker_coord2 * inverse_sum * vertices[1]);
+
+  // To minimize numerical error, get index of largest magnitude direction.
+  int idx = 0;
+  double max_abs_dir = 0;
+  for (unsigned int i = 0; i < 3; ++i) {
+    if (fabs(direction[i]) > max_abs_dir) {
+      idx = i;
+      max_abs_dir = fabs(direction[i]);
+    }
+  }
+  dist_out = (intersection[idx] - origin[idx]) / direction[idx];
+
+  // is the intersection within distance limits?
+  if( ( nonneg_ray_len && nonneg_ray_len < dist_out ) ||  // intersection is beyond positive limit
+  ( neg_ray_len && *neg_ray_len >= dist_out ) ||       // intersection is behind negative limit
+  ( !neg_ray_len && 0 > dist_out ) )
+  {  // Unless a neg_ray_len is used, don't return negative distances
+       return EXIT_EARLY;
+  }
+
+  return true;
+}
+
 void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   vector<int>& bins, vector<double>& lengths) const
 {
@@ -2422,64 +2548,88 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   if (track_len == 0.0)
     return;
 
-  start -= TINY_BIT * dir;
-  end += TINY_BIT * dir;
+  moab::EntityHandle tet = this->get_tet(r0);
 
-  vector<double> hits;
-  intersect_track(start, dir, track_len, hits);
 
-  bins.clear();
-  lengths.clear();
-
-  // if there are no intersections the track may lie entirely
-  // within a single tet. If this is the case, apply entire
-  // score to that tet and return.
-  if (hits.size() == 0) {
-    Position midpoint = r0 + u * (track_len * 0.5);
-    int bin = this->get_bin(midpoint);
-    if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(1.0);
-    }
+  if (tet == 0) {
     return;
   }
 
-  // for each segment in the set of tracks, try to look up a tet
-  // at the midpoint of the segment
-  Position current = r0;
-  double last_dist = 0.0;
-  for (const auto& hit : hits) {
-    // get the segment length
-    double segment_length = hit - last_dist;
-    last_dist = hit;
-    // find the midpoint of this segment
-    Position midpoint = current + u * (segment_length * 0.5);
-    // try to find a tet for this position
-    int bin = this->get_bin(midpoint);
+  start -= TINY_BIT * dir;
+  end += TINY_BIT * dir;
 
-    // determine the start point for this segment
-    current = r0 + u * hit;
+  // we're in a tet, get the triangles
+  std::vector<moab::EntityHandle> conn;
 
-    if (bin == -1) {
-      continue;
-    }
-
-    bins.push_back(bin);
-    lengths.push_back(segment_length / track_len);
+  // get the coordinates of the tet vertices
+  moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet connectivity");
   }
 
-  // tally remaining portion of track after last hit if
-  // the last segment of the track is in the mesh but doesn't
-  // reach the other side of the tet
-  if (hits.back() < track_len) {
-    Position segment_start = r0 + u * hits.back();
-    double segment_length = track_len - hits.back();
-    Position midpoint = segment_start + u * (segment_length * 0.5);
-    int bin = this->get_bin(midpoint);
-    if (bin != -1) {
-      bins.push_back(bin);
-      lengths.push_back(segment_length / track_len);
-    }
+  // get the coordinates of the tet vertices
+  std::array<Position, 4> p;
+  rval = mbi_->get_coords(conn.data(), 4, (double*)p.data());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet coords");
+  }
+
+  while (track_len > 0) {
+  // now search for the nearest intersection
+  double dist = std::numeric_limits<double>::max();
+  std::pair<moab::EntityHandle, double> closest_tri {-1, dist};
+  bool hit {false};
+  int orientation {1}; // exiting hits only
+
+  // triangle 0
+  hit = plucker_ray_tri_intersect({p[0], p[1], p[3]}, r0, u, dist, track_len, nullptr, &orientation);
+  if (hit && dist < closest_tri.second) {
+    closest_tri = {conn[0], dist};
+  }
+
+  // triangle 1
+  hit = plucker_ray_tri_intersect({p[1], p[2], p[3]}, r0, u, dist, track_len, nullptr, &orientation);
+  if (hit && dist < closest_tri.second) {
+    closest_tri = {conn[1], dist};
+  }
+
+  // triangle 2
+  hit = plucker_ray_tri_intersect({p[2], p[0], p[3]}, r0, u, dist, track_len, nullptr, &orientation);
+  if (hit && dist < closest_tri.second) {
+    closest_tri = {conn[2], dist};
+  }
+
+  // triangle 3
+  hit = plucker_ray_tri_intersect({p[0], p[2], p[1]}, r0, u, dist, track_len, nullptr, &orientation);
+  if (hit && dist < closest_tri.second) {
+    closest_tri = {conn[3], dist};
+  }
+
+  // track doesn't reach the end of the current element
+  if (closest_tri.first == -1) {
+    bins.push_back(this->get_bin_from_ent_handle(tet));
+    lengths.push_back(1.0);
+    return;
+  }
+
+  bins.push_back(this->get_bin_from_ent_handle(tet));
+  lengths.push_back(closest_tri.second);
+  track_len -= closest_tri.second;
+
+  // get the tet on the other side of the triangle
+  std::vector<moab::EntityHandle> adj_tets;
+  rval = mbi_->get_adjacencies(&closest_tri.first, 1, 3, true, adj_tets);
+
+  // update the current tet
+  tet = adj_tets[0] == tet ? adj_tets[1] : adj_tets[0];
+
+  } // rinse and repeat
+
+
+  // normalize lengths on the way out
+  double total_length = std::accumulate(lengths.begin(), lengths.end(), 0.0);
+  for (auto& l : lengths) {
+    l /= total_length;
   }
 };
 
