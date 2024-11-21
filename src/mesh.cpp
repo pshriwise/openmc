@@ -2539,24 +2539,17 @@ bool plucker_ray_tri_intersect(const std::array<Position, 3> vertices,
 void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   vector<int>& bins, vector<double>& lengths) const
 {
-  moab::CartVect start(r0.x, r0.y, r0.z);
-  moab::CartVect end(r1.x, r1.y, r1.z);
-  moab::CartVect dir(u.x, u.y, u.z);
-  dir.normalize();
+  Position start(r0.x, r0.y, r0.z);
+  Position end(r1.x, r1.y, r1.z);
 
-  double track_len = (end - start).length();
+  double track_len = (end - start).norm();
   if (track_len == 0.0)
     return;
 
   moab::EntityHandle tet = this->get_tet(r0);
-
-
   if (tet == 0) {
     return;
   }
-
-  start -= TINY_BIT * dir;
-  end += TINY_BIT * dir;
 
   // we're in a tet, get the triangles
   std::vector<moab::EntityHandle> conn;
@@ -2574,6 +2567,8 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     fatal_error("Failed to get tet coords");
   }
 
+  moab::EntityHandle last_tri = -1;
+
   while (track_len > 0) {
   // now search for the nearest intersection
   double dist = std::numeric_limits<double>::max();
@@ -2582,38 +2577,46 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   int orientation {1}; // exiting hits only
 
   // triangle 0
-  hit = plucker_ray_tri_intersect({p[0], p[1], p[3]}, r0, u, dist, track_len, nullptr, &orientation);
-  if (hit && dist < closest_tri.second) {
+  hit = plucker_ray_tri_intersect({p[0], p[1], p[3]}, start, u, dist, INFTY, nullptr, &orientation);
+  if (hit && conn[0] != last_tri && dist > 0 && dist < closest_tri.second) {
     closest_tri = {conn[0], dist};
   }
 
   // triangle 1
-  hit = plucker_ray_tri_intersect({p[1], p[2], p[3]}, r0, u, dist, track_len, nullptr, &orientation);
-  if (hit && dist < closest_tri.second) {
+  hit = plucker_ray_tri_intersect({p[1], p[2], p[3]}, start, u, dist, INFTY, nullptr, &orientation);
+  if (hit && conn[1] != last_tri && dist > 0 && dist < closest_tri.second) {
     closest_tri = {conn[1], dist};
   }
 
   // triangle 2
-  hit = plucker_ray_tri_intersect({p[2], p[0], p[3]}, r0, u, dist, track_len, nullptr, &orientation);
-  if (hit && dist < closest_tri.second) {
+  hit = plucker_ray_tri_intersect({p[2], p[0], p[3]}, start, u, dist, INFTY, nullptr, &orientation);
+  if (hit && conn[2] != last_tri && dist > 0 && dist > 0 && dist < closest_tri.second) {
     closest_tri = {conn[2], dist};
   }
 
   // triangle 3
-  hit = plucker_ray_tri_intersect({p[0], p[2], p[1]}, r0, u, dist, track_len, nullptr, &orientation);
-  if (hit && dist < closest_tri.second) {
+  hit = plucker_ray_tri_intersect({p[0], p[2], p[1]}, start, u, dist, INFTY, nullptr, &orientation);
+  if (hit && conn[3] != last_tri && dist > 0 && dist < closest_tri.second) {
     closest_tri = {conn[3], dist};
   }
 
-  // track doesn't reach the end of the current element
-  if (closest_tri.first == -1) {
-    bins.push_back(this->get_bin_from_ent_handle(tet));
-    lengths.push_back(1.0);
-    return;
+  if (hit && closest_tri.second < TINY_BIT) {
+    // we're exactly on a triangle, move a tiny bit and try again
+    start += TINY_BIT * u;
+    continue;
   }
+
+  // track doesn't reach the end of the current element, tally the remainder and break
+  if (closest_tri.second > track_len) {
+    bins.push_back(this->get_bin_from_ent_handle(tet));
+    lengths.push_back(track_len);
+    break;
+  }
+
 
   bins.push_back(this->get_bin_from_ent_handle(tet));
   lengths.push_back(closest_tri.second);
+  start += closest_tri.second * u;
   track_len -= closest_tri.second;
 
   // get the tet on the other side of the triangle

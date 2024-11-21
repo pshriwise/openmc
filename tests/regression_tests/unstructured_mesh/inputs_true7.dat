@@ -47,7 +47,7 @@
     <particles>100</particles>
     <batches>10</batches>
     <source strength="1.0">
-      <space origin="0.0 0.0 0.0" type="spherical">
+      <space origin="0.01 0.01 0.01" type="spherical">
         <r parameters="0.0 0.0" type="uniform"/>
         <cos_theta type="discrete">
           <parameters>1.0 1.0</parameters>
@@ -61,27 +61,17 @@
         <parameters>15000000.0 1.0</parameters>
       </energy>
     </source>
+    <output>
+      <tallies>true</tallies>
+    </output>
   </settings>
   <tallies>
-    <mesh id="15">
-      <dimension>10 10 10</dimension>
-      <lower_left>-10.0 -10.0 -10.0</lower_left>
-      <upper_right>10.0 10.0 10.0</upper_right>
-    </mesh>
     <mesh id="16" library="moab" type="unstructured">
       <filename>test_mesh_tets.exo</filename>
     </mesh>
-    <filter id="15" type="mesh">
-      <bins>15</bins>
-    </filter>
     <filter id="16" type="mesh">
       <bins>16</bins>
     </filter>
-    <tally id="15" name="regular mesh tally">
-      <filters>15</filters>
-      <scores>flux</scores>
-      <estimator>tracklength</estimator>
-    </tally>
     <tally id="16" name="unstructured mesh tally">
       <filters>16</filters>
       <scores>flux</scores>
