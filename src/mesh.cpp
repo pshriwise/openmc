@@ -2548,24 +2548,9 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 
   moab::EntityHandle tet = this->get_tet(r0);
   if (tet == 0) {
-    return;
+    fatal_error("Failed to find the tet containing the starting position.");
   }
 
-  // we're in a tet, get the triangles
-  std::vector<moab::EntityHandle> conn;
-
-  // get the coordinates of the tet vertices
-  moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to get tet connectivity");
-  }
-
-  // get the coordinates of the tet vertices
-  std::array<Position, 4> p;
-  rval = mbi_->get_coords(conn.data(), 4, (double*)p.data());
-  if (rval != moab::MB_SUCCESS) {
-    fatal_error("Failed to get tet coords");
-  }
 
   moab::EntityHandle last_tri = -1;
 
@@ -2576,35 +2561,61 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   bool hit {false};
   int orientation {1}; // exiting hits only
 
+  // we're in a tet, get the triangles
+  std::vector<moab::EntityHandle> conn;
+  // get the coordinates of the tet vertices
+  moab::ErrorCode rval = mbi_->get_connectivity(&tet, 1, conn);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet connectivity");
+  }
+
+  std::vector<moab::EntityHandle> tris;
+  rval = mbi_->get_adjacencies(&tet, 1, 2, false, tris);
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get adjacent triangles");
+  }
+
+  // get the coordinates of the tet vertices
+  std::array<Position, 4> p;
+  rval = mbi_->get_coords(conn.data(), 4, (double*)p.data());
+  if (rval != moab::MB_SUCCESS) {
+    fatal_error("Failed to get tet coords");
+  }
+
   // triangle 0
   hit = plucker_ray_tri_intersect({p[0], p[1], p[3]}, start, u, dist, INFTY, nullptr, &orientation);
-  if (hit && conn[0] != last_tri && dist > 0 && dist < closest_tri.second) {
-    closest_tri = {conn[0], dist};
+  if (hit && tris[0] != last_tri && dist < closest_tri.second) {
+    closest_tri = {tris[0], dist};
   }
 
   // triangle 1
   hit = plucker_ray_tri_intersect({p[1], p[2], p[3]}, start, u, dist, INFTY, nullptr, &orientation);
-  if (hit && conn[1] != last_tri && dist > 0 && dist < closest_tri.second) {
-    closest_tri = {conn[1], dist};
+  if (hit && tris[1] != last_tri && dist < closest_tri.second) {
+    closest_tri = {tris[1], dist};
   }
 
   // triangle 2
   hit = plucker_ray_tri_intersect({p[2], p[0], p[3]}, start, u, dist, INFTY, nullptr, &orientation);
-  if (hit && conn[2] != last_tri && dist > 0 && dist > 0 && dist < closest_tri.second) {
-    closest_tri = {conn[2], dist};
+  if (hit && tris[2] != last_tri && dist < closest_tri.second) {
+    closest_tri = {tris[2], dist};
   }
 
   // triangle 3
   hit = plucker_ray_tri_intersect({p[0], p[2], p[1]}, start, u, dist, INFTY, nullptr, &orientation);
-  if (hit && conn[3] != last_tri && dist > 0 && dist < closest_tri.second) {
-    closest_tri = {conn[3], dist};
+  if (hit && tris[3] != last_tri && dist < closest_tri.second) {
+    closest_tri = {tris[3], dist};
   }
 
-  if (hit && closest_tri.second < TINY_BIT) {
-    // we're exactly on a triangle, move a tiny bit and try again
-    start += TINY_BIT * u;
-    continue;
-  }
+  // if (closest_tri.first != -1 && closest_tri.second < TINY_BIT) {
+  //   // we're exactly on a triangle, move a tiny bit and try again
+  //   start += TINY_BIT * u;
+  //   continue;
+  // }
+
+  // if (!closest_tri.first) {
+  //   // no intersection found, break
+  //   break;
+  // }
 
   // track doesn't reach the end of the current element, tally the remainder and break
   if (closest_tri.second > track_len) {
@@ -2612,7 +2623,6 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     lengths.push_back(track_len);
     break;
   }
-
 
   bins.push_back(this->get_bin_from_ent_handle(tet));
   lengths.push_back(closest_tri.second);
@@ -2623,6 +2633,11 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   std::vector<moab::EntityHandle> adj_tets;
   rval = mbi_->get_adjacencies(&closest_tri.first, 1, 3, true, adj_tets);
 
+  if (adj_tets.size() != 2) {
+    // we're on the boundary of the mesh
+    break;
+  }
+
   // update the current tet
   tet = adj_tets[0] == tet ? adj_tets[1] : adj_tets[0];
 
@@ -2631,6 +2646,10 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 
   // normalize lengths on the way out
   double total_length = std::accumulate(lengths.begin(), lengths.end(), 0.0);
+  double diff = std::abs(total_length - (r1-r0).norm());
+  if ( (diff / total_length) > 1e-6) {
+    fatal_error(fmt::format("Lengths of track segments do not sum to total track length. ({})", diff));
+  }
   for (auto& l : lengths) {
     l /= total_length;
   }
