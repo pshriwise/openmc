@@ -797,7 +797,7 @@ private:
   //! \param[in] track_len length of particle track
   //! \param[out] Mesh intersections
   void intersect_track(const moab::CartVect& start, const moab::CartVect& dir,
-    double track_len, vector<double>& hits) const;
+    double track_len, vector<double>& hits, vector<moab::EntityHandle>& tris) const;
 
   //! Calculate the volume for a given tetrahedron handle.
   //

@@ -2388,12 +2388,11 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
 }
 
 void MOABMesh::intersect_track(const moab::CartVect& start,
-  const moab::CartVect& dir, double track_len, vector<double>& hits) const
+  const moab::CartVect& dir, double track_len, vector<double>& hits, vector<moab::EntityHandle>& tris) const
 {
   hits.clear();
 
   moab::ErrorCode rval;
-  vector<moab::EntityHandle> tris;
   // get all intersections with triangles in the tet mesh
   // (distances are relative to the start point, not the previous intersection)
   rval = kdtree_->ray_intersect_triangles(kdtree_root_, FP_COINCIDENT,
@@ -2402,6 +2401,9 @@ void MOABMesh::intersect_track(const moab::CartVect& start,
     fatal_error(
       "Failed to compute intersections on unstructured mesh: " + filename_);
   }
+
+  // skip sorting for now and return hits and hit triangles as they are
+  return;
 
   // remove duplicate intersection distances
   std::unique(hits.begin(), hits.end());
@@ -2413,6 +2415,7 @@ void MOABMesh::intersect_track(const moab::CartVect& start,
 void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   vector<int>& bins, vector<double>& lengths) const
 {
+  moab::ErrorCode rval;
   moab::CartVect start(r0.x, r0.y, r0.z);
   moab::CartVect end(r1.x, r1.y, r1.z);
   moab::CartVect dir(u.x, u.y, u.z);
@@ -2426,7 +2429,14 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   end += TINY_BIT * dir;
 
   vector<double> hits;
-  intersect_track(start, dir, track_len, hits);
+  vector<moab::EntityHandle> tris;
+  intersect_track(start, dir, track_len, hits, tris);
+
+  // sort hits and tris by hit distance
+  std::vector<int> indices(hits.size());
+  std::iota(indices.begin(), indices.end(), 0);
+  std::sort(indices.begin(), indices.end(),
+    [&hits](int i1, int i2) { return hits[i1] < hits[i2]; });
 
   bins.clear();
   lengths.clear();
@@ -2443,6 +2453,46 @@ void MOABMesh::bins_crossed(Position r0, Position r1, const Direction& u,
     }
     return;
   }
+
+  // determine if the starting point is in the mesh
+  int start_bin = this->get_bin(r0);
+
+  if (start_bin != -1) {
+    bins.push_back(start_bin);
+    lengths.push_back(hits[indices[0]]);
+  }
+
+  for (int i = 0; i < indices.size() - 1;) {
+    int this_hit_idx = indices[i];
+    int next_hit_idx = indices[i++];
+
+    // if the next hit is the same as this hit, skip it
+    if (hits[this_hit_idx] == hits[next_hit_idx])
+      continue;
+
+    // get the triangles for this hit
+    moab::EntityHandle this_tri = tris[this_hit_idx];
+    moab::EntityHandle next_tri = tris[next_hit_idx];
+
+    // get the adjacent tets for these triangles
+    moab::Range this_tets;
+    moab::Range next_tets;
+
+    rval = mbi_->get_adjacencies(&this_tri, 1, 3, false, this_tets);
+    rval = mbi_->get_adjacencies(&next_tri, 1, 3, false, next_tets);
+
+    moab::Range current_tet = intersect(this_tets, next_tets);
+
+    bins.push_back(this->get_bin_from_ent_handle(current_tet[0]));
+    lengths.push_back(hits[next_hit_idx] - hits[this_hit_idx]);
+  }
+
+  double total_length = std::accumulate(lengths.begin(), lengths.end(), 0.0);
+  for (int i = 0; i < lengths.size(); i++) {
+    lengths[i] /= total_length;
+  }
+
+  return;
 
   // for each segment in the set of tracks, try to look up a tet
   // at the midpoint of the segment
