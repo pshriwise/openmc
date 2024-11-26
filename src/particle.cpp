@@ -417,6 +417,8 @@ void Particle::event_revive_from_secondary()
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
+    
+    n_bank_second() = 0;
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
