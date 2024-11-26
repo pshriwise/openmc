@@ -968,7 +968,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           // ...less the energy of any secondary particles since they will be
           // transported individually later
           const auto& bank = p.secondary_bank();
-          for (auto it = bank.end() - p.n_bank_second(); it < bank.end();
+          for (auto it = bank.begin(); it < bank.end();
                ++it) {
             score -= it->E;
           }
