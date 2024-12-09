@@ -383,8 +383,6 @@ void XDGUniverse::assign_material(
   for (const auto& m : model::materials) {
     std::string m_name = m->name();
     to_lower(m_name);
-    std::cout << fmt::format("Material name: '{}'", m_name) << std::endl;
-    std::cout << fmt::format("XDG material string: '{}'", mat_string) << std::endl;
     if (mat_string == m_name) {
       // assign the material with that name
       if (!mat_found_by_name) {
@@ -406,7 +404,6 @@ void XDGUniverse::assign_material(
     bool found_by_id = true;
     try {
       auto id = std::stoi(mat_string);
-      std::cout << fmt::format("Converted Material ID: '{}'", id) << std::endl;
       if (model::material_map.find(id) == model::material_map.end())
         found_by_id = false;
       c->material_.emplace_back(id);
