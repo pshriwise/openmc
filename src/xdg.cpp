@@ -327,9 +327,7 @@ std::string XDGUniverse::xdg_ids_for_dim(int dim) const
 int32_t XDGUniverse::implicit_complement_idx() const
 {
   // assume the IPC is at the back of the volumes (for now)
-
-  xdg::MeshID ipc = xdg_ptr()->mesh_manager()->volumes().back();
-//  xdg::MeshID ipc = xdg_ptr()->mesh_manager()->implicit_complement();
+  xdg::MeshID ipc = xdg_ptr()->mesh_manager()->implicit_complement();
   if (ipc == xdg::ID_NONE)
     fatal_error("Implicit complement not found in XDG model");
   return cell_index(ipc);
