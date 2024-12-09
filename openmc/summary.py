@@ -197,7 +197,7 @@ class Summary:
     def _read_universes(self):
         for group in self._f['geometry/universes'].values():
             geom_type = group.get('geom_type')
-            if geom_type and geom_type[()].decode() == 'dagmc':
+            if geom_type and geom_type[()].decode() in ('dagmc', 'xdg'):
                 universe = openmc.DAGMCUniverse.from_hdf5(group)
             else:
                 universe = openmc.Universe.from_hdf5(group, self._fast_cells)
