@@ -124,9 +124,7 @@ void XDGUniverse::init_xdg()
     fatal_error("Geometry XDG file '" + filename_ + "' does not exist!");
   }
   xdg_instance_->mesh_manager()->load_file(filename_);
-
   xdg_instance_->mesh_manager()->init();
-  xdg_instance_->mesh_manager()->parse_metadata();
   xdg_instance_->prepare_raytracer();
 }
 
