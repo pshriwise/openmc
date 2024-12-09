@@ -328,7 +328,10 @@ std::string XDGUniverse::xdg_ids_for_dim(int dim) const
 
 int32_t XDGUniverse::implicit_complement_idx() const
 {
-  xdg::MeshID ipc = xdg_ptr()->mesh_manager()->implicit_complement();
+  // assume the IPC is at the back of the volumes (for now)
+
+  xdg::MeshID ipc = xdg_ptr()->mesh_manager()->volumes().back();
+//  xdg::MeshID ipc = xdg_ptr()->mesh_manager()->implicit_complement();
   if (ipc == xdg::ID_NONE)
     fatal_error("Implicit complement not found in XDG model");
   return cell_index(ipc);
@@ -352,7 +355,7 @@ void XDGUniverse::to_hdf5(hid_t universes_group) const
   auto group = create_group(universes_group, fmt::format("universe {}", id_));
 
   // Write the geometry representation type.
-  write_string(group, "geom_type", "XDG", false);
+  write_string(group, "geom_type", "xdg", false);
 
   // Write other properties of the XDG Universe
   write_string(group, "filename", filename_, false);
@@ -368,10 +371,11 @@ void XDGUniverse::assign_material(
   std::string& mat_string, std::unique_ptr<XDGCell>& c) const
 {
   // material void checks
-  if (mat_string == "void" || mat_string == "vacuum") {
+  if (mat_string == "void" || mat_string == "vacuum" || mat_string == "graveyard") {
     c->material_.push_back(MATERIAL_VOID);
     return;
   }
+
 
   bool mat_found_by_name = false;
   // attempt to find a material with a matching name
@@ -379,6 +383,8 @@ void XDGUniverse::assign_material(
   for (const auto& m : model::materials) {
     std::string m_name = m->name();
     to_lower(m_name);
+    std::cout << fmt::format("Material name: '{}'", m_name) << std::endl;
+    std::cout << fmt::format("XDG material string: '{}'", mat_string) << std::endl;
     if (mat_string == m_name) {
       // assign the material with that name
       if (!mat_found_by_name) {
@@ -400,6 +406,7 @@ void XDGUniverse::assign_material(
     bool found_by_id = true;
     try {
       auto id = std::stoi(mat_string);
+      std::cout << fmt::format("Converted Material ID: '{}'", id) << std::endl;
       if (model::material_map.find(id) == model::material_map.end())
         found_by_id = false;
       c->material_.emplace_back(id);
@@ -408,7 +415,7 @@ void XDGUniverse::assign_material(
     }
 
     // report failure for failed int conversion or missing material
-    if (!found_by_id)
+    if (!found_by_id && !mat_found_by_name)
       fatal_error(
         fmt::format("Material with name/ID '{}' not found for volume (cell) {}",
           mat_string, c->id_));
@@ -444,8 +451,8 @@ std::pair<double, int32_t> XDGCell::distance(
 {
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != p->last_dir()) {
-    p->last_dir() = u;
+  if (u != p->u_last()) {
+    p->u_last() = u;
     p->xdg_prev_elements().clear();
   }
   if (on_surface == 0) {
@@ -470,7 +477,8 @@ std::pair<double, int32_t> XDGCell::distance(
   if (result.second > 0) {
     surf_idx = xdg_univ->surface_index(result.second);
     dist = result.first;
-  } else if (xdg_id() != xdg_ptr()->mesh_manager()->implicit_complement() || is_root_universe(xdg_univ->id_)) {
+    // TODO: reduce complexity of these calls
+  } else if (model::cell_map[this->id_] != xdg_univ->implicit_complement_idx() || is_root_universe(xdg_univ->id_)) {
     // surface boundary conditions are ignored for projection plotting, meaning
     // that the particle may move through the graveyard (bounding) volume and
     // into the implicit complement on the other side where no intersection will
@@ -531,7 +539,7 @@ double XDGSurface::distance(Position r, Direction u, bool coincident) const
 {
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire_surface(xdg_id(), pnt, dir);
+  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir);
   return result.first < 0.0 ? INFTY : result.first;
 }
 
@@ -547,8 +555,8 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
   p->xdg_prev_elements() = {p->xdg_prev_elements().back()};
   double pnt[3] = {r.x, r.y, r.z};
   xdg::Direction normal = xdg_ptr()->surface_normal(xdg_id(), pnt, &p->xdg_prev_elements());
-  p->last_dir() = u.reflect({normal[0], normal[1], normal[2]});
-  return p->last_dir();
+  p->u_last() = u.reflect({normal[0], normal[1], normal[2]});
+  return p->u_last();
 }
 
 //==============================================================================
@@ -557,7 +565,7 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
 
 void read_xdg_universes(pugi::xml_node node)
 {
-  for (pugi::xml_node dag_node : node.children("xdg_universe")) {
+  for (pugi::xml_node dag_node : node.children("dagmc_universe")) {
     model::universes.push_back(std::make_unique<XDGUniverse>(dag_node));
     model::universe_map[model::universes.back()->id_] =
       model::universes.size() - 1;
@@ -587,7 +595,7 @@ int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   auto cellp = dynamic_cast<XDGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<XDGUniverse*>(model::universes[univ].get());
 
-  xdg::MeshID next_volume = univp->xdg_ptr()->next_volume(cellp->xdg_id(), surfp->xdg_id());
+  xdg::MeshID next_volume = univp->xdg_ptr()->mesh_manager()->next_volume(cellp->xdg_id(), surfp->xdg_id());
   return univp->cell_index(next_volume);
 }
 
