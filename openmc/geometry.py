@@ -402,7 +402,7 @@ class Geometry:
         for material in self.get_all_materials().values():
             all_nuclides |= set(material.get_nuclides())
         return sorted(all_nuclides)
-    
+
     def get_all_dagmc_universes(self) -> typing.Dict[int, openmc.DAGMCUniverse]:
         """Return all universes in the geometry.
 
@@ -416,7 +416,7 @@ class Geometry:
         universes = self.get_all_universes()
         dag_universes = {}
         for id, univ in universes.items():
-            if isinstance(uni, openmc.DAGMCUniverse):
+            if isinstance(univ, openmc.DAGMCUniverse):
                 dag_universes[id] = univ
         return dag_universes
 
