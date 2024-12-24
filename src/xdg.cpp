@@ -466,7 +466,7 @@ std::pair<double, int32_t> XDGCell::distance(
   // create the ray
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir, &p->xdg_prev_elements());
+  std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir, INFTY, &p->xdg_prev_elements());
   if (result.second > 0) {
     surf_idx = xdg_univ->surface_index(result.second);
     dist = result.first;
