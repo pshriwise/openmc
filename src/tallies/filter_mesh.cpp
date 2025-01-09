@@ -52,7 +52,7 @@ void MeshFilter::get_all_bins(
     r -= translation();
   }
   // apply rotation if present
-  if (!rotation_.empty()) {
+  if (rotated()) {
     last_r = last_r.rotate(rotation_);
     r = r.rotate(rotation_);
     u = u.rotate(rotation_);
@@ -112,9 +112,13 @@ void MeshFilter::set_rotation(const vector<double>& rot)
 {
   rotated_ = true;
 
+  if (rot.size() != 3 && rot.size() != 9) {
+    fatal_error(fmt::format("Rotation on mesh filter {} must be 3 or 9 elements.", id()));
+  }
+
   // Compute and store the rotation matrix.
-  rotation_.clear();
-  rotation_.reserve(rot.size() == 9 ? 9 : 12);
+  std::fill(rotation_.begin(), rotation_.end(), -1);
+
   if (rot.size() == 3) {
     double phi = -rot[0] * PI / 180.0;
     double theta = -rot[1] * PI / 180.0;
@@ -264,8 +268,10 @@ extern "C" int openmc_mesh_filter_get_rotation(
     set_errmsg("Tried to get a rotation from a non-mesh filter.");
     return OPENMC_E_INVALID_TYPE;
   }
+
   // Get rotation from the mesh filter and set value
   auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+
   *n = mesh_filter->rotation().size();
   std::memcpy(rot, mesh_filter->rotation().data(),
     *n * sizeof(mesh_filter->rotation()[0]));

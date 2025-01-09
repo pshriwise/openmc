@@ -55,8 +55,9 @@ def model():
     rotated_reg_mesh.lower_left = llc
     rotated_reg_mesh.upper_right = urc
 
-    filters.append(openmc.MeshFilter(rotated_reg_mesh))
-    filters[-1].rotation = rotation
+    rotated_mesh_filter = openmc.MeshFilter(rotated_reg_mesh)
+    rotated_mesh_filter.rotation = rotation
+    filters.append(rotated_mesh_filter)
 
     # Create tallies
     for f in filters:

@@ -17,6 +17,7 @@ from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
 from .universe import UniverseBase
+from .utility_funcs import rotation_matrix
 from ._xml import get_text
 
 
@@ -808,10 +809,10 @@ class MeshFilter(Filter):
         This array specifies a vector that is used to translate (shift) the mesh
         for this filter
     rotation : Iterable of float
-        This array specifies the angles in degrees about the x, y, and z axes 
-        that the filled universe should be rotated. The rotation applied 
-        is an intrinsic rotation with specified Tait-Bryan angles. That is to 
-        say, if the angles are :math:`(\phi, \theta, \psi)`, then the rotation 
+        This array specifies the angles in degrees about the x, y, and z axes
+        that the filled universe should be rotated. The rotation applied
+        is an intrinsic rotation with specified Tait-Bryan angles. That is to
+        say, if the angles are :math:`(\phi, \theta, \psi)`, then the rotation
         matrix applied is :math:`R_z(\psi) R_y(\theta) R_x(\phi)` or
 
         .. math::
@@ -876,7 +877,11 @@ class MeshFilter(Filter):
 
         rotation = group.get('rotation')
         if rotation:
-            out.rotation = rotation[()]
+            rotation_array = rotation[()]
+            if rotation_array[-1] == -1:
+                out.rotation = rotation[:9]
+            else:
+                out.rotation = rotation[9:]
 
         return out
 
@@ -918,8 +923,23 @@ class MeshFilter(Filter):
 
     @rotation.setter
     def rotation(self, rotation):
-        cv.check_length('mesh filter rotation', rotation, 3)
+        cv.check_length('mesh filter rotation', rotation, 3, 9)
         self._rotation = np.asarray(rotation)
+        if len(self._rotation) == 9:
+            self._rotation = self._rotation.reshape(3, 3)
+
+    @property
+    def rotation_matrix(self):
+        if self.rotation is None:
+            return np.eye(3)
+
+        if len(self.rotation) == 9:
+            return self.rotation.reshape(3, 3)
+
+        if len(self.rotation) == 3:
+            return rotation_matrix(*self.rotation)
+
+        raise ValueError('Rotation must be a 3x3 matrix or a 3-element array')
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -1019,9 +1039,7 @@ class MeshFilter(Filter):
             out.translation = [float(x) for x in translation.split()]
         rotation = elem.get('rotation')
         if rotation:
-            values = [float(x) for x in rotation.split()]
-            if len(values) == 9:
-                out.rotation = np.array(values).reshape(3, 3)
+            out.rotation = [float(x) for x in rotation.split()]
         return out
 
 

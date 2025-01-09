@@ -65,7 +65,7 @@ protected:
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
   bool rotated_ {false};    //!< Whether or not the filter is rotated
-  vector<double> rotation_; //!< Filter rotation
+  std::array<double, 12> rotation_ {-1}; //!< Filter rotation
 };
 
 } // namespace openmc

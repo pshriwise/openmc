@@ -13,6 +13,7 @@ from .mixin import IDManagerMixin
 from .region import Region, Complement
 from .surface import Halfspace
 from .bounding_box import BoundingBox
+from .utility_funcs import rotation_matrix
 
 
 class Cell(IDManagerMixin):
@@ -219,14 +220,7 @@ class Cell(IDManagerMixin):
             # User specified rotation matrix directly
             self._rotation_matrix = self._rotation
         else:
-            phi, theta, psi = self.rotation*(-pi/180.)
-            c3, s3 = cos(phi), sin(phi)
-            c2, s2 = cos(theta), sin(theta)
-            c1, s1 = cos(psi), sin(psi)
-            self._rotation_matrix = np.array([
-                [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-                [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-                [-s2, c2*s3, c2*c3]])
+            self._rotation_matrix = rotation_matrix(*self.rotation)
 
     @property
     def rotation_matrix(self):
