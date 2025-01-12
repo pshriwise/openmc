@@ -1529,7 +1529,7 @@ void SolidRayTracePlot::print_info() const
   RayTracePlot::print_info();
 }
 
-void SolidRayTracePlot::create_output() const
+ImageData SolidRayTracePlot::create_image() const
 {
   size_t width = pixels_[0];
   size_t height = pixels_[1];
@@ -1545,6 +1545,14 @@ void SolidRayTracePlot::create_output() const
       data(horiz, vert) = ray.result_color();
     }
   }
+
+  return data;
+}
+
+void PhongPlot::create_output() const
+{
+
+  ImageData data = create_image();
 
 #ifdef USE_LIBPNG
   output_png(path_plot(), data);
