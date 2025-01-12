@@ -436,6 +436,8 @@ class PhongPlot : public RayTracePlot {
 public:
   PhongPlot(pugi::xml_node plot);
 
+  ImageData create_image() const;
+
   virtual void create_output() const;
   virtual void print_info() const;
 
