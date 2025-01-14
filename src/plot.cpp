@@ -1053,7 +1053,11 @@ RayTracePlot::RayTracePlot(pugi::xml_node node) : PlottableInterface(node)
     fatal_error("orthographic_width and field_of_view are mutually exclusive "
                 "parameters.");
 
-  // Get centerline vector for camera-to-model. We create vectors around this
+
+}
+
+void RayTracePlot::update_view() {
+    // Get centerline vector for camera-to-model. We create vectors around this
   // that form a pixel array, and then trace rays along that.
   auto up = up_ / up_.norm();
   Direction looking_direction = look_at_ - camera_position_;
@@ -1531,6 +1535,7 @@ void SolidRayTracePlot::print_info() const
 
 ImageData SolidRayTracePlot::create_image() const
 {
+  update_view();
   size_t width = pixels_[0];
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);

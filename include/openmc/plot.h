@@ -306,6 +306,12 @@ public:
 
   virtual void print_info() const;
 
+  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
+  Position camera_position_;               // where camera is
+  Position look_at_; // point camera is centered looking at
+  std::array<int, 2> pixels_; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+
 protected:
   Direction camera_x_axis() const
   {
@@ -330,7 +336,7 @@ protected:
    */
   std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
 
-  std::array<int, 2> pixels_; // pixel dimension of resulting image
+  void update_view();
 
 private:
   void set_look_at(pugi::xml_node node);
@@ -338,12 +344,6 @@ private:
   void set_field_of_view(pugi::xml_node node);
   void set_pixels(pugi::xml_node node);
   void set_orthographic_width(pugi::xml_node node);
-
-  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_;               // where camera is
-  Position look_at_; // point camera is centered looking at
-
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
@@ -436,7 +436,7 @@ class SolidRayTracePlot : public RayTracePlot {
 public:
   SolidRayTracePlot(pugi::xml_node plot);
 
-  ImageData create_image() const;
+  ImageData create_image();
 
   virtual void create_output() const;
   virtual void print_info() const;
