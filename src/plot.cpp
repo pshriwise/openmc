@@ -446,22 +446,30 @@ void PlottableInterface::set_universe(pugi::xml_node plot_node)
   }
 }
 
-void PlottableInterface::set_default_colors(pugi::xml_node plot_node)
+void PlottableInterface::set_color_by(pugi::xml_node plot_node)
 {
-  // Copy plot color type and initialize all colors randomly
+  // Copy plot color type
   std::string pl_color_by = "cell";
   if (check_for_node(plot_node, "color_by")) {
     pl_color_by = get_node_value(plot_node, "color_by", true);
   }
   if ("cell" == pl_color_by) {
     color_by_ = PlotColorBy::cells;
-    colors_.resize(model::cells.size());
   } else if ("material" == pl_color_by) {
     color_by_ = PlotColorBy::mats;
-    colors_.resize(model::materials.size());
   } else {
     fatal_error(fmt::format(
       "Unsupported plot color type '{}' in plot {}", pl_color_by, id()));
+  }
+}
+
+void PlottableInterface::set_default_colors()
+{
+  // Copy plot color type and initialize all colors randomly
+  if (PlotColorBy::cells == color_by_) {
+    colors_.resize(model::cells.size());
+  } else if (PlotColorBy::mats == color_by_) {
+    colors_.resize(model::materials.size());
   }
 
   for (auto& c : colors_) {
@@ -709,7 +717,8 @@ PlottableInterface::PlottableInterface(pugi::xml_node plot_node)
   set_id(plot_node);
   set_bg_color(plot_node);
   set_universe(plot_node);
-  set_default_colors(plot_node);
+  set_color_by(plot_node);
+  set_default_colors();
   set_user_colors(plot_node);
   set_mask(plot_node);
   set_overlap_color(plot_node);
