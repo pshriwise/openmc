@@ -170,9 +170,9 @@ void Plot::print_info() const
       fmt::print("Basis: YZ\n");
       break;
     }
-    fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
+    fmt::print("Pixels: {} {}\n", pixels()[0], pixels()[1]);
   } else if (PlotType::voxel == type_) {
-    fmt::print("Voxels: {} {} {}\n", pixels_[0], pixels_[1], pixels_[2]);
+    fmt::print("Voxels: {} {} {}\n", pixels()[0], pixels()[1], pixels()[2]);
   }
 }
 
@@ -236,8 +236,8 @@ void free_memory_plot()
 void Plot::create_image() const
 {
 
-  size_t width = pixels_[0];
-  size_t height = pixels_[1];
+  size_t width = pixels()[0];
+  size_t height = pixels()[1];
 
   ImageData data({width, height}, not_found_);
 
@@ -347,17 +347,17 @@ void Plot::set_output_path(pugi::xml_node plot_node)
   vector<int> pxls = get_node_array<int>(plot_node, "pixels");
   if (PlotType::slice == type_) {
     if (pxls.size() == 2) {
-      pixels_[0] = pxls[0];
-      pixels_[1] = pxls[1];
+      pixels()[0] = pxls[0];
+      pixels()[1] = pxls[1];
     } else {
       fatal_error(
         fmt::format("<pixels> must be length 2 in slice plot {}", id()));
     }
   } else if (PlotType::voxel == type_) {
     if (pxls.size() == 3) {
-      pixels_[0] = pxls[0];
-      pixels_[1] = pxls[1];
-      pixels_[2] = pxls[2];
+      pixels()[0] = pxls[0];
+      pixels()[1] = pxls[1];
+      pixels()[2] = pxls[2];
     } else {
       fatal_error(
         fmt::format("<pixels> must be length 3 in voxel plot {}", id()));
@@ -856,27 +856,27 @@ void Plot::draw_mesh_lines(ImageData& data) const
   int ax2_min, ax2_max;
   if (axis_lines.second.size() > 0) {
     double frac = (axis_lines.second.back() - ll_plot[ax2]) / width[ax2];
-    ax2_min = (1.0 - frac) * pixels_[1];
+    ax2_min = (1.0 - frac) * pixels()[1];
     if (ax2_min < 0)
       ax2_min = 0;
     frac = (axis_lines.second.front() - ll_plot[ax2]) / width[ax2];
-    ax2_max = (1.0 - frac) * pixels_[1];
-    if (ax2_max > pixels_[1])
-      ax2_max = pixels_[1];
+    ax2_max = (1.0 - frac) * pixels()[1];
+    if (ax2_max > pixels()[1])
+      ax2_max = pixels()[1];
   } else {
     ax2_min = 0;
-    ax2_max = pixels_[1];
+    ax2_max = pixels()[1];
   }
 
   // Iterate across the first axis and draw lines.
   for (auto ax1_val : axis_lines.first) {
     double frac = (ax1_val - ll_plot[ax1]) / width[ax1];
-    int ax1_ind = frac * pixels_[0];
+    int ax1_ind = frac * pixels()[0];
     for (int ax2_ind = ax2_min; ax2_ind < ax2_max; ++ax2_ind) {
       for (int plus = 0; plus <= meshlines_width_; plus++) {
-        if (ax1_ind + plus >= 0 && ax1_ind + plus < pixels_[0])
+        if (ax1_ind + plus >= 0 && ax1_ind + plus < pixels()[0])
           data(ax1_ind + plus, ax2_ind) = rgb;
-        if (ax1_ind - plus >= 0 && ax1_ind - plus < pixels_[0])
+        if (ax1_ind - plus >= 0 && ax1_ind - plus < pixels()[0])
           data(ax1_ind - plus, ax2_ind) = rgb;
       }
     }
@@ -886,27 +886,27 @@ void Plot::draw_mesh_lines(ImageData& data) const
   int ax1_min, ax1_max;
   if (axis_lines.first.size() > 0) {
     double frac = (axis_lines.first.front() - ll_plot[ax1]) / width[ax1];
-    ax1_min = frac * pixels_[0];
+    ax1_min = frac * pixels()[0];
     if (ax1_min < 0)
       ax1_min = 0;
     frac = (axis_lines.first.back() - ll_plot[ax1]) / width[ax1];
-    ax1_max = frac * pixels_[0];
-    if (ax1_max > pixels_[0])
-      ax1_max = pixels_[0];
+    ax1_max = frac * pixels()[0];
+    if (ax1_max > pixels()[0])
+      ax1_max = pixels()[0];
   } else {
     ax1_min = 0;
-    ax1_max = pixels_[0];
+    ax1_max = pixels()[0];
   }
 
   // Iterate across the second axis and draw lines.
   for (auto ax2_val : axis_lines.second) {
     double frac = (ax2_val - ll_plot[ax2]) / width[ax2];
-    int ax2_ind = (1.0 - frac) * pixels_[1];
+    int ax2_ind = (1.0 - frac) * pixels()[1];
     for (int ax1_ind = ax1_min; ax1_ind < ax1_max; ++ax1_ind) {
       for (int plus = 0; plus <= meshlines_width_; plus++) {
-        if (ax2_ind + plus >= 0 && ax2_ind + plus < pixels_[1])
+        if (ax2_ind + plus >= 0 && ax2_ind + plus < pixels()[1])
           data(ax1_ind, ax2_ind + plus) = rgb;
-        if (ax2_ind - plus >= 0 && ax2_ind - plus < pixels_[1])
+        if (ax2_ind - plus >= 0 && ax2_ind - plus < pixels()[1])
           data(ax1_ind, ax2_ind - plus) = rgb;
       }
     }
@@ -927,9 +927,9 @@ void Plot::create_voxel() const
 {
   // compute voxel widths in each direction
   array<double, 3> vox;
-  vox[0] = width_[0] / static_cast<double>(pixels_[0]);
-  vox[1] = width_[1] / static_cast<double>(pixels_[1]);
-  vox[2] = width_[2] / static_cast<double>(pixels_[2]);
+  vox[0] = width_[0] / static_cast<double>(pixels()[0]);
+  vox[1] = width_[1] / static_cast<double>(pixels()[1]);
+  vox[2] = width_[2] / static_cast<double>(pixels()[2]);
 
   // initial particle position
   Position ll = origin_ - width_ / 2.;
@@ -951,18 +951,18 @@ void Plot::create_voxel() const
 
   // Write current date and time
   write_attribute(file_id, "date_and_time", time_stamp().c_str());
-  array<int, 3> pixels;
-  std::copy(pixels_.begin(), pixels_.end(), pixels.begin());
-  write_attribute(file_id, "num_voxels", pixels);
+  array<int, 3> h5_pixels;
+  std::copy(pixels().begin(), pixels().end(), h5_pixels.begin());
+  write_attribute(file_id, "num_voxels", h5_pixels);
   write_attribute(file_id, "voxel_width", vox);
   write_attribute(file_id, "lower_left", ll);
 
   // Create dataset for voxel data -- note that the dimensions are reversed
   // since we want the order in the file to be z, y, x
   hsize_t dims[3];
-  dims[0] = pixels_[2];
-  dims[1] = pixels_[1];
-  dims[2] = pixels_[0];
+  dims[0] = pixels()[2];
+  dims[1] = pixels()[1];
+  dims[2] = pixels()[0];
   hid_t dspace, dset, memspace;
   voxel_init(file_id, &(dims[0]), &dspace, &dset, &memspace);
 
@@ -970,11 +970,11 @@ void Plot::create_voxel() const
   pltbase.width_ = width_;
   pltbase.origin_ = origin_;
   pltbase.basis_ = PlotBasis::xy;
-  pltbase.pixels_ = pixels_;
+  pltbase.pixels() = pixels();
   pltbase.slice_color_overlaps_ = color_overlaps_;
 
   ProgressBar pb;
-  for (int z = 0; z < pixels_[2]; z++) {
+  for (int z = 0; z < pixels()[2]; z++) {
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
@@ -992,7 +992,7 @@ void Plot::create_voxel() const
 
     // update progress bar
     pb.set_value(
-      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels()[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);
@@ -1184,8 +1184,8 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   // Compute field of view in radians
   constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
-  double p0 = static_cast<double>(pixels_[0]);
-  double p1 = static_cast<double>(pixels_[1]);
+  double p0 = static_cast<double>(pixels()[0]);
+  double p1 = static_cast<double>(pixels()[1]);
   double vert_fov_radians = horiz_fov_radians * p1 / p0;
 
   // focal_plane_dist can be changed to alter the perspective distortion
@@ -1223,8 +1223,8 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
 
 void ProjectionPlot::create_output() const
 {
-  size_t width = pixels_[0];
-  size_t height = pixels_[1];
+  size_t width = pixels()[0];
+  size_t height = pixels()[1];
   ImageData data({width, height}, not_found_);
 
   // This array marks where the initial wireframe was drawn.
@@ -1247,11 +1247,11 @@ void ProjectionPlot::create_output() const
   std::vector<std::vector<std::vector<TrackSegment>>> this_line_segments(
     n_threads);
   for (int t = 0; t < n_threads; ++t) {
-    this_line_segments[t].resize(pixels_[0]);
+    this_line_segments[t].resize(pixels()[0]);
   }
 
   // The last thread writes to this, and the first thread reads from it.
-  std::vector<std::vector<TrackSegment>> old_segments(pixels_[0]);
+  std::vector<std::vector<TrackSegment>> old_segments(pixels()[0]);
 
 #pragma omp parallel
   {
@@ -1259,7 +1259,7 @@ void ProjectionPlot::create_output() const
     const int tid = thread_num();
 
     int vert = tid;
-    for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
+    for (int iter = 0; iter <= pixels()[1] / n_threads; iter++) {
 
       // Save bottom line of current work chunk to compare against later
       // I used to have this inside the below if block, but it causes a
@@ -1268,9 +1268,9 @@ void ProjectionPlot::create_output() const
       if (tid == n_threads - 1)
         old_segments = this_line_segments[n_threads - 1];
 
-      if (vert < pixels_[1]) {
+      if (vert < pixels()[1]) {
 
-        for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+        for (int horiz = 0; horiz < pixels()[0]; ++horiz) {
 
           // RayTracePlot implements camera ray generation
           std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
@@ -1333,7 +1333,7 @@ void ProjectionPlot::create_output() const
       // Now that the horizontal line has finished rendering, we can fill in
       // wireframe entries that require comparison among all the threads. Hence
       // the omp barrier being used. It has to be OUTSIDE any if blocks!
-      if (vert < pixels_[1]) {
+      if (vert < pixels()[1]) {
         // Loop over horizontal pixels, checking intersection stack of upper
         // neighbor
 
@@ -1343,7 +1343,7 @@ void ProjectionPlot::create_output() const
         else
           top_cmp = &this_line_segments[tid - 1];
 
-        for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+        for (int horiz = 0; horiz < pixels()[0]; ++horiz) {
           if (!trackstack_equivalent(
                 this_line_segments[tid][horiz], (*top_cmp)[horiz])) {
             wireframe_initial(horiz, vert) = 1;
@@ -1360,8 +1360,8 @@ void ProjectionPlot::create_output() const
   } // end omp parallel
 
   // Now thicken the wireframe lines and apply them to our image
-  for (int vert = 0; vert < pixels_[1]; ++vert) {
-    for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
+  for (int vert = 0; vert < pixels()[1]; ++vert) {
+    for (int horiz = 0; horiz < pixels()[0]; ++horiz) {
       if (wireframe_initial(horiz, vert)) {
         if (wireframe_thickness_ == 1)
           data(horiz, vert) = wireframe_color_;
@@ -1372,8 +1372,8 @@ void ProjectionPlot::create_output() const
             if (i * i + j * j < wireframe_thickness_ * wireframe_thickness_) {
 
               // Check if wireframe pixel is out of bounds
-              int w_i = std::max(std::min(horiz + i, pixels_[0] - 1), 0);
-              int w_j = std::max(std::min(vert + j, pixels_[1] - 1), 0);
+              int w_i = std::max(std::min(horiz + i, pixels()[0] - 1), 0);
+              int w_j = std::max(std::min(vert + j, pixels()[1] - 1), 0);
               data(w_i, w_j) = wireframe_color_;
             }
       }
@@ -1394,7 +1394,7 @@ void RayTracePlot::print_info() const
   fmt::print("Look at: {} {} {}\n", look_at_.x, look_at_.y, look_at_.z);
   fmt::print(
     "Horizontal field of view: {} degrees\n", horizontal_field_of_view_);
-  fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
+  fmt::print("Pixels: {} {}\n", pixels()[0], pixels()[1]);
 }
 
 void ProjectionPlot::print_info() const
@@ -1476,8 +1476,8 @@ void RayTracePlot::set_pixels(pugi::xml_node node)
   if (pxls.size() != 2)
     fatal_error(
       fmt::format("<pixels> must be length 2 in projection plot {}", id()));
-  pixels_[0] = pxls[0];
-  pixels_[1] = pxls[1];
+  pixels()[0] = pxls[0];
+  pixels()[1] = pxls[1];
 }
 
 void RayTracePlot::set_camera_position(pugi::xml_node node)
@@ -1533,13 +1533,13 @@ void PhongPlot::print_info() const
 ImageData PhongPlot::create_image()
 {
   update_view();
-  size_t width = pixels_[0];
-  size_t height = pixels_[1];
+  size_t width = pixels()[0];
+  size_t height = pixels()[1];
   ImageData data({width, height}, not_found_);
 
 #pragma omp parallel for schedule(dynamic) collapse(2)
-  for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
-    for (int vert = 0; vert < pixels_[1]; ++vert) {
+  for (int horiz = 0; horiz < pixels()[0]; ++horiz) {
+    for (int vert = 0; vert < pixels()[1]; ++vert) {
       // RayTracePlot implements camera ray generation
       std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
       PhongRay ray(ru.first, ru.second, *this);
