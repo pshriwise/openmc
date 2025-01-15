@@ -92,13 +92,15 @@ class PlottableInterface {
 public:
   PlottableInterface() = default;
 
+  void set_default_colors();
+
 private:
   void set_id(pugi::xml_node plot_node);
   int id_; // unique plot ID
 
   void set_bg_color(pugi::xml_node plot_node);
   void set_universe(pugi::xml_node plot_node);
-  void set_default_colors(pugi::xml_node plot_node);
+  void set_color_by(pugi::xml_node plot_node);
   void set_user_colors(pugi::xml_node plot_node);
   void set_overlap_color(pugi::xml_node plot_node);
   void set_mask(pugi::xml_node plot_node);
@@ -120,12 +122,13 @@ public:
   std::string& path_plot() { return path_plot_; }
   int id() const { return id_; }
   int level() const { return level_; }
+  PlotColorBy color_by() const { return color_by_; }
 
   // Public color-related data
   PlottableInterface(pugi::xml_node plot_node);
   virtual ~PlottableInterface() = default;
-  int level_;                    // Universe level to plot
-  bool color_overlaps_;          // Show overlapping cells?
+  int level_ {-1};                    // Universe level to plot
+  bool color_overlaps_ {false};          // Show overlapping cells?
   PlotColorBy color_by_;         // Plot coloring (cell/material)
   RGBColor not_found_ {WHITE};   // Plot background color
   RGBColor overlap_color_ {RED}; // Plot overlap color
@@ -461,6 +464,12 @@ public:
 
   virtual void create_output() const;
   virtual void print_info() const;
+
+  const std::set<int>& opaque_ids() const { return opaque_ids_; }
+  std::set<int>& opaque_ids() { return opaque_ids_; }
+
+  const Position& light_location() const { return light_location_; }
+  Position& light_location() { return light_location_; }
 
 private:
   void set_opaque_ids(pugi::xml_node node);
