@@ -306,11 +306,20 @@ public:
 
   virtual void print_info() const;
 
-  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_;               // where camera is
-  Position look_at_; // point camera is centered looking at
-  std::array<int, 2> pixels_; // pixel dimension of resulting image
-  Direction up_ {0.0, 0.0, 1.0}; // which way is up
+  double horizontal_field_of_view() const { return horizontal_field_of_view_; }
+  double& horizontal_field_of_view() { return horizontal_field_of_view_; }
+
+  const Position& camera_position() const { return camera_position_; }
+  Position& camera_position() { return camera_position_; }
+
+  const Position& look_at() const { return look_at_; }
+  Position& look_at() { return look_at_; }
+
+  const std::array<int, 2>& pixels() const { return pixels_; }
+  std::array<int, 2>& pixels() { return pixels_; }
+
+  const Direction& up() const { return up_; }
+  Direction& up() { return up_; }
 
 protected:
   Direction camera_x_axis() const
@@ -344,6 +353,12 @@ private:
   void set_field_of_view(pugi::xml_node node);
   void set_pixels(pugi::xml_node node);
   void set_orthographic_width(pugi::xml_node node);
+
+  double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
+  Position camera_position_;               // where camera is
+  Position look_at_; // point camera is centered looking at
+  std::array<int, 2> pixels_; // pixel dimension of resulting image
+  Direction up_ {0.0, 0.0, 1.0}; // which way is up
 
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
