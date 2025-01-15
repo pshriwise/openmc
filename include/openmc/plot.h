@@ -89,6 +89,9 @@ const RGBColor BLACK {0, 0, 0};
  * which can be visualized.
  */
 class PlottableInterface {
+public:
+  PlottableInterface() = default;
+
 private:
   void set_id(pugi::xml_node plot_node);
   int id_; // unique plot ID
@@ -165,6 +168,11 @@ public:
   T get_map() const;
 
   enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
+
+  // Accessors
+
+  const std::array<size_t, 3>& pixels() const { return pixels_; }
+  std::array<size_t, 3>& pixels() { return pixels_; }
 
   // Members
 public:
@@ -294,26 +302,22 @@ public:
  */
 class RayTracePlot : public PlottableInterface {
 public:
+  RayTracePlot() = default;
   RayTracePlot(pugi::xml_node plot);
 
   // Standard getters. No setting since it's done from XML.
   const Position& camera_position() const { return camera_position_; }
+  Position& camera_position() { return camera_position_; }
   const Position& look_at() const { return look_at_; }
+  Position& look_at() { return look_at_; }
+
   const double& horizontal_field_of_view() const
   {
     return horizontal_field_of_view_;
   }
-
-  virtual void print_info() const;
-
-  double horizontal_field_of_view() const { return horizontal_field_of_view_; }
   double& horizontal_field_of_view() { return horizontal_field_of_view_; }
 
-  const Position& camera_position() const { return camera_position_; }
-  Position& camera_position() { return camera_position_; }
-
-  const Position& look_at() const { return look_at_; }
-  Position& look_at() { return look_at_; }
+  virtual void print_info() const;
 
   const std::array<int, 2>& pixels() const { return pixels_; }
   std::array<int, 2>& pixels() { return pixels_; }
@@ -449,6 +453,8 @@ class SolidRayTracePlot : public RayTracePlot {
   friend class PhongRay;
 
 public:
+  SolidRayTracePlot() = default;
+
   SolidRayTracePlot(pugi::xml_node plot);
 
   ImageData create_image();
