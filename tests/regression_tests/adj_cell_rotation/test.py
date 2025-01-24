@@ -7,7 +7,7 @@ from tests.testing_harness import PyAPITestHarness
 @pytest.fixture
 def model():
     model = openmc.model.Model()
-
+    print(model.not_a_real_attribute)
     fuel = openmc.Material()
     fuel.set_density('g/cc', 10.0)
     fuel.add_nuclide('U235', 1.0)
