@@ -22,4 +22,4 @@ if [[ $NCRYSTAL = 'y' ]]; then
 fi
 
 # Run regression and unit tests
-pytest --cov=openmc -v $args tests
+pytest --cov=openmc -x -v $args tests
