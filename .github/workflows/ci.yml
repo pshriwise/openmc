@@ -110,7 +110,7 @@ jobs:
           COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B)
           echo ${COMMIT_MESSAGE}
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
-          
+
       - name: Apt dependencies
         shell: bash
         run: |
@@ -165,12 +165,16 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
+      - name: commit
+        shell: bash
+        run: echo
+
       - name: Setup tmate debug session
         continue-on-error: true
-        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        if: contains(env.COMMIT_MESSAGE, '[gha-debug]')
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
-      
+
       - name: after_success
         shell: bash
         run: |
