@@ -688,7 +688,7 @@ public:
 
   // Data members
   bool output_ {
-    true}; //!< Write tallies onto the unstructured mesh at the end of a run
+    false}; //!< Write tallies onto the unstructured mesh at the end of a run
   std::string filename_; //!< Path to unstructured mesh file
 
   ElementType element_type(int bin) const;
