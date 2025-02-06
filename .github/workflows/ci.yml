@@ -102,7 +102,7 @@ jobs:
             BRANCH_SHA=HEAD
           fi
           COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B)
-          echo ${COMMIT_MESSAGE}
+          echo "Commit message: ${COMMIT_MESSAGE}"
           echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -170,7 +170,7 @@ jobs:
         if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
-        
+
       - name: after_success
         shell: bash
         run: |
