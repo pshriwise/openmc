@@ -13,6 +13,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
 #include "openmc/particle.h"
+#include "openmc/plot.h"
 #include "openmc/photon.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
@@ -705,6 +706,8 @@ void transport_history_based_single_particle(Particle& p)
     if (!p.alive())
       break;
     p.event_advance();
+    // if the expected distance to the next collision is larger than the
+    // distance to surface boundary trigger event_cross_surface
     if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();
     } else {
@@ -727,25 +730,29 @@ void transport_history_based()
   }
 }
 
-void transport_delta_tracking_single_particle(Particle& p)
+
+//Part to work on - Ciara
+void transport_delta_tracking_single_particle(Particle& p) // function to handle transport of single particles via delta tracking
 {
-  p.delta_tracking() = true;
-  while (true) {
-    p.event_delta_advance();
-    if (!p.alive())
-      break;
-    p.event_calculate_xs();
-    Expects(p.macro_xs().total <= p.majorant());
-    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {
-      p.event_collide();
+  p.delta_tracking() = true; // checks that the particle has delta tracking switched on
+  while (true) { 
+    p.event_delta_advance(); // performs a single delta tracking algorithmic loop to move particle forward by one event
+    if (!p.alive()) 
+      break;                // if the particle is found to no longer be alive - break
+    p.event_calculate_xs();  // calculate the the particle's crosssection  
+    Expects(p.macro_xs().total <= p.majorant());   // checks if the total cross section is larger than the majorant...
+    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {   // if the current epsilon is less than the ratio of the total xs to the majorant...
+      p.event_collide();   // initiate a REAL collision
     }
-    p.event_revive_from_secondary();
+    p.event_revive_from_secondary(); // check particle isn't dead from collisions.
     if (!p.alive())
       break;
   }
-  p.event_death();
+  p.event_death(); // register particle death 
 }
 
+
+// delta tracking for group of particles
 void transport_delta_tracking() {
   #pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {

@@ -1,4 +1,4 @@
-#include "openmc/particle_data.h"
+#include "openmc/particle.h"
 
 #include "openmc/cell.h"
 #include "openmc/geometry.h"

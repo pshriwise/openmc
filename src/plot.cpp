@@ -980,6 +980,7 @@ RGBColor random_color(void)
     int(prn(&model::plotter_seed) * 255), int(prn(&model::plotter_seed) * 255)};
 }
 
+
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {
 

@@ -16,6 +16,8 @@
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/particle.h"
+#include "openmc/plot.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"

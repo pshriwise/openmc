@@ -1,6 +1,7 @@
 #ifndef OPENMC_PLOT_H
 #define OPENMC_PLOT_H
 
+#include <cmath>
 #include <sstream>
 #include <unordered_map>
 
@@ -217,6 +218,14 @@ private:
   // Members
 public:
   int id_;                        //!< Plot ID
+  // Add mesh lines to ImageData
+  //void draw_mesh_lines(ImageData& data) const;
+  //void create_image() const;
+  //void create_voxel() const;
+
+  //virtual void create_output() const;
+  //virtual void print_info() const;
+
   PlotType type_;                 //!< Plot type (Slice/Voxel)
   PlotColorBy color_by_;          //!< Plot coloring (cell/material)
   int meshlines_width_;           //!< Width of lines added to the plot
@@ -278,6 +287,10 @@ void voxel_finalize(hid_t dspace, hid_t dset, hid_t memspace);
 
 //! Read plot specifications from a plots.xml file
 void read_plots_xml();
+
+//! Read plot specifications from an XML Node
+//! \param[in] XML node containing plot info
+//!void read_plots_xml(pugi::xml_node root);
 
 //! Clear memory
 void free_memory_plot();

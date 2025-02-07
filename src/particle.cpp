@@ -21,6 +21,8 @@
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
+#include "openmc/particle.h"
+#include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -113,13 +115,14 @@ void Particle::from_source(const SourceSite* src)
     E() = data::mg.energy_bin_avg_[g()];
   }
 
-  E_last() = E(); // maybe should be 0.0?
+  E_last() = E(); // maybe should be 0.0? - why? Ciara
   time() = src->time;
   time_last() = src->time;
+  // if the delta track flag is true then the majorant is set to 1.000001*the xs for the particle at the current energy and this is committed to the particle data?
   if (delta_tracking()) majorant() = 1.000001 * data::n_majorant->calculate_xs(this->E());
 }
 
-void Particle::event_calculate_xs()
+void Particle::event_calculate_xs() // calculates the crosssection of a particle at the current position and energy.
 {
   // Set the random number stream
   stream() = STREAM_TRACKING;
@@ -149,9 +152,9 @@ void Particle::event_calculate_xs()
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
   if (coord(n_coord() - 1).cell == C_NONE) {
-    if (!exhaustive_find_cell(*this)) {
-      if (!delta_tracking()) {
-        wgt() = 0.0;
+    if (!exhaustive_find_cell(*this)) {  // if the cell the particle is in cannot be found...
+      if (!delta_tracking()) {   // if delta tracking is NOT switched on
+        wgt() = 0.0;             // set particle weight to zero
       } else {
         mark_as_lost("Could not find the cell containing particle " +
                      std::to_string(id()));
@@ -237,39 +240,37 @@ void Particle::event_advance()
   }
 }
 
+
+// Ciara to edit
 void Particle::trace_through_geom(double trace_dist)
 {
+  // coord_cache currently stores the last internal coords - does this need to be explictly passed?
+  // currently coord() is the point OUTSIDE the geometry
 
-  double distance_traveled = 0;
-  while (true) {
-    boundary() = distance_to_boundary(*this);
+  // Find surface the particle must have passed through and apply BC
+  for (auto& coord : coord()) {
 
-    // stop if we've gone far enough
-    if (distance_traveled + boundary().distance > trace_dist)
-      break;
+    Position current_position = coord.r;  // Access the current positionm outside geom
+    
+    // // Direction of travel
+    Position direction = coord.u;
 
-    // update distance
-    distance_traveled += boundary().distance;
+    coord.u = -1*direction; // sign flip as we wish to trace back to last surface
 
-    // advance the particle
-    for (auto& coord : coord()) {
-      coord.r += boundary().distance * coord.u;
-    }
+    int intersected_surf_ID;
+    // This returns the surface first encountered by the particle travelling backwards, but also moves particle there
+    intersected_surf_ID = Particle::advance_to_boundary_from_void(*this); //*this is the particle, with external position and neg direction etc
+    //surface() = intersected_surf_ID;
+
+    // Reset particle state to last internal state
+    //this->coord() = coord_cache;
 
     // cross the surface
     this->event_cross_surface();
     if (!alive())
       break;
-  }
 
-  // move the remaining distance if needed
-  if (distance_traveled < trace_dist) {
-    double remaining_distance = trace_dist - distance_traveled;
-    for (auto& coord : coord()) {
-      coord.r += remaining_distance * coord.u;
-    }
   }
-
   // reset some information to make sure the particle is relocated
   // before the next collision event
   coord(n_coord() - 1).cell = C_NONE;
@@ -277,11 +278,58 @@ void Particle::trace_through_geom(double trace_dist)
   material() = C_NONE;
 }
 
+//==============================================================================
+
+// Advances to the next boundary from outside the geometry
+// Returns -1 if no intersection found, and the surface index
+// if an intersection was found.
+int Particle::advance_to_boundary_from_void(Particle& p)
+{
+  double min_dist {INFINITY};
+
+  // position of particle
+  auto root_coord = coord(0);
+
+  // getting the root universe of model
+  Universe* uni = model::universes[model::root_universe].get();
+
+  // Initially set the surface of intersection to '-1'
+  int intersected_surface = -1;
+
+  // Loops over all cells in the model universe
+  for (auto c_i : uni->cells_) {
+    // Finds the distance to cell along particle's velocity direction
+    auto dist = model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, &p);
+
+    // Checks if distance is less than current min_dist, replaces min_dist with that value if it is
+    if (dist.first < min_dist) {
+      min_dist = dist.first;
+      intersected_surface = dist.second;
+    }
+  }
+  // If no intersection is found min_dist remains large. (wonder if this should be derived from universe size instead somehow?)
+  if (min_dist > 1e300)
+    return -1;
+  else {
+    //LocalCoord intersection_pt;
+    
+    // advance the particle, a "TINY_BIT" at a time & set new particle coords
+    for (int j = 0; j < n_coord(); ++j) {
+      coord(j).r += (min_dist + TINY_BIT) * coord(j).u;
+      //intersection_pt.r = coord(j).r;
+    }
+    
+    // Return ID of the surface the particle intersects
+    return std::abs(intersected_surface);
+  }
+}
+
+// To edit - Ciara
 void Particle::event_delta_advance()
 {
   double distance;
 
-  if (this->E() != this->E_last()) {
+  if (this->E() != this->E_last()) { // if the energy of the particle at this point is not the same as at the previous point
     this->update_majorant();
   }
 
@@ -291,12 +339,12 @@ void Particle::event_delta_advance()
     // } else if (macro_xs_.total == 0.0) {
     //   distance = INFINITY;
   } else {
-    // calculate majorant value for this energy
+    // assume neutron, calculate majorant value for this energy
     distance = -std::log(prn(this->current_seed())) / majorant();
   }
 
-  // store a copy of the current coordinates
-  // auto coord_cache = coord();
+  // store a copy of the current coordinates, last coords inside geometry
+  auto coord_cache = coord();
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
@@ -310,14 +358,13 @@ void Particle::event_delta_advance()
   }
 
   if (!exhaustive_find_cell(*this)) {
-    // reset coordinates and trace particle through
-    // the geometry to determine what boundary condition should
-    // be applied or if the particle is lost
-    wgt() = 0.0;
     // score to global leakage tally
     keff_tally_leakage() += wgt();
-    // coord() = coord_cache;
-    // trace_through_geom(distance);
+
+    wgt() = 0.0;
+
+    //coord() = coord_cache; //want prev position before particle left geometry
+    trace_through_geom(distance); //need to carry through current coords and prev
   }
 
   if (E() != E_last())
@@ -325,17 +372,18 @@ void Particle::event_delta_advance()
                               // re-calculated if the energy has changed
 }
 
+
 void Particle::event_cross_surface()
 {
-  // Set surface that particle is on and adjust coordinate levels
+  // This assumes that the particle is already at the surface
   surface() = boundary().surface_index;
-  n_coord() = boundary().coord_level;
+  n_coord() = boundary().coord_level; 
 
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
     cell_last(j) = coord(j).cell;
   }
-  n_coord_last() = n_coord();
+  n_coord_last() = n_coord(); // Last coords of particle before crossing the surface
 
   if (boundary().lattice_translation[0] != 0 ||
       boundary().lattice_translation[1] != 0 ||
@@ -344,13 +392,13 @@ void Particle::event_cross_surface()
     cross_lattice(*this, boundary());
     event() = TallyEvent::LATTICE;
   } else {
-    // Particle crosses surface
+    // Particle crosses surface (because the lattice is only in the geometry, no translation within the lattice indicates the particle is outside the geometry)
     cross_surface();
-    event() = TallyEvent::SURFACE;
+    event() = TallyEvent::SURFACE; //Records that the particle has crossed the surface
   }
   // Score cell to cell partial currents
   if (!model::active_surface_tallies.empty()) {
-    score_surface_tally(*this, model::active_surface_tallies);
+    score_surface_tally(*this, model::active_surface_tallies); //Updates tally with current state of particle(*this)
   }
 }
 
@@ -506,15 +554,15 @@ void Particle::event_death()
 
 void Particle::cross_surface()
 {
-  int i_surface = std::abs(surface());
-  // TODO: off-by-one
-  const auto& surf {model::surfaces[i_surface - 1].get()};
+  int i_surface = std::abs(surface()); // retrieves which surface particle is on
+  // TODO: off-by-one Ciara to edit
+  const auto& surf {model::surfaces[i_surface - 1].get()}; // surface indices may start at 0 instead of 1, perhaps should be handled when geometry is initialised so that it only needs to happen once?
   if (settings::verbosity >= 10 || trace()) {
-    write_message(1, "    Crossing surface {}", surf->id_);
+    write_message(1, "    Crossing surface {}", surf->id_); // If verbosity is high write out surface being crossed to terminal
   }
-
+  // below checks if the surface contains a source term and if this is the last batch in the simulation 
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
-    SourceSite site;
+    SourceSite site; // create source site to describe particle on the surface
     site.r = r();
     site.u = u();
     site.E = E();
@@ -533,7 +581,7 @@ void Particle::cross_surface()
   if (surf->geom_type_ == GeometryType::CSG)
     history().reset();
 #endif
-
+  //Ciara to edit
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
     surf->bc_->handle_particle(*this, *surf);
@@ -574,7 +622,7 @@ void Particle::cross_surface()
   // Remove lower coordinate levels
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this);
-
+//advance_to_boundary_from_void
   if (settings::run_mode != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
     // a void in the model, and 2) the particle hit a surface at a tangent. If
@@ -601,7 +649,7 @@ void Particle::cross_vacuum_bc(const Surface& surf)
 {
   // Score any surface current tallies -- note that the particle is moved
   // forward slightly so that if the mesh boundary is on the surface, it is
-  // still processed
+  // still processed Ciara
 
   if (!model::active_meshsurf_tallies.empty()) {
     // TODO: Find a better solution to score surface currents than

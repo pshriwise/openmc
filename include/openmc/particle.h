@@ -9,6 +9,7 @@
 #include <string>
 
 #include "openmc/constants.h"
+#include "openmc/geometry.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle_data.h"
 #include "openmc/position.h"
@@ -63,6 +64,14 @@ public:
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
+
+    /* If starting the particle from outside the geometry, we have to
+   * find a distance to the boundary in a non-standard surface intersection
+   * check. It's an exhaustive search over surfaces in the top-level universe.
+   */
+  int advance_to_boundary_from_void(Particle& p);
+
+  
 
   //! Determine the surfaces crossed between the last and current particle position
   void trace_through_geom(double trace_dist);
