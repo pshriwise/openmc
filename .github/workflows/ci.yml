@@ -150,6 +150,9 @@ jobs:
       - name: test
         shell: bash
         run: |
+          set -eux
+          ncrystal-config -s
+          ls -l $(ncrystal-config --show cmakedir)
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 

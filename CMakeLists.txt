@@ -110,7 +110,7 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_NCRYSTAL)
-  if( NOT DEFINED "NCrystal_DIR" )
+  if(NOT DEFINED "NCrystal_DIR")
     #Invocation of "ncrystal-config --show cmakedir" is needed to find NCrystal
     #when it is installed from Python wheels:
     execute_process(
