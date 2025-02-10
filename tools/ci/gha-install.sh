@@ -19,6 +19,7 @@ if [[ $NCRYSTAL = 'y' ]]; then
     pip install ncrystal
     #Basic verification:
     nctool --test
+    ncrystal-config -s
 fi
 
 # Install vectfit for WMP generation if needed

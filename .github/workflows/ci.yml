@@ -127,8 +127,11 @@ jobs:
       - name: install
         shell: bash
         run: |
+          set -eux
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
+          nctool --test
+          ncrystal-config -s
 
       - name: display-config
         shell: bash
@@ -152,6 +155,7 @@ jobs:
         run: |
           set -eux
           ncrystal-config -s
+          nctool -s
           ls -l $(ncrystal-config --show cmakedir)
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
