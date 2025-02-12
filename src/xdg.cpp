@@ -434,7 +434,7 @@ void XDGUniverse::assign_material(
 XDGCell::XDGCell(std::shared_ptr<xdg::XDG> xdg_ptr, xdg::MeshID xdg_id)
   : Cell {}, XDGGeometryObject(xdg_ptr, xdg_id)
 {
-  geom_type_ = GeometryType::XDG;
+  geom_type() = GeometryType::XDG;
   // TODO: Allow XDG cells to be filled with other geometry
   fill_ = C_NONE;
 };
@@ -520,7 +520,7 @@ BoundingBox XDGCell::bounding_box() const
 XDGSurface::XDGSurface(std::shared_ptr<xdg::XDG> xdg_ptr, int32_t xdg_id)
   : Surface {}, XDGGeometryObject(xdg_ptr, xdg_id)
 {
-  geom_type_ = GeometryType::XDG;
+  geom_type() = GeometryType::XDG;
 }
 
 double XDGSurface::evaluate(Position r) const
