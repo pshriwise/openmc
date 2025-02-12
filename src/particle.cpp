@@ -556,7 +556,7 @@ void Particle::cross_surface(const Surface& surf)
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
 #ifdef OPENMC_XDG
-  if (surf->geom_type_ == GeometryType::CSG)
+  if (surf.geom_type() == GeometryType::CSG)
     xdg_prev_elements().clear();
 #endif
 
@@ -597,9 +597,9 @@ void Particle::cross_surface(const Surface& surf)
 
 #ifdef OPENMC_XDG
   // in XDG, we know what the next cell should be
-  if (surf->geom_type_ == GeometryType::XDG) {
+  if (surf.geom_type() == GeometryType::XDG) {
     int32_t i_cell =
-      xdg_next_cell(i_surface, cell_last(n_coord() - 1), lowest_coord().universe);
+      xdg_next_cell(surface_index(), cell_last(n_coord() - 1), lowest_coord().universe);
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
