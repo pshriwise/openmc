@@ -584,7 +584,7 @@ void check_xdg_root_univ()
 
 int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
 {
-  auto surfp = dynamic_cast<XDGSurface*>(model::surfaces[surf - 1].get());
+  auto surfp = dynamic_cast<XDGSurface*>(model::surfaces[surf].get());
   auto cellp = dynamic_cast<XDGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<XDGUniverse*>(model::universes[univ].get());
 
