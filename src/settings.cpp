@@ -1173,4 +1173,25 @@ extern "C" int openmc_get_n_batches(int* n_batches, bool get_max_batches)
   return 0;
 }
 
+extern "C" int openmc_set_n_threads(int n_threads)
+{
+  if (n_threads < 1) {
+    set_errmsg("Number of threads must be greater than zero.");
+    throw std::invalid_argument("Number of threads must be greater than zero.");
+  }
+  openmc::set_num_threads(n_threads);
+
+  // if there are any libMesh meshes, the number of point locators
+  // needs to be updated to match the number of threads
+  #ifdef LIBMESH
+  for (const auto & mesh : openmc::model::meshes) {
+    auto lmesh = dynamic_cast<openmc::LibMesh*>(mesh.get());
+    if (!lmesh) continue;
+    lmesh->prepare_for_point_location()
+  }
+  #endif
+
+  return 0;
+}
+
 } // namespace openmc

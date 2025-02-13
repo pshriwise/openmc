@@ -5,6 +5,7 @@ from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
 import sys
 import os
 from random import getrandbits
+from numbers import Integral
 
 import numpy as np
 from numpy.ctypeslib import as_array
@@ -107,6 +108,10 @@ _dll.openmc_global_bounding_box.errcheck = _error_handler
 _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
+_dll.openmc_set_n_threads.argtypes = [c_int]
+_dll.openmc_set_n_threads.restype = c_int
+_dll.openmc_set_n_threads.errcheck = _error_handler
+
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -343,6 +348,23 @@ def init(args=None, intracomm=None, output=True):
     with quiet_dll(output):
         _dll.openmc_init(argc, argv, intracomm)
     openmc.lib.is_initialized = True
+
+
+def set_threads(n):
+    """Set the number of threads to use for parallelization.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    n : int
+        Number of threads to use
+
+    """
+    if not isinstance(n, Integral) or n < 1:
+        raise ValueError("Number of threads must be a positive integer")
+
+    _dll.openmc_set_n_threads(c_int(n))
 
 
 def is_statepoint_batch():

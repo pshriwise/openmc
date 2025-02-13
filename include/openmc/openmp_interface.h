@@ -28,6 +28,13 @@ inline int thread_num()
 #endif
 }
 
+inline void set_num_threads(int num_threads)
+{
+#ifdef _OPENMP
+  omp_set_num_threads(num_threads);
+#endif
+}
+
 //==============================================================================
 //! An object used to prevent concurrent access to a piece of data.
 //

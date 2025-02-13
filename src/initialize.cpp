@@ -263,7 +263,7 @@ int parse_command_line(int argc, char* argv[])
           strcpy(openmc_err_msg, msg.c_str());
           return OPENMC_E_INVALID_ARGUMENT;
         }
-        omp_set_num_threads(n_threads);
+        set_num_threads(n_threads);
 #else
         if (mpi::master) {
           warning("Ignoring number of threads specified on command line.");

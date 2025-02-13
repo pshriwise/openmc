@@ -2998,11 +2998,7 @@ void LibMesh::initialize()
       filename_));
   }
 
-  for (int i = 0; i < num_threads(); i++) {
-    pl_.emplace_back(m_->sub_point_locator());
-    pl_.back()->set_contains_point_tol(FP_COINCIDENT);
-    pl_.back()->enable_out_of_mesh_mode();
-  }
+  prepare_for_point_location();
 
   // store first element in the mesh to use as an offset for bin indices
   auto first_elem = *m_->elements_begin();
@@ -3029,6 +3025,16 @@ void LibMesh::initialize()
   libMesh::Point ur = bbox_.max();
   lower_left_ = {ll(0), ll(1), ll(2)};
   upper_right_ = {ur(0), ur(1), ur(2)};
+}
+
+void LibMesh::prepare_for_point_location()
+{
+  pl_.clear();
+  for (int i = 0; i < num_threads(); i++) {
+    pl_.emplace_back(m_->sub_point_locator());
+    pl_.back()->set_contains_point_tol(FP_COINCIDENT);
+    pl_.back()->enable_out_of_mesh_mode();
+  }
 }
 
 // Sample position within a tet for LibMesh type tets

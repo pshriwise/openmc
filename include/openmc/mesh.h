@@ -910,6 +910,8 @@ public:
   static const std::string mesh_lib_type;
 
   // Overridden Methods
+  void prepare_for_point_location() override;
+
   void bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins, vector<double>& lengths) const override;
 
