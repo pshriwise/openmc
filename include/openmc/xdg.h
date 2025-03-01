@@ -151,6 +151,8 @@ private:
   bool adjust_material_ids_; //!< Indicates whether or not to automatically
                              //!< generate new material IDs for the universe
 
+  std::string library_; //!< The library used to create the XDG instance
+
   // mappings from XDG IDs to OpenMC surface and cell indices
   std::unordered_map<xdg::MeshID, int32_t> surface_index_map_;
   std::unordered_map<xdg::MeshID, int32_t> cell_index_map_;

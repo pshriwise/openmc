@@ -101,6 +101,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         self.auto_geom_ids = auto_geom_ids
         self.auto_mat_ids = auto_mat_ids
         self._material_overrides = {}
+        self._library = None
         if material_overrides is not None:
             self.material_overrides = material_overrides
 
@@ -136,6 +137,15 @@ class DAGMCUniverse(openmc.UniverseBase):
         cv.check_type('material overrides', val, Mapping)
         for key, value in val.items():
             self.add_material_override(key, value)
+
+    @property
+    def library(self):
+        return self._library
+
+    @library.setter
+    def library(self, val):
+        cv.check_value('XDG Library', val, ('moab', 'libmesh'))
+        self._library = val
 
     def replace_material_assignment(self, material_name: str, material: openmc.Material):
         """Replace a material assignment within the DAGMC universe.
@@ -291,6 +301,7 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         memo.add(self)
 
+
         # Ensure that the material overrides are up-to-date
         for cell in self.cells.values():
             if cell.fill is None:
@@ -300,6 +311,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')
         dagmc_element.set('id', str(self.id))
+
+        if self._library is not None:
+            dagmc_element.set('library', self.library)
 
         if self.auto_geom_ids:
             dagmc_element.set('auto_geom_ids', 'true')
@@ -469,6 +483,9 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
+
+        if library := elem.get('library'):
+            out.library = library
 
         el_mat_override = elem.find('material_overrides')
         if el_mat_override is not None:
