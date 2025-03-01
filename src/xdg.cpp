@@ -67,6 +67,11 @@ XDGUniverse::XDGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
+  if (check_for_node(node, "library"))
+    library_ = get_node_value(node, "library");
+  else
+    library_ = "moab";
+
   initialize();
 }
 
@@ -117,9 +122,15 @@ void XDGUniverse::initialize()
 void XDGUniverse::init_xdg()
 {
   // create a new XDG instance
-  xdg_instance_ = xdg::XDG::create(xdg::MeshLibrary::MOAB);
 
-  // load the XDG geometry
+  if (library_ == "moab")
+    xdg_instance_ = xdg::XDG::create(xdg::MeshLibrary::MOAB);
+  else if (library_ == "libmesh")
+    xdg_instance_ = xdg::XDG::create(xdg::MeshLibrary::LIBMESH);
+  else
+    fatal_error("Unknown XDG library specified: " + library_);
+
+    // load the XDG geometry
   if (!file_exists(filename_)) {
     fatal_error("Geometry XDG file '" + filename_ + "' does not exist!");
   }
