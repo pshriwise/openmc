@@ -111,3 +111,4 @@ CMakeSettings.json
 examples/openmc_offloading_benchmarks
 env_file.sh
 mc_PYenv/
+examples/*/*.txt
