@@ -41,6 +41,9 @@
 #include <cmath>
 #include <string>
 
+#include <iostream> //used for prints
+#include <stdio.h>  //used for prints
+
 //==============================================================================
 // C API functions
 //==============================================================================
@@ -78,8 +81,6 @@ int openmc_simulation_init()
     initialize_data();
   }
 
-  if (settings::delta_tracking) create_majorant();
-
   // Determine how much work each process should do
   calculate_work();
 
@@ -97,6 +98,10 @@ int openmc_simulation_init()
     int64_t event_buffer_length =
       std::min(simulation::work_per_rank, settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
+  }
+
+  if (settings::delta_tracking){
+    create_majorant();
   }
 
   // Allocate tally results arrays if they're not allocated yet
@@ -702,9 +707,11 @@ void free_memory_simulation()
 void transport_history_based_single_particle(Particle& p)
 {
   while (true) {
+
     p.event_calculate_xs();
     if (!p.alive())
       break;
+
     p.event_advance();
     // if the expected distance to the next collision is larger than the
     // distance to surface boundary trigger event_cross_surface
@@ -734,27 +741,32 @@ void transport_history_based()
 //Part to work on - Ciara
 void transport_delta_tracking_single_particle(Particle& p) // function to handle transport of single particles via delta tracking
 {
-  p.delta_tracking() = true; // checks that the particle has delta tracking switched on
-  while (true) { 
+  while (true) {
+
+    p.event_calculate_xs();  // calculate the the particle's crosssection
+
     p.event_delta_advance(); // performs a single delta tracking algorithmic loop to move particle forward by one event
-    if (!p.alive()) 
-      break;                // if the particle is found to no longer be alive - break
-    p.event_calculate_xs();  // calculate the the particle's crosssection  
+
     Expects(p.macro_xs().total <= p.majorant());   // checks if the total cross section is larger than the majorant...
-    if (prn(p.current_seed()) < (p.macro_xs().total / p.majorant())) {   // if the current epsilon is less than the ratio of the total xs to the majorant...
+    
+    double epsilon = prn(p.current_seed());
+    double travel_distance = -(log(1 - epsilon))/p.majorant();
+
+    if ( epsilon < (p.macro_xs().total / p.majorant())) {   // if the current epsilon is less than the ratio of the total xs to the majorant...
       p.event_collide();   // initiate a REAL collision
     }
     p.event_revive_from_secondary(); // check particle isn't dead from collisions.
     if (!p.alive())
       break;
   }
-  p.event_death(); // register particle death 
+  p.event_death();
 }
 
 
 // delta tracking for group of particles
-void transport_delta_tracking() {
-  #pragma omp parallel for schedule(runtime)
+void transport_delta_tracking()
+{
+#pragma omp parallel for schedule(runtime)
   for (int64_t i_work = 1; i_work <= simulation::work_per_rank; ++i_work) {
     Particle p;
     initialize_history(p, i_work);

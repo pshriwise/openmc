@@ -31,11 +31,13 @@ from openmc.plotter import *
 from openmc.search import *
 from openmc.polynomial import *
 from openmc.tracks import *
-from . import examples
+#from openmc.examples import *
 from .config import *
 
 # Import a few names from the model module
 from openmc.model import rectangular_prism, hexagonal_prism, Model
+
+from . import examples
 
 
 __version__ = '0.13.3-dev'

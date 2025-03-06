@@ -106,3 +106,8 @@ CMakeSettings.json
 
 # Python pickle files
 *.pkl
+
+# Misc
+examples/openmc_offloading_benchmarks
+env_file.sh
+mc_PYenv/

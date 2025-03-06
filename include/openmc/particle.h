@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include "openmc/constants.h"
 #include "openmc/geometry.h"
@@ -60,7 +61,7 @@ public:
   void event_calculate_xs();
   void event_advance();
   void event_delta_advance();
-  void event_cross_surface();
+  void event_cross_surface(); // int surf_ID = 0);
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
@@ -69,12 +70,12 @@ public:
    * find a distance to the boundary in a non-standard surface intersection
    * check. It's an exhaustive search over surfaces in the top-level universe.
    */
-  int advance_to_boundary_from_void(Particle& p);
+  std::pair<int, LocalCoord> advance_to_boundary_from_void(Particle& p);
 
   
 
   //! Determine the surfaces crossed between the last and current particle position
-  void trace_through_geom(double trace_dist);
+  int trace_through_geom(double trace_dist);
 
   //! Cross a surface and handle boundary conditions
   void cross_surface();

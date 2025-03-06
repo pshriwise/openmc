@@ -619,6 +619,8 @@ void Mgxs::calculate_xs(Particle& p)
 #else
   int tid = 0;
 #endif
+  std::cout << "I'm about to calculate xs!"; //Printstatementtodelete
+  printf("                                           ");
   set_temperature_index(p.sqrtkT());
   set_angle_index(p.u_local());
   XsData* xs_t = &xs[cache[tid].t];

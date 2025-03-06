@@ -40,6 +40,7 @@ CorrelatedAngleEnergy::CorrelatedAngleEnergy(hid_t group)
   read_dataset(dset, energy_);
   std::size_t n_energy = energy_.size();
   close_dataset(dset);
+  std::cout<< "in secondary_correlated energy_ is:  "<<energy_<< "\n";
 
   // Get outgoing energy distribution data
   dset = open_dataset(group, "energy_out");
@@ -162,12 +163,15 @@ void CorrelatedAngleEnergy::sample(
   int i;
   double r;
   if (E_in < energy_[0]) {
+    std::cout<< "in CorrelatedAngleEnergy::sample energy_ is:  "<<energy_<< "\n";
     i = 0;
     r = 0.0;
   } else if (E_in > energy_[n_energy_in - 1]) {
+    std::cout<< "in CorrelatedAngleEnergy::sample energy_ is:  "<<energy_<< "\n";
     i = n_energy_in - 2;
     r = 1.0;
   } else {
+    std::cout<< "in CorrelatedAngleEnergy::sample energy_ is:  "<<energy_<< "\n";
     i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
     r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
   }

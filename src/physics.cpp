@@ -489,10 +489,13 @@ int sample_nuclide(Particle& p)
     // Increment probability to compare to cutoff
     prob += atom_density * p.neutron_xs(i_nuclide).total;
     if (prob >= cutoff)
+    std::cout<< "current prob is: "<<prob<<" and current cutoff is: "<<cutoff<<"\n";
       return i_nuclide;
   }
 
   // If we reach here, no nuclide was sampled
+  std::cout<<"no nuclide was sampled \n";
+  std::cout<< "current prob is: "<<prob<<" and current cutoff is: "<<cutoff<<"\n";
   p.write_restart();
   throw std::runtime_error {"Did not sample any nuclide during collision."};
 }

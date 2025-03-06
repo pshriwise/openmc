@@ -67,7 +67,7 @@ void create_majorant() {
     }
     // initialize the energy grid for this nuclide
     majorant->grid_.init();
-    // majorant->write_ascii(nuclide->name_ + "_majorant.txt");
+    majorant->write_ascii(nuclide->name_ + "_majorant.txt");
   }
 
   auto majorant_e_grid = compute_majorant_energy_grid();
