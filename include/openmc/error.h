@@ -1,6 +1,7 @@
 #ifndef OPENMC_ERROR_H
 #define OPENMC_ERROR_H
 
+#include <functional>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -17,6 +18,8 @@
 #endif
 
 namespace openmc {
+
+extern std::vector<std::function<void()>> fatal_error_callbacks;
 
 inline void set_errmsg(const char* message)
 {

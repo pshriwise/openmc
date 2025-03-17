@@ -123,7 +123,7 @@ extern "C" int openmc_plot_geometry()
   return 0;
 }
 
-void Plot::create_output() const
+void Plot::create_output()
 {
   if (PlotType::slice == type_) {
     // create 2D image
@@ -1230,7 +1230,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   return result;
 }
 
-void ProjectionPlot::create_output() const
+void ProjectionPlot::create_output()
 {
   size_t width = pixels()[0];
   size_t height = pixels()[1];
@@ -1560,10 +1560,10 @@ ImageData PhongPlot::create_image()
   return data;
 }
 
-void PhongPlot::create_output() const
+void PhongPlot::create_output()
 {
 
-  ImageData data; // = create_image();
+  ImageData data = create_image();
 
 #ifdef USE_LIBPNG
   output_png(path_plot(), data);

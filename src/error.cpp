@@ -38,6 +38,8 @@ char openmc_err_msg[256];
 
 namespace openmc {
 
+std::vector<std::function<void()>> fatal_error_callbacks;
+
 #ifdef OPENMC_MPI
 void abort_mpi(int code)
 {
@@ -127,6 +129,14 @@ void fatal_error(const std::string& message, int err)
     std::cerr << "\033[0m";
   }
 #endif
+
+
+  // run all registered callbacks before exiting
+  if (mpi::master) {
+    for (const auto& callback : fatal_error_callbacks) {
+      callback();
+    }
+  }
 
 #ifdef OPENMC_MPI
   MPI_Abort(mpi::intracomm, err);

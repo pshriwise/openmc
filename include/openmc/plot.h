@@ -113,7 +113,7 @@ public:
   enum class PlotColorBy { cells = 0, mats = 1 };
 
   // Creates the output image named path_plot_
-  virtual void create_output() const = 0;
+  virtual void create_output() = 0;
 
   // Print useful info to the terminal
   virtual void print_info() const = 0;
@@ -284,7 +284,7 @@ public:
   void create_image() const;
   void create_voxel() const;
 
-  virtual void create_output() const;
+  virtual void create_output();
   virtual void print_info() const;
 
   PlotType type_;                 //!< Plot type (Slice/Voxel)
@@ -328,6 +328,12 @@ public:
   const Direction& up() const { return up_; }
   Direction& up() { return up_; }
 
+  /*
+   * Gets the starting position and direction for the pixel corresponding
+   * to this horizontal and vertical position.
+   */
+  std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
+
 protected:
   Direction camera_x_axis() const
   {
@@ -346,11 +352,6 @@ protected:
 
   void set_output_path(pugi::xml_node plot_node);
 
-  /*
-   * Gets the starting position and direction for the pixel corresponding
-   * to this horizontal and vertical position.
-   */
-  std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
 
   void update_view();
 
@@ -399,7 +400,7 @@ class ProjectionPlot : public RayTracePlot {
 public:
   ProjectionPlot(pugi::xml_node plot);
 
-  virtual void create_output() const;
+  virtual void create_output();
   virtual void print_info() const;
 
 private:
@@ -463,7 +464,7 @@ public:
 
   ImageData create_image();
 
-  virtual void create_output() const;
+  virtual void create_output();
   virtual void print_info() const;
 
   const std::set<int>& opaque_ids() const { return opaque_ids_; }
