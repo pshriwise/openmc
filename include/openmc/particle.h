@@ -37,7 +37,14 @@ public:
 
   Particle() = default;
 
+  //==========================================================================
+  // Methods
+
   double speed() const;
+
+  //! moves the particle by the distance length to its next location
+  //! \param length the distance the particle is moved
+  void move_distance(double length);
 
   //! create a secondary particle
   //

@@ -26,10 +26,19 @@ public:
   Majorant(const std::vector<double>& energy, const std::vector<double>& xs);
 
   struct XS {
-    XS(std::vector<double> energies,
-       std::vector<double> total_xs)
+    // XS(std::vector<double> energies,
+    //    std::vector<double> total_xs)
+    // : energies_(energies), total_xs_(total_xs), idx_(0)
+    // { Expects(energies_.size() == total_xs_.size()); }
+
+    //! Altered handling of energies and total_xs, XS now contains references instead of copies
+    XS(const std::vector<double>& energies,
+      const std::vector<double>& total_xs)
     : energies_(energies), total_xs_(total_xs), idx_(0)
-    { Expects(energies_.size() == total_xs_.size()); }
+    {
+    Expects(energies_.size() == total_xs_.size());
+    }
+
 
     //! \brief Return the current energy and total cross section values
     std::pair<double, double> get() const;

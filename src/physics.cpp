@@ -30,6 +30,7 @@
 #include <algorithm> // for max, min, max_element
 #include <cmath>     // for sqrt, exp, log, abs, copysign
 #include <xtensor/xview.hpp>
+#include <iostream>
 
 namespace openmc {
 
@@ -743,7 +744,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
 {
   // get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
-
+  std::cout<<"inside elastic_scatter, in physics.cpp, data::nuclides[i_nuclide] is : "<<i_nuclide<<std::endl;
   double vel = std::sqrt(p.E());
   double awr = nuc->awr_;
 
@@ -1120,6 +1121,7 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 
     // determine outgoing angle in lab
     mu = mu * std::sqrt(E_cm / E) + 1.0 / (A + 1.0) * std::sqrt(E_in / E);
+    std::cout<< "The scattering cosine in lab frame for the inelastic_scatter is : " << mu << std::endl;
   }
 
   // Because of floating-point roundoff, it may be possible for mu to be
@@ -1134,12 +1136,14 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 
   // change direction of particle
   p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
+  std::cout<< "p.u() after rotation for the inelastic_scatter is : " << p.u() << std::endl;
 
   // evaluate yield
   double yield = (*rx.products_[0].yield_)(E_in);
   if (std::floor(yield) == yield && yield > 0) {
     // If yield is integral, create exactly that many secondary particles
     for (int i = 0; i < static_cast<int>(std::round(yield)) - 1; ++i) {
+      std::cout<< "Creating secondary particle inside inelastic_scatter is : " << std::endl;
       p.create_secondary(p.wgt(), p.u(), p.E(), ParticleType::neutron);
     }
   } else {

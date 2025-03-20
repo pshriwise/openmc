@@ -25,10 +25,10 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 
   // Check if energy group is present & read
   if (object_exists(group, "energy")) {
-    hid_t energy_group = open_group(group, "energy");
-
+    hid_t energy_group = open_group(group, "energy"); 
     std::string type;
     read_attribute(energy_group, "type", type);
+
     using UPtrEDist = unique_ptr<EnergyDistribution>;
     if (type == "discrete_photon") {
       energy_ = UPtrEDist {new DiscretePhoton {energy_group}};
@@ -47,6 +47,15 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
         fmt::format("Energy distribution type '{}' not implemented.", type));
     }
     close_group(energy_group);
+    //std::cout << "Energy distribution initialized at: " << energy_.get() << std::endl;
+  } else{
+    hid_t energy_group = open_group(group, "energy"); 
+    std::string type;
+    read_attribute(energy_group, "type", type);
+    std::cout << "energy_group: " << energy_group << std::endl;
+    std::cout << "Energy type: " << type << std::endl;
+    std::cout << "Energy distribution initialized at: " << energy_.get() << std::endl;
+    std::cout << " 'energy' doesn't exist for group: " << group << std::endl;
   }
 }
 
@@ -60,6 +69,8 @@ void UncorrelatedAngleEnergy::sample(
     // no angle distribution given => assume isotropic for all energies
     mu = uniform_distribution(-1., 1., seed);
   }
+  // std::cout<< "mu is: "<< mu << std::endl;
+  // std::cout<< "E_in is: "<< E_in << std::endl;
 
   // Sample outgoing energy
   E_out = energy_->sample(E_in, seed);

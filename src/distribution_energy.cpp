@@ -13,6 +13,8 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
+#include <iostream>
+
 namespace openmc {
 
 //==============================================================================
@@ -287,7 +289,6 @@ double MaxwellEnergy::sample(double E, uint64_t* seed) const
   while (true) {
     // Sample maxwell fission spectrum
     double E_out = maxwell_spectrum(theta, seed);
-
     // Accept energy based on restriction energy
     if (E_out <= E - u_)
       return E_out;

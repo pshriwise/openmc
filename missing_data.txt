@@ -1,0 +1,169 @@
+
+ Reading settings XML file...
+ Reading cross sections XML file...
+ Reading materials XML file...
+ Reading geometry XML file...
+ Reading U234 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/U234.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075855879
+ Reading U235 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/U235.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075856280
+ Reading U238 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/U238.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075856717
+ Reading O16 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/O16.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075857044
+ Reading Zr90 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr90.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075857768
+ Reading Zr91 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr91.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075858467
+ Reading Zr92 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr92.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075859508
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr94.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075860663
+ Reading Zr96 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr96.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075862482
+ Reading H1 from /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/H1.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075862822
+ Reading B10 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/B10.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075862846
+ Reading B11 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/B11.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075863260
+ Reading U234 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/U234.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075855879
+ Reading U235 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/U235.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075856280
+ Reading U238 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/U238.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075856717
+ Reading O16 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/O16.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075857044
+ Reading Zr90 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr90.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075857768
+ Reading Zr91 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr91.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075858467
+ Reading Zr92 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr92.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075859508
+ Reading Zr94 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr94.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075860663
+ Reading Zr96 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/Zr96.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075862482
+ Reading H1 from /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/H1.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075862822
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/B10.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075862846
+ Reading B11 from
+ /home/cbyers/Projects/crosssecs/endfb-vii.1-hdf5/neutron/B11.h5
+Attribute content as string: neutron
+Attribute content as string: prompt
+Attribute content as string: Polynomial
+Attribute content as string: uncorrelated
+ 'energy' doesn't exist for group: 144115188075863260

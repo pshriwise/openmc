@@ -276,6 +276,7 @@ void Majorant::update(std::vector<double> energy_other,
                       std::vector<double> xs_other) {
 
   XS xs_a(grid_.energy, xs_);
+  std::cout << "Energy size: " << energy_other.size() << ", XS size: " << xs_other.size() << std::endl;
   XS xs_b(energy_other, xs_other);
 
   // early exit checks
@@ -474,8 +475,16 @@ double Majorant::XS::prev_e() const { return energies_.at(idx_ - 1); }
 double Majorant::XS::prev_xs() const { return total_xs_.at(idx_ - 1); }
 
 void Majorant::XS::advance(double energy) {
-  double e = energies_[idx_];
-  while (e <= energy && !this->complete()) { e = energies_[++idx_]; }
+
+//! Original code increments idx_ before checking if this will go out of bounds and assigns e twice
+  // double e = energies_[idx_];
+  // while (e <= energy && !this->complete()) { e = energies_[++idx_]; }
+
+    if (this->complete()) return;  // Early exit if already complete
+  
+    while (idx_ < energies_.size() && energies_[idx_] <= energy) { 
+      ++idx_; 
+    } 
 }
 
 bool Majorant::XS::complete() const { return idx_ >= energies_.size(); }

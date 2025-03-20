@@ -19,6 +19,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/particle_data.h"
 #include "openmc/photon.h"
 #include "openmc/physics.h"
 #include "openmc/physics_mg.h"
@@ -40,6 +41,10 @@
 
 namespace openmc {
 
+//==============================================================================
+// Particle implementation
+//==============================================================================
+
 double Particle::speed() const
 {
   // Determine mass in eV/c^2
@@ -57,11 +62,27 @@ double Particle::speed() const
     break;
   }
 
-  // Calculate inverse of Lorentz factor
-  const double inv_gamma = mass / (this->E() + mass);
+  if (this->E() < 1.0e-9 * mass) {
+    // If the energy is much smaller than the mass, revert to non-relativistic
+    // formula. The 1e-9 criterion is specifically chosen as the point below
+    // which the error from using the non-relativistic formula is less than the
+    // round-off eror when using the relativistic formula (see analysis at
+    // https://gist.github.com/paulromano/da3b473fe3df33de94b265bdff0c7817)
+    return C_LIGHT * std::sqrt(2 * this->E() / mass);
+  } else {
+    // Calculate inverse of Lorentz factor
+    const double inv_gamma = mass / (this->E() + mass);
 
-  // Calculate speed via v = c * sqrt(1 - γ^-2)
-  return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+    // Calculate speed via v = c * sqrt(1 - γ^-2)
+    return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+  }
+}
+
+void Particle::move_distance(double length)
+{
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += length * coord(j).u;
+  }
 }
 
 void Particle::create_secondary(
@@ -115,7 +136,6 @@ void Particle::from_source(const SourceSite* src)
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
   }
-
   E_last() = E(); // maybe should be 0.0? - why? Ciara
   time() = src->time;
   time_last() = src->time;
@@ -127,15 +147,6 @@ void Particle::from_source(const SourceSite* src)
 
 void Particle::event_calculate_xs() // calculates the crosssection of a particle at the current position and energy.
 {
-  // Set the random number stream
-  stream() = STREAM_TRACKING;
-
-  // Store pre-collision particle properties
-  wgt_last() = wgt();
-  E_last() = E();
-  u_last() = u();
-  r_last() = r();
-
   // Set the random number stream
   stream() = STREAM_TRACKING;
 
@@ -224,8 +235,19 @@ void Particle::event_advance()
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
-
   this->time() += distance / this->speed();
+
+  // Kill particle if its time exceeds the cutoff
+  bool hit_time_boundary = false;
+  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  if (time() > time_cutoff) {
+    double dt = time() - time_cutoff;
+    time() = time_cutoff;
+
+    double push_back_distance = speed() * dt;
+    this->move_distance(-push_back_distance);
+    hit_time_boundary = true;
+  }
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {

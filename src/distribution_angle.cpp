@@ -64,10 +64,9 @@ AngleDistribution::AngleDistribution(hid_t group)
 
 double AngleDistribution::sample(double E, uint64_t* seed) const
 {
-  std::cout<<" inside AngleDistribution::sample, E is: "<<E<<"\n";
   // Determine number of incoming energies
   auto n = energy_.size();
-  std::cout<<" inside AngleDistribution::sample, n is: "<<n<<"\n";
+
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
   int i;
@@ -82,8 +81,6 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
     i = lower_bound_index(energy_.begin(), energy_.end(), E);
     r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
   }
-  std::cout<<" inside AngleDistribution::sample, i is: "<<i<<"\n";
-  std::cout<<" inside AngleDistribution::sample, r is: "<<r<<"\n";
   // Sample between the ith and (i+1)th bin
   if (r > prn(seed))
     ++i;
