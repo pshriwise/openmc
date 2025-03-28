@@ -200,7 +200,7 @@ inline void read_attribute(hid_t obj_id, const char* name, std::string& str)
   delete[] buffer;
 
   // Output the final string
-  std::cout << "Attribute content as string: " << str << std::endl;
+  // std::cout << "Attribute content as string: " << str << std::endl;
 }
 
 // overload for vector<std::string>
@@ -214,7 +214,7 @@ inline void read_attribute(
   auto n = attribute_typesize(obj_id, name);
   char* buffer = new char[m * n];
 
-  std::cout << "Reading attribute: " << name << " from object ID: " << obj_id << std::endl;
+  // std::cout << "Reading attribute: " << name << " from object ID: " << obj_id << std::endl;
 
   // Read char data in attribute
   read_attr_string(obj_id, name, n, buffer);

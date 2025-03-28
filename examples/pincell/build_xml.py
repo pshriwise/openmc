@@ -43,13 +43,13 @@ clad_or = openmc.ZCylinder(r=0.45720, name='Clad OR')
 
 # Create a region represented as the inside of a rectangular prism
 pitch = 1.25984
-box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
+box = openmc.model.rectangular_prism(pitch, pitch, boundary_type='reflective')
 
 # Create cells, mapping materials to regions
 fuel = openmc.Cell(fill=uo2, region=-fuel_or)
 gap = openmc.Cell(fill=helium, region=+fuel_or & -clad_ir)
 clad = openmc.Cell(fill=zircaloy, region=+clad_ir & -clad_or)
-water = openmc.Cell(fill=borated_water, region=+clad_or & -box)
+water = openmc.Cell(fill=borated_water, region=+clad_or & box)
 
 # Create a geometry and export to XML
 geometry = openmc.Geometry([fuel, gap, clad, water])
@@ -68,8 +68,8 @@ settings.particles = 1000
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
 uniform_dist = openmc.stats.Box(lower_left, upper_right)
-settings.source = openmc.IndependentSource(
-    space=uniform_dist, constraints={'fissionable': True})
+settings.source = openmc.Source(
+    space=uniform_dist)
 
 # For source convergence checks, add a mesh that can be used to calculate the
 # Shannon entropy
@@ -78,6 +78,7 @@ entropy_mesh.lower_left = (-fuel_or.r, -fuel_or.r)
 entropy_mesh.upper_right = (fuel_or.r, fuel_or.r)
 entropy_mesh.dimension = (10, 10)
 settings.entropy_mesh = entropy_mesh
+settings.delta_tracking = True
 settings.export_to_xml()
 
 ###############################################################################

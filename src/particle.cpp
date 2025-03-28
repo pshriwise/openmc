@@ -322,7 +322,7 @@ std::pair<int, LocalCoord> Particle::advance_to_boundary_from_void(Particle& p)
   // If no intersection is found min_dist remains large. (wonder if this should be derived from universe size instead somehow?)
   //if (min_dist > 1e300)
     LocalCoord intersection_pt;
-    
+
     // advance the particle, a "TINY_BIT" at a time & set new particle coords
     for (int j = 0; j < n_coord(); ++j) {
       coord(j).r += (min_dist + TINY_BIT) * coord(j).u;
@@ -330,7 +330,7 @@ std::pair<int, LocalCoord> Particle::advance_to_boundary_from_void(Particle& p)
     }
     // Return ID of the surface the particle intersects - and particle coords?
     // return std::abs(intersected_surface);
-    return std::make_pair(intersected_surface, intersection_pt); 
+    return std::make_pair(intersected_surface, intersection_pt);
 }
 
 // To edit - Ciara
@@ -380,7 +380,7 @@ void Particle::event_cross_surface()
 {
   // This assumes that the particle is already at the surface
   surface() = boundary().surface_index;
-  n_coord() = boundary().coord_level; 
+  n_coord() = boundary().coord_level;
 
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
@@ -565,7 +565,7 @@ void Particle::cross_surface()
     write_message(1, "    Crossing surface {}", surf->id_); // If verbosity is high write out surface being crossed to terminal
   }
 
-  // below checks if the surface contains a source term and if this is the last batch in the simulation 
+  // below checks if the surface contains a source term and if this is the last batch in the simulation
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
     SourceSite site; // create source site to describe particle on the surface
     site.r = r();

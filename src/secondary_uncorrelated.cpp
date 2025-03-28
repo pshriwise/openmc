@@ -25,7 +25,7 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
 
   // Check if energy group is present & read
   if (object_exists(group, "energy")) {
-    hid_t energy_group = open_group(group, "energy"); 
+    hid_t energy_group = open_group(group, "energy");
     std::string type;
     read_attribute(energy_group, "type", type);
 
@@ -49,13 +49,13 @@ UncorrelatedAngleEnergy::UncorrelatedAngleEnergy(hid_t group)
     close_group(energy_group);
     //std::cout << "Energy distribution initialized at: " << energy_.get() << std::endl;
   } else{
-    hid_t energy_group = open_group(group, "energy"); 
-    std::string type;
-    read_attribute(energy_group, "type", type);
-    std::cout << "energy_group: " << energy_group << std::endl;
-    std::cout << "Energy type: " << type << std::endl;
-    std::cout << "Energy distribution initialized at: " << energy_.get() << std::endl;
-    std::cout << " 'energy' doesn't exist for group: " << group << std::endl;
+    // hid_t energy_group = open_group(group, "energy");
+    // std::string type;
+    // read_attribute(energy_group, "type", type);
+    // std::cout << "energy_group: " << energy_group << std::endl;
+    // std::cout << "Energy type: " << type << std::endl;
+    // std::cout << "Energy distribution initialized at: " << energy_.get() << std::endl;
+    // std::cout << " 'energy' doesn't exist for group: " << group << std::endl;
   }
 }
 
