@@ -460,6 +460,7 @@ target_include_directories(libopenmc
   PUBLIC
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/mpmc/>
     ${HDF5_INCLUDE_DIRS}
 )
 

@@ -11,6 +11,8 @@
 #include "openmc/shared_array.h"
 #include "openmc/vector.h"
 
+#include "MPMCQueue.h"
+
 namespace openmc {
 
 class SharedSecondaryBank;
@@ -38,54 +40,93 @@ extern vector<int64_t> progeny_per_particle;
 //==============================================================================
 
 class SharedSecondaryBank {
+
 public:
-  using value_type = SourceSite;
-  using const_iterator = std::forward_list<value_type>::const_iterator;
 
-  void push_back(value_type secondary)
-  {
-    mutex_.lock();
-    vec_.push_back(secondary);
-    mutex_.unlock();
+  void reserve(size_t capacity) {
+    capacity_ = capacity;
+    queue_ = std::make_shared<rigtorp::MPMCQueue<SourceSite>>(capacity);
   }
 
-  bool pop_back(value_type& x)
+  void push_back(const SourceSite& secondary)
   {
-    mutex_.lock();
-    if (vec_.empty()) {
-      mutex_.unlock();
-      return false;
-    }
-    x = vec_.back();
-    vec_.pop_back();
-    mutex_.unlock();
-    return true;
+    // Push to the queue
+    queue_->push(secondary);
   }
 
-  bool empty()
+  bool pop_back(SourceSite& x)
   {
-    bool empty;
-    mutex_.lock();
-    empty = vec_.empty();
-    mutex_.unlock();
-    return empty;
+    return queue_->try_pop(x);
   }
 
-  void reserve(size_t size)
+  bool empty() const
   {
-    mutex_.lock();
-    vec_.reserve(size);
-    mutex_.unlock();
+    return queue_->empty();
   }
 
-  size_t size() {
-    return vec_.size();
+  bool full() const
+  {
+    return size() >= capacity_;
+  }
+
+  size_t size() const {
+    return queue_->size();
   }
 
 private:
-  std::vector<value_type> vec_;
-  OpenMPMutex mutex_;
+  size_t capacity_;
+  std::shared_ptr<rigtorp::MPMCQueue<SourceSite>> queue_;
 };
+
+// class SharedSecondaryBank {
+// public:
+//   using value_type = SourceSite;
+//   using const_iterator = std::forward_list<value_type>::const_iterator;
+
+//   void push_back(value_type secondary)
+//   {
+//     mutex_.lock();
+//     vec_.push_back(secondary);
+//     mutex_.unlock();
+//   }
+
+//   bool pop_back(value_type& x)
+//   {
+//     mutex_.lock();
+//     if (vec_.empty()) {
+//       mutex_.unlock();
+//       return false;
+//     }
+//     x = vec_.back();
+//     vec_.pop_back();
+//     mutex_.unlock();
+//     return true;
+//   }
+
+//   bool empty()
+//   {
+//     bool empty;
+//     mutex_.lock();
+//     empty = vec_.empty();
+//     mutex_.unlock();
+//     return empty;
+//   }
+
+//   void reserve(size_t size)
+//   {
+//     mutex_.lock();
+//     vec_.reserve(size);
+//     mutex_.unlock();
+//   }
+
+//   size_t size() {
+//     return vec_.size();
+//   }
+
+// private:
+//   std::vector<value_type> vec_;
+//   OpenMPMutex mutex_;
+// };
 
 //==============================================================================
 // Non-member functions
