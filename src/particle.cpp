@@ -84,7 +84,7 @@ bool Particle::create_secondary(
     return false;
   }
 
-  auto& bank = secondary_bank().emplace_back();
+  SourceSite bank;
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
@@ -92,12 +92,14 @@ bool Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
+  if (settings::shared_secondary_bank && !simulation::shared_secondary_bank.push_back(bank))
+  secondary_bank().push_back(bank);
   return true;
 }
 
 void Particle::split(double wgt)
 {
-  auto& bank = secondary_bank().emplace_back();
+  SourceSite bank;
   bank.particle = type();
   bank.wgt = wgt;
   bank.r = r();
@@ -105,10 +107,7 @@ void Particle::split(double wgt)
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
 
-  // TODO: change where pushed based on setting
-  if (settings::shared_secondary_bank)
-    simulation::shared_secondary_bank.push_back(bank);
-  else
+  if (settings::shared_secondary_bank && !simulation::shared_secondary_bank.push_back(bank))
     secondary_bank().push_back(bank);
 }
 
@@ -414,66 +413,26 @@ void Particle::event_revive_from_secondary()
   if (alive())
     return;
 
-  // Check for secondary particles if this particle is dead
-
-    // If no secondary particles, break out of event loop
-    if (secondary_bank().empty())
-      return;
-
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
-    n_event() = 0;
-    bank_second_E() = 0.0;
-
-    // Subtract secondary particle energy from interim pulse-height results
-    if (!model::active_pulse_height_tallies.empty() &&
-        this->type() == ParticleType::photon) {
-      // Since the birth cell of the particle has not been set we
-      // have to determine it before the energy of the secondary particle can be
-      // removed from the pulse-height of this cell.
-      if (lowest_coord().cell == C_NONE) {
-        bool verbose = settings::verbosity >= 10 || trace();
-        if (!exhaustive_find_cell(*this, verbose)) {
-          mark_as_lost("Could not find the cell containing particle " +
-                       std::to_string(id()));
-          return;
-        }
-        // Set birth cell attribute
-        if (cell_born() == C_NONE)
-          cell_born() = lowest_coord().cell;
-
-        // Initialize last cells from current cell
-        for (int j = 0; j < n_coord(); ++j) {
-          cell_last(j) = coord(j).cell;
-        }
-        n_coord_last() = n_coord();
-      }
-      pht_secondary_particles();
-    }
-
   // Write final position for this particle
   if (write_track()) {
     write_particle_track(*this);
   }
 
+  // If no secondary particles, break out of event loop
+  if (secondary_bank().empty() && simulation::shared_secondary_bank.empty()) {
+    return;
+
   // Check for secondary particles if this particle is dead
-  simulation::max_secondary_size = std::max(simulation::max_secondary_size, simulation::shared_secondary_bank.size());
   SourceSite s;
-  if (simulation::shared_secondary_bank.pop_back(s)) {
+  if (simulation::shared_secondary_bank.pop_back(s))
     from_source(&s);
   } else if (!secondary_bank().empty()) {
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
   }
 
-
-  // Try to source a seondary particle from the particle's local bank
-  if (!alive() && !secondary_bank().empty()) {
-    from_source(&secondary_bank().back());
-    secondary_bank().pop_back();
-  }
-
   n_event() = 0;
+  bank_second_E() = 0.0;
 
   // Subtract secondary particle energy from interim pulse-height results
   if (!model::active_pulse_height_tallies.empty() &&
@@ -481,15 +440,22 @@ void Particle::event_revive_from_secondary()
     // Since the birth cell of the particle has not been set we
     // have to determine it before the energy of the secondary particle can be
     // removed from the pulse-height of this cell.
-    if (coord(n_coord() - 1).cell == C_NONE) {
-      if (!exhaustive_find_cell(*this)) {
+    if (lowest_coord().cell == C_NONE) {
+      bool verbose = settings::verbosity >= 10 || trace();
+      if (!exhaustive_find_cell(*this, verbose)) {
         mark_as_lost("Could not find the cell containing particle " +
-                     std::to_string(id()));
+                      std::to_string(id()));
         return;
       }
       // Set birth cell attribute
       if (cell_born() == C_NONE)
-        cell_born() = coord(n_coord() - 1).cell;
+        cell_born() = lowest_coord().cell;
+
+      // Initialize last cells from current cell
+      for (int j = 0; j < n_coord(); ++j) {
+        cell_last(j) = coord(j).cell;
+      }
+      n_coord_last() = n_coord();
     }
     pht_secondary_particles();
   }

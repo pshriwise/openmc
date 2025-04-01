@@ -42,16 +42,15 @@ extern vector<int64_t> progeny_per_particle;
 class SharedSecondaryBank {
 
 public:
-
   void reserve(size_t capacity) {
     capacity_ = capacity;
     queue_ = std::make_shared<rigtorp::MPMCQueue<SourceSite>>(capacity);
   }
 
-  void push_back(const SourceSite& secondary)
+  bool push_back(const SourceSite& secondary)
   {
     // Push to the queue
-    queue_->push(secondary);
+    return queue_->try_push(secondary);
   }
 
   bool pop_back(SourceSite& x)
