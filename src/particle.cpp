@@ -112,9 +112,8 @@ void Particle::split(double wgt)
     secondary_bank().push_back(bank);
 }
 
-void Particle::from_source(SourceSite s)
+void Particle::from_source(const SourceSite* src)
 {
-  SourceSite* src = &s;
   // Reset some attributes
   clear();
   surface() = SURFACE_NONE;
@@ -461,16 +460,16 @@ void Particle::event_revive_from_secondary()
   simulation::max_secondary_size = std::max(simulation::max_secondary_size, simulation::shared_secondary_bank.size());
   SourceSite s;
   if (simulation::shared_secondary_bank.pop_back(s)) {
-    from_source(s);
+    from_source(&s);
   } else if (!secondary_bank().empty()) {
-    from_source(secondary_bank().back());
+    from_source(&secondary_bank().back());
     secondary_bank().pop_back();
   }
 
 
   // Try to source a seondary particle from the particle's local bank
   if (!alive() && !secondary_bank().empty()) {
-    from_source(secondary_bank().back());
+    from_source(&secondary_bank().back());
     secondary_bank().pop_back();
   }
 
