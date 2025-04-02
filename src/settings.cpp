@@ -1073,7 +1073,7 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // Check whether create delayed neutrons in fission
+  // Check whether to use a shared secondary particle bank
   if (check_for_node(root, "shared_secondary_bank")) {
     shared_secondary_bank =
       get_node_value_bool(root, "shared_secondary_bank");

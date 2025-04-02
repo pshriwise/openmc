@@ -92,8 +92,11 @@ bool Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
-  if (settings::shared_secondary_bank && !simulation::shared_secondary_bank.push_back(bank))
-  secondary_bank().push_back(bank);
+  if (settings::shared_secondary_bank && !simulation::shared_secondary_bank.full()) {
+    simulation::shared_secondary_bank.push(bank);
+  } else {
+    secondary_bank().push_back(bank);
+  }
   return true;
 }
 
@@ -107,8 +110,11 @@ void Particle::split(double wgt)
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
 
-  if (settings::shared_secondary_bank && !simulation::shared_secondary_bank.push_back(bank))
+  if (settings::shared_secondary_bank && !simulation::shared_secondary_bank.full()) {
+    simulation::shared_secondary_bank.push(bank);
+  } else {
     secondary_bank().push_back(bank);
+  }
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -419,12 +425,13 @@ void Particle::event_revive_from_secondary()
   }
 
   // If no secondary particles, break out of event loop
-  if (secondary_bank().empty() && simulation::shared_secondary_bank.empty()) {
+  if (secondary_bank().empty() && simulation::shared_secondary_bank.empty())
     return;
 
   // Check for secondary particles if this particle is dead
   SourceSite s;
-  if (simulation::shared_secondary_bank.pop_back(s))
+  if (!simulation::shared_secondary_bank.empty()) {
+    simulation::shared_secondary_bank.pop(s);
     from_source(&s);
   } else if (!secondary_bank().empty()) {
     from_source(&secondary_bank().back());

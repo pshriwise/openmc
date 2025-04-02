@@ -47,13 +47,23 @@ public:
     queue_ = std::make_shared<rigtorp::MPMCQueue<SourceSite>>(capacity);
   }
 
-  bool push_back(const SourceSite& secondary)
+  void push(const SourceSite& secondary)
+  {
+    queue_->push(secondary);
+  }
+
+  void pop(SourceSite& secondary)
+  {
+    queue_->pop(secondary);
+  }
+
+  bool try_push(const SourceSite& secondary)
   {
     // Push to the queue
     return queue_->try_push(secondary);
   }
 
-  bool pop_back(SourceSite& x)
+  bool try_pop(SourceSite& x)
   {
     return queue_->try_pop(x);
   }

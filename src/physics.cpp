@@ -234,7 +234,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
     } else {
-      simulation::shared_secondary_bank.push_back(site);
+      p.secondary_bank().push_back(site);
     }
 
     // Set the delayed group on the particle as well

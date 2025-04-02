@@ -265,6 +265,10 @@ int openmc_next_batch(int* status)
 
   finalize_batch();
 
+  if (simulation::shared_secondary_bank.size() > 0)
+    fatal_error(fmt::format("Shared secondary bank is non-zero. Size: {}",
+                simulation::shared_secondary_bank.size()));
+
   // Check simulation ending criteria
   if (status) {
     if (simulation::current_batch >= settings::n_max_batches) {
@@ -315,7 +319,7 @@ int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
 
-size_t max_secondary_size {0};
+size_t max_secondary_size {100000000};
 
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
