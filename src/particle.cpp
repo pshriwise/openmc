@@ -285,6 +285,8 @@ void Particle::event_delta_advance()
     this->update_majorant();
   }
 
+
+
   // sample distance to next position
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
     distance = 0.0;
@@ -295,12 +297,40 @@ void Particle::event_delta_advance()
     distance = -std::log(prn(this->current_seed())) / majorant();
   }
 
+  bool crossed_surface = false;
+  while (distance >= 0) {
+    // update distance to problem boundary
+    boundary().distance = INFTY;
+    boundary().surface_index = 0;
+    boundary().coord_level = 1;
+    for (auto s_idx : model::boundary_surfaces) {
+      const auto& s = model::surfaces[s_idx];
+      double surf_dist = s->distance(r(), u(), false);
+      if (surf_dist < boundary().distance) {
+        boundary().distance = surf_dist;
+        boundary().surface_index = s_idx + 1;
+        if (s->sense(r(), u())) {
+          boundary().surface_index *= -1;
+        }
+      }
+    }
+
+    if (distance < boundary().distance) break;
+
+    crossed_surface = true;
+    // Advance particle
+    r() += (boundary().distance - TINY_BIT) * u();
+    this->event_cross_surface();
+    material() = C_NONE;
+    distance -= boundary().distance;
+  }
+
   // store a copy of the current coordinates
   // auto coord_cache = coord();
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
+    coord(j).r += distance * u();
     coord(j).reset();
   }
 
@@ -313,9 +343,9 @@ void Particle::event_delta_advance()
     // reset coordinates and trace particle through
     // the geometry to determine what boundary condition should
     // be applied or if the particle is lost
-    wgt() = 0.0;
     // score to global leakage tally
     keff_tally_leakage() += wgt();
+    wgt() = 0.0;
     // coord() = coord_cache;
     // trace_through_geom(distance);
   }
@@ -465,6 +495,11 @@ void Particle::event_revive_from_secondary()
     if (write_track())
       add_particle_track(*this);
   }
+
+  // if (settings::delta_tracking) {
+  //   exhaustive_find_cell(*this);
+  //   event_calculate_xs();
+  // }
 }
 
 void Particle::event_death()
@@ -663,6 +698,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
+    exhaustive_find_cell(*this);
     this->mark_as_lost("Couldn't find particle after reflecting from surface " +
                        std::to_string(surf.id_) + ".");
     return;
