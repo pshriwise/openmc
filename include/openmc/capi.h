@@ -271,6 +271,9 @@ int openmc_properties_export(const char* filename);
 // \return Error code
 int openmc_properties_import(const char* filename);
 
+void openmc_run_random_ray();
+void openmc_reset_random_ray();
+
 // Error codes
 extern int OPENMC_E_UNASSIGNED;
 extern int OPENMC_E_ALLOCATE;

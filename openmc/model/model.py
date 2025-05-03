@@ -1443,7 +1443,7 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_path, correction):
+    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_path, correction, extra_scores=None):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
@@ -1623,7 +1623,7 @@ class Model:
 
         return geometry, box
 
-    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_path, correction) -> None:
+    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_path, correction, extra_scores=None) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
         captured, this method can be useful when the geometry has materials only
@@ -1721,7 +1721,7 @@ class Model:
         mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
         mgxs_file.export_to_hdf5(mgxs_path)
 
-    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_path, correction) -> None:
+    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_path, correction, extra_scores=None) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
         geometry and source, and tally MGXS data for each material. This method
@@ -1772,6 +1772,9 @@ class Model:
                 'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
             ]
 
+        if extra_scores is not None:
+            mgxs_lib.mgxs_types += extra_scores
+
         # Specify a "cell" domain type for the cross section tally filters
         mgxs_lib.domain_type = "material"
 
@@ -1806,7 +1809,8 @@ class Model:
 
     def convert_to_multigroup(self, method="material_wise", groups='CASMO-2',
                               nparticles=2000, overwrite_mgxs_library=False,
-                              mgxs_path: PathLike = "mgxs.h5", correction=None):
+                              mgxs_path: PathLike = "mgxs.h5", correction=None,
+                              extra_scores=None):
         """Convert all materials from continuous energy to multigroup.
 
         If no MGXS data library file is found, generate one using one or more
@@ -1839,13 +1843,13 @@ class Model:
         if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
             if method == "infinite_medium":
                 self._generate_infinite_medium_mgxs(
-                    groups, nparticles, mgxs_path, correction)
+                    groups, nparticles, mgxs_path, correction, extra_scores)
             elif method == "material_wise":
                 self._generate_material_wise_mgxs(
-                    groups, nparticles, mgxs_path, correction)
+                    groups, nparticles, mgxs_path, correction, extra_scores)
             elif method == "stochastic_slab":
                 self._generate_stochastic_slab_mgxs(
-                    groups, nparticles, mgxs_path, correction)
+                    groups, nparticles, mgxs_path, correction, extra_scores)
             else:
                 raise ValueError(
                     f'MGXS generation method "{method}" not recognized')

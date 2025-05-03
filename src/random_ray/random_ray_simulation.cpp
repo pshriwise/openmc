@@ -22,7 +22,7 @@ namespace openmc {
 // Non-member functions
 //==============================================================================
 
-void openmc_run_random_ray()
+extern "C" void openmc_run_random_ray()
 {
   //////////////////////////////////////////////////////////
   // Run forward simulation
@@ -158,11 +158,13 @@ void validate_random_ray_inputs()
       case SCORE_FISSION:
       case SCORE_NU_FISSION:
       case SCORE_EVENTS:
+      case HEATING:
+      case SCORE_KAPPA_FISSION:
         break;
       default:
         fatal_error(
-          "Invalid score specified. Only flux, total, fission, nu-fission, and "
-          "event scores are supported in random ray mode.");
+          fmt::format("Invalid score {} specified. Only flux, total, fission, nu-fission, and "
+          "event scores are supported in random ray mode."));
       }
     }
 
@@ -358,7 +360,7 @@ void validate_random_ray_inputs()
   }
 }
 
-void openmc_reset_random_ray()
+extern "C" void openmc_reset_random_ray()
 {
   FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
   FlatSourceDomain::volume_normalized_flux_tallies_ = false;
