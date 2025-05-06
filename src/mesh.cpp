@@ -87,6 +87,10 @@ const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
 } // namespace settings
 #endif
 
+#ifdef OPENMC_XDG
+#include "xdg/xdg.h"
+#endif
+
 //==============================================================================
 // Helper functions
 //==============================================================================
@@ -2511,7 +2515,132 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
-#ifdef OPENMC_DAGMC_ENABLED
+#ifdef OPENMC_XDG
+
+const std::string XDGMesh::mesh_lib_type = "xdg";
+
+XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node) {
+  initialize();
+}
+
+XDGMesh::XDGMesh(const std::string& filename, double length_multiplier) {
+  filename_ = filename;
+  set_length_multiplier(length_multiplier);
+  initialize();
+}
+
+XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg) {
+  xdg_ = external_xdg;
+  filename_ = "unknown (external file)";
+  initialize();
+}
+
+void XDGMesh::initialize() {
+  if (xdg_) return;
+
+  // create XDG instance
+  xdg_ = std::make_shared<xdg::XDG>();
+
+  // load XDG file
+  if (!file_exists(filename_)) {
+    fatal_error(fmt::format("Mesh file \"{}\" does not exist", filename_));
+  }
+
+  xdg_->mesh_manager()->load_file(filename_);
+}
+
+void XDGMesh::prepare_for_point_location() {
+  xdg_->prepare_raytracer();
+}
+
+Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const {
+  // TODO: Connect to MOAB implementation
+  return {0.0, 0.0, 0.0};
+}
+
+void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
+  vector<int>& bins, vector<double>& lengths) const
+{
+  // TODO: Make more robust (including mesh entrance/re-entrance)
+  xdg::Position p0 {r0.x, r0.y, r0.z};
+  xdg::Position p1 {r1.x, r1.y, r1.z};
+  xdg::MeshID element = xdg_->find_element(p0);
+  auto track_segments = xdg_->segments(element, p0, p1);
+}
+
+int XDGMesh::get_bin(Position r) const
+{
+  xdg::Position p {r.z, r.y, r.z};
+  return xdg_->find_element(p);
+}
+
+int XDGMesh::n_bins() const {
+  return xdg_->mesh_manager()->num_volume_elements();
+}
+
+int XDGMesh::n_surface_bins() const {
+  return 4 * n_bins();
+}
+
+std::pair<vector<double>, vector<double>> XDGMesh::plot(
+  Position plot_ll, Position plot_ur) const
+{
+  fatal_error("Plot of XDG mesh not implemented");
+
+  return {};
+}
+
+std::string XDGMesh::library() const {
+  return mesh_lib_type;
+}
+
+void XDGMesh::write(const std::string& base_filename) const
+{
+  warning("XDG mesh write from C++ not implemented");
+}
+
+Position XDGMesh::centroid(int bin) const
+{
+  auto element_vertices = xdg_->mesh_manager()->element_vertices(bin);
+
+  xdg::Vertex centroid {0.0, 0.0, 0.0};
+  for (const auto& v : element_vertices) {
+    centroid += v;
+  }
+
+  centroid /= double(element_vertices.size());
+
+  return {centroid[0], centroid[1], centroid[1]};
+}
+
+int XDGMesh::n_vertices() const
+{
+
+}
+
+Position XDGMesh::vertex(int id) const
+{
+
+}
+
+std::vector<int> XDGMesh::connectivity(int id) const
+{
+
+}
+
+double XDGMesh::volume(int bin) const
+{
+  auto v = xdg_->mesh_manager()->element_vertices(bin);
+
+  // For a linear tet, volume is 1/6 * |((v1-v0) × (v2-v0)) · (v3-v0)|
+  // where v0,v1,v2,v3 are the vertex positions and × is cross product
+  // TODO: move the volume call into XDG
+  return 1.0 / 6.0 * ((v[1] - v[0]).cross(v[2] - v[0])).dot(v[3] - v[0]);
+}
+
+#endif
+
+#ifdef OPENMC_DAGNMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
 
