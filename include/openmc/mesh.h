@@ -728,6 +728,75 @@ private:
   virtual void initialize() = 0;
 };
 
+#ifdef OPENMC_XDG
+
+class XDGMesh : public UnstructuredMesh{
+
+public:
+  // Constructors
+  XDGMesh() = default;
+  XDGMesh(pugi::xml_node node);
+  XDGMesh(const std::string& filename, double length_multiplier = 1.0);
+  XDGMesh(std::shared_ptr<xdg::XDG> external_xdg);
+
+  static const std::string mesh_lib_type;
+
+    // Overridden Methods
+
+  //! Perform any preparation needed to support use in mesh filters
+  void prepare_for_point_location() override;
+
+  Position sample_element(int32_t bin, uint64_t* seed) const override;
+
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
+
+  int get_bin(Position r) const override;
+
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
+
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
+
+  std::string library() const override;
+
+  //! Add a score to the mesh instance
+  void add_score(const std::string& score) override;
+
+  //! Remove all scores from the mesh instance
+  void remove_scores() override;
+
+  //! Set data for a score
+  void set_score_data(const std::string& score, const vector<double>& values,
+    const vector<double>& std_dev) override;
+
+  //! Write the mesh with any current tally data
+  void write(const std::string& base_filename) const override;
+
+  Position centroid(int bin) const override;
+
+  int n_vertices() const override;
+
+  Position vertex(int id) const override;
+
+  std::vector<int> connectivity(int id) const override;
+
+  //! Get the volume of a mesh bin
+  //
+  //! \param[in] bin Bin to return the volume for
+  //! \return Volume of the bin
+  double volume(int bin) const override;
+
+private:
+  void initialize() override;
+
+  std::shared_ptr<xdg::XDG> xdg_; //!< XDG instance
+};
+
+#endif
+
 #ifdef DAGMC
 
 class MOABMesh : public UnstructuredMesh {
