@@ -2615,12 +2615,12 @@ Position XDGMesh::centroid(int bin) const
 
 int XDGMesh::n_vertices() const
 {
-
+  return xdg_->mesh_manager()->num_vertices();
 }
 
 Position XDGMesh::vertex(int id) const
 {
-
+  
 }
 
 std::vector<int> XDGMesh::connectivity(int id) const
