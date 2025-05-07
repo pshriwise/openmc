@@ -564,7 +564,7 @@ class DAGMCUniverse(openmc.UniverseBase):
                 fill = [mats_per_id[mat.id] for mat in dag_cell.fill if mat]
             else:
                 fill = mats_per_id[dag_cell.fill.id] if dag_cell.fill else None
-            self.add_cell(openmc.DAGMCCell(cell_id=dag_cell_id, fill=fill))
+            self.add_cell(openmc.DAGMCCell(cell_id=int(dag_cell_id), fill=fill))
 
 
 class DAGMCCell(openmc.Cell):
@@ -601,6 +601,7 @@ class DAGMCCell(openmc.Cell):
         """Set the parent universe of the cell."""
         self._parent_universe = universe.id
 
+    @property
     def bounding_box(self):
         return BoundingBox.infinite()
 
