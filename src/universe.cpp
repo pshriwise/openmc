@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "openmc/container_util.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/particle.h"
 
@@ -37,7 +38,7 @@ void Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
-bool Universe::find_cell(GeometryState& p) const
+bool Universe::find_cell(GeometryState& p, int32_t cell_hint) const
 {
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
@@ -46,6 +47,13 @@ bool Universe::find_cell(GeometryState& p) const
   Position u {p.u_local()};
   auto surf = p.surface();
   int32_t i_univ = p.lowest_coord().universe;
+
+  if (cell_hint != C_NONE && contains(cells, cell_hint)) {
+    if (model::cells[cell_hint]->contains(r, u, surf)) {
+      p.lowest_coord().cell = cell_hint;
+      return true;
+    }
+  }
 
   for (auto i_cell : cells) {
     if (model::cells[i_cell]->universe_ != i_univ)

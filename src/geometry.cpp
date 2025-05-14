@@ -100,7 +100,7 @@ int cell_instance_at_level(const GeometryState& p, int level)
 //==============================================================================
 
 bool find_cell_inner(
-  GeometryState& p, const NeighborList* neighbor_list, bool verbose)
+  GeometryState& p, const NeighborList* neighbor_list, bool verbose, int32_t cell_hint = C_NONE)
 {
   // Find which cell of this universe the particle is in.  Use the neighbor list
   // to shorten the search if one was provided.
@@ -148,7 +148,7 @@ bool find_cell_inner(
     if (i_cell == C_NONE) {
       int i_universe = p.lowest_coord().universe;
       const auto& univ {model::universes[i_universe]};
-      found = univ->find_cell(p);
+      found = univ->find_cell(p, cell_hint);
     }
 
     if (!found) {
@@ -279,7 +279,7 @@ bool neighbor_list_find_cell(GeometryState& p, bool verbose)
   return found;
 }
 
-bool exhaustive_find_cell(GeometryState& p, bool verbose)
+bool exhaustive_find_cell(GeometryState& p, bool verbose, int32_t cell_hint)
 {
   int i_universe = p.lowest_coord().universe;
   if (i_universe == C_NONE) {
@@ -291,7 +291,7 @@ bool exhaustive_find_cell(GeometryState& p, bool verbose)
   for (int i = p.n_coord(); i < model::n_coord_levels; i++) {
     p.coord(i).reset();
   }
-  return find_cell_inner(p, nullptr, verbose);
+  return find_cell_inner(p, nullptr, verbose, cell_hint);
 }
 
 //==============================================================================

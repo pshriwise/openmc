@@ -165,7 +165,7 @@ public:
   //! string of the ID ranges for entities of dimension \p dim
   std::string dagmc_ids_for_dim(int dim) const;
 
-  bool find_cell(GeometryState& p) const override;
+  bool find_cell(GeometryState& p, int32_t cell_hint) const override;
 
   void to_hdf5(hid_t universes_group) const override;
 

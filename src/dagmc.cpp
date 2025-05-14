@@ -424,11 +424,11 @@ int32_t DAGUniverse::implicit_complement_idx() const
   return cell_idx_offset_ + dagmc_instance_->index_by_handle(ic) - 1;
 }
 
-bool DAGUniverse::find_cell(GeometryState& p) const
+bool DAGUniverse::find_cell(GeometryState& p, int32_t cell_hint) const
 {
   // if the particle isn't in any of the other DagMC
   // cells, place it in the implicit complement
-  bool found = Universe::find_cell(p);
+  bool found = Universe::find_cell(p, cell_hint);
   if (!found && model::universe_map[this->id_] != model::root_universe) {
     p.lowest_coord().cell = implicit_complement_idx();
     found = true;

@@ -60,7 +60,7 @@ int cell_instance_at_level(const GeometryState& p, int level);
 //! \return True if the particle's location could be found and ascribed to a
 //!   valid geometry coordinate stack.
 //==============================================================================
-bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
+bool exhaustive_find_cell(GeometryState& p, bool verbose = false, int32_t cell_hint=C_NONE);
 bool neighbor_list_find_cell(
   GeometryState& p, bool verbose = false); // Only usable on surface crossings
 
