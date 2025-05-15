@@ -1973,7 +1973,7 @@ class Model:
             # Make sure all materials have a name, and that the name is a valid HDF5
             # dataset name
             for material in self.materials:
-                if material.name is None:
+                if not material.name:
                     material.name = f"material {material.id}"
                 material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
 
