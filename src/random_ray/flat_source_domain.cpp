@@ -63,6 +63,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     if (cell.type_ == Fill::MATERIAL) {
       for (int j = 0; j < cell.n_instances_; j++) {
         source_regions_.material(source_region_id++) = cell.material(j);
+        source_regions_.cell(source_region_id) = i;
       }
     }
   }
@@ -439,7 +440,8 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
-    bool found = exhaustive_find_cell(p);
+    bool found = exhaustive_find_cell(p, false, source_regions_.cell(sr));
+    // bool found = exhaustive_find_cell(p, false, source_regions_.cell(sr));
 
     // Loop over energy groups (so as to support energy filters)
     for (int g = 0; g < negroups_; g++) {

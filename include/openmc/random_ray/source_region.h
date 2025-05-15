@@ -146,6 +146,7 @@ public:
 
   // Scalar fields
   int* material_;
+  int* cell_;
   int* is_small_;
   int* n_hits_;
   int* birthday_;
@@ -194,6 +195,9 @@ public:
 
   int& material() { return *material_; }
   const int material() const { return *material_; }
+
+  int& cell() { return *cell_; }
+  const int cell() const { return *cell_; }
 
   int& is_small() { return *is_small_; }
   const int is_small() const { return *is_small_; }
@@ -318,6 +322,7 @@ public:
   // Scalar fields
 
   int material_ {0}; //!< Index in openmc::model::materials array
+  int cell_ {0};     //!< Index in openmc::model::cells array
   OpenMPMutex lock_;
   double volume_ {
     0.0}; //!< Volume (computed from the sum of ray crossing lengths)
@@ -394,6 +399,9 @@ public:
   // Public Accessors
   int& material(int64_t sr) { return material_[sr]; }
   const int material(int64_t sr) const { return material_[sr]; }
+
+  int& cell(int64_t sr) { return cell_[sr]; }
+  const int cell(int64_t sr) const { return cell_[sr]; }
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
   const int is_small(int64_t sr) const { return is_small_[sr]; }
@@ -626,6 +634,7 @@ private:
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
+  vector<int> cell_;
   vector<int> is_small_;
   vector<int> n_hits_;
   vector<int> mesh_;
