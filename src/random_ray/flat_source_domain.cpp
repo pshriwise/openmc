@@ -440,8 +440,9 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
     p.u() = {1.0, 0.0, 0.0};
+    // bool found = exhaustive_find_cell(p);
     bool found = exhaustive_find_cell(p, false, source_regions_.cell(sr));
-    // bool found = exhaustive_find_cell(p, false, source_regions_.cell(sr));
+    source_regions_.cell(sr) = p.lowest_coord().cell;
 
     // Loop over energy groups (so as to support energy filters)
     for (int g = 0; g < negroups_; g++) {

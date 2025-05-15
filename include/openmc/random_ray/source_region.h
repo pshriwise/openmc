@@ -321,8 +321,8 @@ public:
   //---------------------------------------
   // Scalar fields
 
-  int material_ {0}; //!< Index in openmc::model::materials array
-  int cell_ {0};     //!< Index in openmc::model::cells array
+  int material_ {0};   //!< Index in openmc::model::materials array
+  int cell_ {C_NONE}; //!< Index in openmc::model::cells array
   OpenMPMutex lock_;
   double volume_ {
     0.0}; //!< Volume (computed from the sum of ray crossing lengths)
