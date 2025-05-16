@@ -89,6 +89,7 @@ bool Particle::create_secondary(
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
+  bank.cell = lowest_coord().cell;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
@@ -125,6 +126,7 @@ void Particle::from_source(const SourceSite* src)
   r() = src->r;
   u() = src->u;
   r_born() = src->r;
+  cell_born() = src->cell;
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
@@ -425,7 +427,7 @@ void Particle::event_revive_from_secondary()
     n_event() = 0;
     bank_second_E() = 0.0;
 
-    // Subtract secondary particle energy from interim pulse-height results
+    // Subtract scondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&
         this->type() == ParticleType::photon) {
       // Since the birth cell of the particle has not been set we
@@ -433,7 +435,7 @@ void Particle::event_revive_from_secondary()
       // removed from the pulse-height of this cell.
       if (lowest_coord().cell == C_NONE) {
         bool verbose = settings::verbosity >= 10 || trace();
-        if (!exhaustive_find_cell(*this, verbose)) {
+        if (!exhaustive_find_cell(*this, verbose, cell_born())) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));
           return;
