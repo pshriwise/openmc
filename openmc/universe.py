@@ -1,10 +1,11 @@
-from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, OrderedDict
+from collections.abc import Iterable
+from collections import OrderedDict
 from numbers import Real
 
 import lxml.etree as ET
-from .xml import get_text
+from ._xml import get_text
 
 import numpy as np
 
@@ -443,7 +444,7 @@ class Universe(UniverseBase):
         return string
 
     @property
-    def bounding_box(self) -> openmc.BoundingBox:
+    def bounding_box(self) -> 'openmc.BoundingBox':
         regions = [c.region for c in self.cells.values()
                    if c.region is not None]
         if regions:
