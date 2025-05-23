@@ -93,8 +93,22 @@ public:
   Direction u; //!< particle direction
   int cell {-1};
   int universe {-1};
-  int lattice {-1};
-  array<int, 3> lattice_i {{-1, -1, -1}};
+
+  int lattice_or_mesh_bin {-1};
+  array<int, 3> lattice_or_mesh_idx {{-1, -1, -1}};
+
+  int& mesh_cell_index() { return lattice_or_mesh_bin; }
+  int mesh_cell_index() const { return lattice_or_mesh_bin; }
+
+  int& lattice() { return lattice_or_mesh_bin; }
+  int lattice() const { return lattice_or_mesh_bin; }
+
+  array<int, 3>& mesh_index() { return lattice_or_mesh_idx; }
+  array<int, 3> mesh_index() const { return lattice_or_mesh_idx; }
+
+  array<int, 3>& lattice_index() { return lattice_or_mesh_idx; }
+  array<int, 3> lattice_index() const { return lattice_or_mesh_idx; }
+
   bool rotated {false}; //!< Is the level rotated?
 };
 
@@ -193,7 +207,25 @@ struct BoundaryInfo {
     SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
   int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
-    lattice_translation {}; //!< which way lattice indices will change
+    mesh_or_lattice_translation {}; //!< which way lattice indices will change
+
+
+  const array<int, 3>& lattice_translation() const
+  {
+    return mesh_or_lattice_translation;
+  }
+  array<int, 3>& lattice_translation() { return mesh_or_lattice_translation; }
+  int lattice_translation(int i) const
+  {
+    return mesh_or_lattice_translation[i];
+  }
+
+  const array<int, 3>& mesh_translation() const
+  {
+    return mesh_or_lattice_translation;
+  }
+  array<int, 3>& mesh_translation() { return mesh_or_lattice_translation; }
+  int mesh_translation(int i) const { return mesh_or_lattice_translation[i]; }
 
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface) - 1; }
