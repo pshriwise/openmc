@@ -2225,6 +2225,12 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
 const std::string XDGMesh::mesh_lib_type = "xdg";
 
 XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node) {
+  std::string mesh_lib = get_node_value(node, "library", true, true);
+  if (mesh_lib == "moab") {
+    mesh_library_ = xdg::MeshLibrary::MOAB;
+  } else if (mesh_lib == "libmesh") {
+    mesh_library_ = xdg::MeshLibrary::LIBMESH;
+  }
   initialize();
 }
 
@@ -2243,15 +2249,18 @@ XDGMesh::XDGMesh(std::shared_ptr<xdg::XDG> external_xdg) {
 void XDGMesh::initialize() {
   if (xdg_) return;
 
-  // create XDG instance
-  xdg_ = std::make_shared<xdg::XDG>();
+  // create XDGMesh instance
+  xdg_ = xdg::XDG::create(mesh_library_);
 
-  // load XDG file
+  // load XDGMesh file
   if (!file_exists(filename_)) {
     fatal_error(fmt::format("Mesh file \"{}\" does not exist", filename_));
   }
 
   xdg_->mesh_manager()->load_file(filename_);
+  xdg_->mesh_manager()->init();
+  xdg_->mesh_manager()->parse_metadata();
+  xdg_->prepare_raytracer();
 }
 
 void XDGMesh::prepare_for_point_location() {
@@ -2269,8 +2278,14 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   // TODO: Make more robust (including mesh entrance/re-entrance)
   xdg::Position p0 {r0.x, r0.y, r0.z};
   xdg::Position p1 {r1.x, r1.y, r1.z};
-  xdg::MeshID element = xdg_->find_element(p0);
-  auto track_segments = xdg_->segments(element, p0, p1);
+  double length_rcp = 1 / (p1 - p0).length();
+  auto track_segments = xdg_->segments(p0, p1);
+  // remove elements with lengths of zero
+  track_segments.erase(std::remove_if(track_segments.begin(), track_segments.end(), [](const std::pair<xdg::MeshID, double>& p) {return p.second == 0.0;}), track_segments.end());
+  for (const auto& track_segment : track_segments ) {
+    bins.push_back(track_segment.first);
+    lengths.push_back(track_segment.second * length_rcp);
+  }
 }
 
 int XDGMesh::get_bin(Position r) const
@@ -2290,7 +2305,7 @@ int XDGMesh::n_surface_bins() const {
 std::pair<vector<double>, vector<double>> XDGMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
-  fatal_error("Plot of XDG mesh not implemented");
+  fatal_error("Plot of XDGMesh mesh not implemented");
 
   return {};
 }
@@ -2301,7 +2316,7 @@ std::string XDGMesh::library() const {
 
 void XDGMesh::write(const std::string& base_filename) const
 {
-  warning("XDG mesh write from C++ not implemented");
+  warning("XDGMesh mesh write from C++ not implemented");
 }
 
 Position XDGMesh::centroid(int bin) const
@@ -2325,12 +2340,12 @@ int XDGMesh::n_vertices() const
 
 Position XDGMesh::vertex(int id) const
 {
-  
+  return {0, 0, 0};
 }
 
 std::vector<int> XDGMesh::connectivity(int id) const
 {
-
+  return {1, 1, 1, 1};
 }
 
 double XDGMesh::volume(int bin) const
@@ -2339,7 +2354,7 @@ double XDGMesh::volume(int bin) const
 
   // For a linear tet, volume is 1/6 * |((v1-v0) × (v2-v0)) · (v3-v0)|
   // where v0,v1,v2,v3 are the vertex positions and × is cross product
-  // TODO: move the volume call into XDG
+  // TODO: move the volume call into XDGMesh
   return 1.0 / 6.0 * ((v[1] - v[0]).cross(v[2] - v[0])).dot(v[3] - v[0]);
 }
 
@@ -3440,15 +3455,9 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(make_unique<CylindricalMesh>(node));
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
-#ifdef DAGMC
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == MOABMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<MOABMesh>(node));
-#endif
-#ifdef LIBMESH
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == LibMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<LibMesh>(node));
+#ifdef OPENMC_XDG
+    } else if (mesh_type == UnstructuredMesh::mesh_type) {
+      model::meshes.push_back(make_unique<XDGMesh>(node));
 #endif
     } else if (mesh_type == UnstructuredMesh::mesh_type) {
       fatal_error("Unstructured mesh support is not enabled or the mesh "

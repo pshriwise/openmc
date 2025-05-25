@@ -763,14 +763,14 @@ public:
   std::string library() const override;
 
   //! Add a score to the mesh instance
-  void add_score(const std::string& score) override;
+  void add_score(const std::string& score) override {};
 
   //! Remove all scores from the mesh instance
-  void remove_scores() override;
+  void remove_scores() override {};
 
   //! Set data for a score
   void set_score_data(const std::string& score, const vector<double>& values,
-    const vector<double>& std_dev) override;
+    const vector<double>& std_dev) override {};
 
   //! Write the mesh with any current tally data
   void write(const std::string& base_filename) const override;
@@ -793,6 +793,7 @@ private:
   void initialize() override;
 
   std::shared_ptr<xdg::XDG> xdg_; //!< XDG instance
+  xdg::MeshLibrary mesh_library_ {xdg::MeshLibrary::LIBMESH}; //!< Mesh library type
 };
 
 #endif
