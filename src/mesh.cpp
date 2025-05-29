@@ -712,6 +712,8 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
   if (length_multiplier_ > 0.0)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
+  return;
+
   // write vertex coordinates
   xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
   for (int i = 0; i < this->n_vertices(); i++) {
