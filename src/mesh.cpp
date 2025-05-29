@@ -2227,7 +2227,7 @@ const std::string XDGMesh::mesh_lib_type = "xdg";
 XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node) {
   std::string mesh_lib = get_node_value(node, "library", true, true);
   if (mesh_lib == "moab") {
-    mesh_library_ = xdg::MeshLibrary::MOAB;
+    mesh_library_ = xdg::MeshLibrary::LIBMESH;
   } else if (mesh_lib == "libmesh") {
     mesh_library_ = xdg::MeshLibrary::LIBMESH;
   }
