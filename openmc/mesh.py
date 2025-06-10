@@ -2175,7 +2175,7 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
+        cv.check_value('Unstructured mesh library', lib, ('xdg','moab', 'libmesh'))
         self._library = lib
 
     @property
