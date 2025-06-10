@@ -653,8 +653,9 @@ void UnstructuredMesh::determine_bounds()
   upper_right_ = {xmax, ymax, zmax};
 }
 
+template<typename V>
 Position UnstructuredMesh::sample_tet(
-  std::array<Position, 4> coords, uint64_t* seed) const
+  gsl::span<V> coords, uint64_t* seed) const
 {
   // Uniform distribution
   double s = prn(seed);
@@ -679,8 +680,9 @@ Position UnstructuredMesh::sample_tet(
       u = old_s + t + u - 1;
     }
   }
-  return s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
-         u * (coords[3] - coords[0]) + coords[0];
+  V result = s * (coords[1] - coords[0]) + t * (coords[2] - coords[0]) +
+             u * (coords[3] - coords[0]) + coords[0];
+  return {result[0], result[1], result[2]};
 }
 
 const std::string UnstructuredMesh::mesh_type = "unstructured";
@@ -2565,8 +2567,8 @@ void XDGMesh::prepare_for_point_location() {
 }
 
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const {
-  // TODO: Connect to MOAB implementation
-  return {0.0, 0.0, 0.0};
+  auto vertices = xdg_->mesh_manager()->element_vertices(bin);
+  return this->sample_tet<xdg::Vertex>(vertices, seed);
 }
 
 void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
@@ -2603,7 +2605,6 @@ std::pair<vector<double>, vector<double>> XDGMesh::plot(
   Position plot_ll, Position plot_ur) const
 {
   fatal_error("Plot of XDGMesh mesh not implemented");
-
   return {};
 }
 
@@ -2968,7 +2969,6 @@ std::string MOABMesh::library() const
 // Sample position within a tet for MOAB type tets
 Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
-
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
 
   // Get vertex coordinates for MOAB tet
@@ -2986,12 +2986,8 @@ Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
     fatal_error("Failed to get tet coords");
   }
 
-  std::array<Position, 4> tet_verts;
-  for (int i = 0; i < 4; i++) {
-    tet_verts[i] = {p[i][0], p[i][1], p[i][2]};
-  }
   // Samples position within tet using Barycentric stuff
-  return this->sample_tet(tet_verts, seed);
+  return this->sample_tet<moab::CartVect>(p, seed);
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
