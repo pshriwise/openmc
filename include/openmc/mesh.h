@@ -712,7 +712,8 @@ protected:
   //! \param[in] coords Coordinates of the tetrahedron
   //! \param[in] seed Random number generation seed
   //! \return Sampled position within the tetrahedron
-  Position sample_tet(std::array<Position, 4> coords, uint64_t* seed) const;
+  template<typename V>
+  Position sample_tet(gsl::span<V> coords, uint64_t* seed) const;
 
   // Data members
   double length_multiplier_ {
