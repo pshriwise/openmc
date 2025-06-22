@@ -714,46 +714,16 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
   if (length_multiplier_ > 0.0)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
-  return;
-
   // write vertex coordinates
   xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
-  for (int i = 0; i < this->n_vertices(); i++) {
-    auto v = this->vertex(i);
-    xt::view(vertices, i, xt::all()) = xt::xarray<double>({v.x, v.y, v.z});
-  }
   write_dataset(mesh_group, "vertices", vertices);
 
   int num_elem_skipped = 0;
 
   // write element types and connectivity
-  vector<double> volumes;
+  vector<double> volumes(this->n_bins());
   xt::xtensor<int, 2> connectivity({static_cast<size_t>(this->n_bins()), 8});
   xt::xtensor<int, 2> elem_types({static_cast<size_t>(this->n_bins()), 1});
-  for (int i = 0; i < this->n_bins(); i++) {
-    auto conn = this->connectivity(i);
-
-    volumes.emplace_back(this->volume(i));
-
-    // write linear tet element
-    if (conn.size() == 4) {
-      xt::view(elem_types, i, xt::all()) =
-        static_cast<int>(ElementType::LINEAR_TET);
-      xt::view(connectivity, i, xt::all()) =
-        xt::xarray<int>({conn[0], conn[1], conn[2], conn[3], -1, -1, -1, -1});
-      // write linear hex element
-    } else if (conn.size() == 8) {
-      xt::view(elem_types, i, xt::all()) =
-        static_cast<int>(ElementType::LINEAR_HEX);
-      xt::view(connectivity, i, xt::all()) = xt::xarray<int>({conn[0], conn[1],
-        conn[2], conn[3], conn[4], conn[5], conn[6], conn[7]});
-    } else {
-      num_elem_skipped++;
-      xt::view(elem_types, i, xt::all()) =
-        static_cast<int>(ElementType::UNSUPPORTED);
-      xt::view(connectivity, i, xt::all()) = -1;
-    }
-  }
 
   // warn users that some elements were skipped
   if (num_elem_skipped > 0) {
