@@ -15,6 +15,7 @@ extern "C" const bool XDG_ENABLED;
 namespace openmc {
 
 void read_xdg_universes(pugi::xml_node node);
+void read_xdg_mesh_universes(pugi::xml_node node);
 
 } // namespace openmc
 
@@ -23,6 +24,7 @@ void read_xdg_universes(pugi::xml_node node);
 #include "xdg/xdg.h"
 
 #include "openmc/cell.h"
+#include "openmc/mesh.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
@@ -164,8 +166,72 @@ private:
 
 int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
-} // namespace openmc
 
+class XDGMeshUniverse : public Universe {
+
+  public:
+  // constructors
+  MeshUniverse() { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
+
+  explicit XDGMeshUniverse(pugi::xml_node node);
+
+  // setup functions
+
+  // contains mesh-generic code
+  void create_cells(pugi::xml_node node);
+
+  // code for creating mesh cells specifically for unstructured mesh
+  void create_unstructured_mesh_cells();
+
+  void set_boundary_conditions();
+
+  // transport methods
+  virtual bool find_cell(openmc::GeometryState& p) const override;
+
+  void next_cell(Particle& p) const;
+
+  // accessors
+  int32_t outer() const { return outer_; }
+  int32_t& outer() { return outer_; }
+
+  protected:
+  int32_t mesh_;
+  int32_t outer_ {C_NONE};
+  std::string name_;
+};
+
+class XDGMeshCell : public Cell {
+
+public:
+  XDGMeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx)
+  { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
+
+  virtual bool contains(
+  Position r, Direction u, int32_t on_surface) const override
+  {
+    int mesh_bin = model::meshes[mesh_]->get_bin(r);
+    return mesh_bin == elem_idx_;
+  };
+
+  virtual std::pair<double, int32_t> distance(
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const override
+  {
+    // TODO: Make appropriate call for distance here
+    // const auto& mesh = model::meshes[mesh_];
+    // return mesh->distance_to_next_bin(r, u);
+    return {INFTY, -1};
+  }
+
+  virtual void to_hdf5_inner(hid_t group_id) const override {};
+
+  virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
+
+  protected:
+    int32_t mesh_;
+    int32_t elem_idx_;
+};
+
+} // namespace openmc
 #endif // XDG
 
 #endif // OPENMC_XDG_H

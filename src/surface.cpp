@@ -167,7 +167,7 @@ void Surface::to_hdf5(hid_t group_id) const
 
   if (geom_type() == GeometryType::DAG) {
     write_string(surf_group, "geom_type", "dagmc", false);
-  } else if (geom_type() == GeometryType::XDG) {
+  } else if (geom_type() == GeometryType::XDG_SURFACE_MESH) {
     write_string(surf_group, "geom_type", "xdg", false);
   } else if (geom_type() == GeometryType::CSG) {
     write_string(surf_group, "geom_type", "csg", false);

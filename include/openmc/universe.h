@@ -43,7 +43,7 @@ public:
 
   unique_ptr<UniversePartitioner> partitioner_;
 
-private:
+protected:
   GeometryType geom_type_ = GeometryType::CSG;
 };
 

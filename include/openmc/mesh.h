@@ -754,6 +754,11 @@ public:
 
   int get_bin(Position r) const override;
 
+  bool bin_is_valid(int bin) const
+  {
+    return bin >= 0 && bin < n_bins();
+  }
+
   int n_bins() const override;
 
   int n_surface_bins() const override;

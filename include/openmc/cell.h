@@ -353,7 +353,7 @@ public:
   const GeometryType& geom_type() const { return geom_type_; }
   GeometryType& geom_type() { return geom_type_; }
 
-private:
+protected:
   GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC)
 };
 
