@@ -2564,7 +2564,7 @@ int XDGMesh::get_bin(Position r) const
 }
 
 int XDGMesh::n_bins() const {
-  return xdg_->mesh_manager()->num_volume_elements();
+  return 10; //xdg_->mesh_manager()->num_volume_elements();
 }
 
 int XDGMesh::n_surface_bins() const {
@@ -2603,7 +2603,7 @@ Position XDGMesh::centroid(int bin) const
 
 int XDGMesh::n_vertices() const
 {
-  return xdg_->mesh_manager()->num_vertices();
+  return 10;// xdg_->mesh_manager()->num_vertices();
 }
 
 Position XDGMesh::vertex(int id) const

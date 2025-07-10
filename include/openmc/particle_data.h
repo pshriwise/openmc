@@ -105,14 +105,20 @@ public:
   int& universe() { return universe_; }
   const int& universe() const { return universe_; }
 
-  int& lattice() { return lattice_; }
-  int lattice() const { return lattice_; }
-
-  array<int, 3>& lattice_index() { return lattice_index_; }
-  const array<int, 3>& lattice_index() const { return lattice_index_; }
-
   bool& rotated() { return rotated_; }
   const bool& rotated() const { return rotated_; }
+
+  int& mesh_cell_index() { return lattice_or_mesh_bin_; }
+  int mesh_cell_index() const { return lattice_or_mesh_bin_; }
+
+  int& lattice() { return lattice_or_mesh_bin_; }
+  int lattice() const { return lattice_or_mesh_bin_; }
+
+  array<int, 3>& mesh_index() { return lattice_or_mesh_idx_; }
+  array<int, 3> mesh_index() const { return lattice_or_mesh_idx_; }
+
+  array<int, 3>& lattice_index() { return lattice_or_mesh_idx_; }
+  array<int, 3> lattice_index() const { return lattice_or_mesh_idx_; }
 
 private:
   // Data members
@@ -120,9 +126,11 @@ private:
   Direction u_; //!< particle direction
   int cell_ {-1};
   int universe_ {-1};
-  int lattice_ {-1};
-  array<int, 3> lattice_index_ {{-1, -1, -1}};
   bool rotated_ {false}; //!< Is the level rotated?
+
+  // here we use these attributes for both lattice and mesh universe indices as-needed
+  int lattice_or_mesh_bin_ {-1};
+  array<int, 3> lattice_or_mesh_idx_ {{-1, -1, -1}};
 };
 
 //==============================================================================
@@ -236,8 +244,15 @@ public:
   array<int, 3>& lattice_translation() { return lattice_translation_; }
   const array<int, 3>& lattice_translation() const
   {
-    return lattice_translation_;
+    return mesh_or_lattice_translation_;
   }
+
+  const array<int, 3>& mesh_translation() const
+  {
+    return mesh_or_lattice_translation_;
+  }
+  array<int, 3>& mesh_translation() { return mesh_or_lattice_translation_; }
+  int mesh_translation(int i) const { return mesh_or_lattice_translation_[i]; }
 
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface()) - 1; }
@@ -248,7 +263,7 @@ private:
   int surface_ {
     SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
   int coord_level_ {0}; //!< coordinate level after crossing boundary
-  array<int, 3> lattice_translation_ {
+  array<int, 3> mesh_or_lattice_translation_ {
     0, 0, 0}; //!< which way lattice indices will change
 };
 

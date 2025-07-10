@@ -39,13 +39,13 @@ void LocalCoord::rotate(const vector<double>& rotation)
 
 void LocalCoord::reset()
 {
-  cell_ = C_NONE;
-  universe_ = C_NONE;
-  lattice_ = C_NONE;
-  lattice_index_[0] = 0;
-  lattice_index_[1] = 0;
-  lattice_index_[2] = 0;
-  rotated_ = false;
+  cell() = C_NONE;
+  universe() = C_NONE;
+  lattice() = C_NONE;
+  lattice_index()[0] = 0;
+  lattice_index()[1] = 0;
+  lattice_index()[2] = 0;
+  rotated() = false;
 }
 
 GeometryState::GeometryState()

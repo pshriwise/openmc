@@ -597,7 +597,7 @@ void Particle::cross_surface(const Surface& surf)
 
 #ifdef OPENMC_XDG
   // in XDG, we know what the next cell should be
-  if (surf.geom_type() == GeometryType::XDG) {
+  if (surf.geom_type() == GeometryType::XDG_SURFACE_MESH) {
     int32_t i_cell =
       xdg_next_cell(surface_index(), cell_last(n_coord() - 1), lowest_coord().universe);
     // save material and temp
