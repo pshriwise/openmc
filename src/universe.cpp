@@ -3,6 +3,7 @@
 #include <set>
 
 #include "openmc/hdf5_interface.h"
+#include "openmc/geometry.h"
 #include "openmc/particle.h"
 
 namespace openmc {
@@ -57,6 +58,50 @@ bool Universe::find_cell(GeometryState& p) const
     }
   }
   return false;
+}
+
+void Universe::cross_surface(Particle& p) const
+{
+  const auto& surf {model::surfaces[p.surface()]};
+
+  // Handle any applicable boundary conditions.
+  if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
+    surf->bc_->handle_particle(p, *surf);
+    return;
+  }
+
+  bool verbose = settings::verbosity >= 10 || p.trace();
+  if (neighbor_list_find_cell(p, verbose)) {
+    return;
+  }
+
+    // ==========================================================================
+  // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
+
+  // Remove lower coordinate levels
+  p.n_coord() = 1;
+  bool found = exhaustive_find_cell(p, verbose);
+
+  if (settings::run_mode != RunMode::PLOTTING && (!found)) {
+    // If a cell is still not found, there are two possible causes: 1) there is
+    // a void in the model, and 2) the particle hit a surface at a tangent. If
+    // the particle is really traveling tangent to a surface, if we move it
+    // forward a tiny bit it should fix the problem.
+
+  p.surface() = SURFACE_NONE;
+  p.n_coord() = 1;
+  p.r() += TINY_BIT * p.u();
+
+    // Couldn't find next cell anywhere! This probably means there is an actual
+    // undefined region in the geometry.
+
+    if (!exhaustive_find_cell(p, verbose)) {
+      p.mark_as_lost("After particle " + std::to_string(p.id()) +
+                     " crossed surface " + std::to_string(surf->id_) +
+                     " it could not be located in any cell and it did not leak.");
+      return;
+    }
+  }
 }
 
 BoundingBox Universe::bounding_box() const

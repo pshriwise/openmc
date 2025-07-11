@@ -547,81 +547,12 @@ void Particle::pht_secondary_particles()
 
 void Particle::cross_surface(const Surface& surf)
 {
-
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf.id_);
   }
-
-// if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef DAGMC
-  if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
-#endif
-
-  // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
-    surf.bc_->handle_particle(*this, surf);
-    return;
-  }
-
-  // ==========================================================================
-  // SEARCH NEIGHBOR LISTS FOR NEXT CELL
-
-#ifdef DAGMC
-  // in DAGMC, we know what the next cell should be
-  if (surf.geom_type() == GeometryType::DAG) {
-    int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
-                       lowest_coord().universe) -
-                     1;
-    // save material and temp
-    material_last() = material();
-    sqrtkT_last() = sqrtkT();
-    // set new cell value
-    lowest_coord().cell = i_cell;
-    auto& cell = model::cells[i_cell];
-
-    cell_instance() = 0;
-    if (cell->distribcell_index_ >= 0)
-      cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
-
-    material() = cell->material(cell_instance());
-    sqrtkT() = cell->sqrtkT(cell_instance());
-    return;
-  }
-#endif
-
-  bool verbose = settings::verbosity >= 10 || trace();
-  if (neighbor_list_find_cell(*this, verbose)) {
-    return;
-  }
-
-  // ==========================================================================
-  // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
-
-  // Remove lower coordinate levels
-  n_coord() = 1;
-  bool found = exhaustive_find_cell(*this, verbose);
-
-  if (settings::run_mode != RunMode::PLOTTING && (!found)) {
-    // If a cell is still not found, there are two possible causes: 1) there is
-    // a void in the model, and 2) the particle hit a surface at a tangent. If
-    // the particle is really traveling tangent to a surface, if we move it
-    // forward a tiny bit it should fix the problem.
-
-    surface() = SURFACE_NONE;
-    n_coord() = 1;
-    r() += TINY_BIT * u();
-
-    // Couldn't find next cell anywhere! This probably means there is an actual
-    // undefined region in the geometry.
-
-    if (!exhaustive_find_cell(*this, verbose)) {
-      mark_as_lost("After particle " + std::to_string(id()) +
-                   " crossed surface " + std::to_string(surf.id_) +
-                   " it could not be located in any cell and it did not leak.");
-      return;
-    }
-  }
+  // get the particle's current universe
+  auto& univ {model::universes[coord(0).universe]};
+  univ->cross_surface(*this);
 }
 
 void Particle::cross_vacuum_bc(const Surface& surf)

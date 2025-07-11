@@ -143,6 +143,42 @@ void DAGUniverse::initialize()
   init_geometry();
 }
 
+void DAGUniverse::cross_surface(Particle& p) const
+{
+  //
+  p.history().reset();
+
+  const auto& surf {model::surfaces[p.surface_index()]};
+
+  // Handle any applicable boundary conditions.
+  if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
+    surf->bc_->handle_particle(p, *surf);
+    return;
+  }
+
+  // in DAGMC, we know what the next cell should be
+  if (surf->geom_type() != GeometryType::DAG) {
+    fatal_error(fmt::format("Surface {} is not a DAGMC surface, but was passed to DAGMC Universe {}", surf->id_, id_));
+  }
+
+  int32_t i_cell = openmc::next_cell(p.surface_index(), p.cell_last(p.n_coord() - 1),
+                      p.lowest_coord().universe) -
+                    1;
+  // save material and temp
+  p.material_last() = p.material();
+  p.sqrtkT_last() = p.sqrtkT();
+  // set new cell value
+  p.lowest_coord().cell = i_cell;
+  auto& cell = model::cells[i_cell];
+
+  p.cell_instance() = 0;
+  if (cell->distribcell_index_ >= 0)
+    p.cell_instance() = cell_instance_at_level(p, p.n_coord() - 1);
+
+  p.material() = cell->material(p.cell_instance());
+  p.sqrtkT() = cell->sqrtkT(p.cell_instance());
+}
+
 void DAGUniverse::init_dagmc()
 {
 

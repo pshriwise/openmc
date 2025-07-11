@@ -36,6 +36,8 @@ public:
 
   virtual bool find_cell(GeometryState& p) const;
 
+  virtual void cross_surface(Particle& p) const;
+
   BoundingBox bounding_box() const;
 
   /* By default, universes are CSG universes. The DAGMC

@@ -109,24 +109,33 @@ public:
     const std::string& filename = "", bool auto_geom_ids = false,
     bool auto_mat_ids = false);
 
-  //! Initialize the DAGMC accel. data structures, indices, material
-  //! assignments, etc.
-  void initialize();
 
-  //! Reads UWUW materials and returns an ID map
-  void read_uwuw_materials();
-  //! Indicates whether or not UWUW materials are present
-  //! \return True if UWUW materials are present, False if not
-  bool uses_uwuw() const;
+    //! Initialize the DAGMC accel. data structures, indices, material
+    //! assignments, etc.
+    void initialize();
 
-  //! Returns the index to the implicit complement's index in OpenMC for this
-  //! DAGMC universe
-  int32_t implicit_complement_idx() const;
+    //! Cross a surface in the DAGMC universe
+    //! \param[in] p The GeometryState of the particle
+    void cross_surface(Particle& p) const override;
 
-  //! Transform UWUW materials into an OpenMC-readable XML format
-  //! \return A string representing a materials.xml file of the UWUW materials
-  //! in this universe
-  std::string get_uwuw_materials_xml() const;
+    //! Determine the next cell in the DAGMC universe based on embedded topology
+    //! \param[in] p The GeometryState of the particle
+    void next_cell(GeometryState& p) const {};
+
+    //! Reads UWUW materials and returns an ID map
+    void read_uwuw_materials();
+    //! Indicates whether or not UWUW materials are present
+    //! \return True if UWUW materials are present, False if not
+    bool uses_uwuw() const;
+
+    //! Returns the index to the implicit complement's index in OpenMC for this
+    //! DAGMC universe
+    int32_t implicit_complement_idx() const;
+
+    //! Transform UWUW materials into an OpenMC-readable XML format
+    //! \return A string representing a materials.xml file of the UWUW materials
+    //! in this universe
+    std::string get_uwuw_materials_xml() const;
 
   //! Writes the UWUW material file to XML (for debugging purposes)
   void write_uwuw_materials_xml(
