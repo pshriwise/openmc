@@ -62,7 +62,7 @@ bool Universe::find_cell(GeometryState& p) const
 
 void Universe::cross_surface(Particle& p) const
 {
-  const auto& surf {model::surfaces[p.surface()]};
+  const auto& surf {model::surfaces[p.surface_index()]};
 
   // Handle any applicable boundary conditions.
   if (surf->bc_ && settings::run_mode != RunMode::PLOTTING) {
