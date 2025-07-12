@@ -4,7 +4,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/position.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 #include "openmc/vector.h"
 
@@ -47,12 +47,12 @@ void open_track_file()
 #ifdef OPENMC_MPI
   std::string filename;
   if (mpi::n_procs > 1) {
-    filename = fmt::format("{}tracks_p{}.h5", settings::path_output, mpi::rank);
+    filename = fmt::format("{}tracks_p{}.h5", global_simulation.path_output(), mpi::rank);
   } else {
-    filename = fmt::format("{}tracks.h5", settings::path_output);
+    filename = fmt::format("{}tracks.h5", global_simulation.path_output());
   }
 #else
-  std::string filename = fmt::format("{}tracks.h5", settings::path_output);
+  std::string filename = fmt::format("{}tracks.h5", global_simulation.path_output());
 #endif
   track_file = file_open(filename, 'w');
   write_attribute(track_file, "filetype", "track");
@@ -91,19 +91,19 @@ void close_track_file()
 
 bool check_track_criteria(const Particle& p)
 {
-  if (settings::write_all_tracks) {
+  if (global_simulation.write_all_tracks()) {
     // Increment number of tracks written and get previous value
     int n;
 #pragma omp atomic capture
     n = n_tracks_written++;
 
     // Indicate that track should be written for this particle
-    return n < settings::max_tracks;
+    return n < global_simulation.max_tracks();
   }
 
   // Check for match from explicit track identifiers
-  if (settings::track_identifiers.size() > 0) {
-    for (const auto& t : settings::track_identifiers) {
+  if (global_simulation.track_identifiers().size() > 0) {
+    for (const auto& t : global_simulation.track_identifiers()) {
       if (simulation::current_batch == t[0] &&
           simulation::current_gen == t[1] && p.id() == t[2]) {
         return true;

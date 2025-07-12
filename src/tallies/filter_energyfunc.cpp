@@ -12,7 +12,7 @@ namespace openmc {
 
 void EnergyFunctionFilter::from_xml(pugi::xml_node node)
 {
-  if (!settings::run_CE)
+  if (!global_simulation.run_CE())
     fatal_error("EnergyFunction filters are only supported for "
                 "continuous-energy transport calculations");
 

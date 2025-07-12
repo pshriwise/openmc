@@ -114,7 +114,7 @@ vector<SourceSite> mcpl_source_sites(std::string path)
 void write_mcpl_source_bank(mcpl_outfile_t file_id,
   span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
-  int64_t dims_size = settings::n_particles;
+  int64_t dims_size = global_simulation.n_particles();
   int64_t count_size = simulation::work_per_rank;
 
   if (mpi::master) {

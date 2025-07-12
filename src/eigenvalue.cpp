@@ -1,4 +1,5 @@
 #include "openmc/eigenvalue.h"
+#include "openmc/simulation_manager.h"
 
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xmath.hpp"
@@ -58,7 +59,7 @@ void calculate_generation_keff()
 
   double keff_reduced;
 #ifdef OPENMC_MPI
-  if (settings::solver_type != SolverType::RANDOM_RAY) {
+  if (global_simulation.solver_type() != SolverType::RANDOM_RAY) {
     // Combine values across all processors
     MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
       MPI_SUM, mpi::intracomm);
@@ -76,8 +77,8 @@ void calculate_generation_keff()
 
   // Normalize single batch estimate of k
   // TODO: This should be normalized by total_weight, not by n_particles
-  if (settings::solver_type != SolverType::RANDOM_RAY) {
-    keff_reduced /= settings::n_particles;
+  if (global_simulation.solver_type() != SolverType::RANDOM_RAY) {
+    keff_reduced /= global_simulation.n_particles();
   }
 
   simulation::k_generation.push_back(keff_reduced);
@@ -139,10 +140,10 @@ void synchronize_bank()
   // and the probability for selecting a site.
 
   int64_t sites_needed;
-  if (total < settings::n_particles) {
-    sites_needed = settings::n_particles % total;
+  if (total < global_simulation.n_particles()) {
+    sites_needed = global_simulation.n_particles() % total;
   } else {
-    sites_needed = settings::n_particles;
+    sites_needed = global_simulation.n_particles();
   }
   double p_sample = static_cast<double>(sites_needed) / total;
 
@@ -160,7 +161,7 @@ void synchronize_bank()
   // Temporary banks for IFP
   vector<vector<int>> temp_delayed_groups;
   vector<vector<double>> temp_lifetimes;
-  if (settings::ifp_on) {
+  if (global_simulation.ifp_on()) {
     resize_ifp_data(
       temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
   }
@@ -172,10 +173,10 @@ void synchronize_bank()
     // int(n_particles/total) sites to temp_sites. For example, if you need
     // 1000 and 300 were banked, this would add 3 source sites per banked site
     // and the remaining 100 would be randomly sampled.
-    if (total < settings::n_particles) {
-      for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
+    if (total < global_simulation.n_particles()) {
+      for (int64_t j = 1; j <= global_simulation.n_particles() / total; ++j) {
         temp_sites[index_temp] = site;
-        if (settings::ifp_on) {
+        if (global_simulation.ifp_on()) {
           copy_ifp_data_from_fission_banks(
             i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
         }
@@ -186,7 +187,7 @@ void synchronize_bank()
     // Randomly sample sites needed
     if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         copy_ifp_data_from_fission_banks(
           i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
       }
@@ -222,21 +223,21 @@ void synchronize_bank()
   // to adjust only the source sites on the last processor.
 
   if (mpi::rank == mpi::n_procs - 1) {
-    if (finish > settings::n_particles) {
+    if (finish > global_simulation.n_particles()) {
       // If we have extra sites sampled, we will simply discard the extra
       // ones on the last processor
-      index_temp = settings::n_particles - start;
+      index_temp = global_simulation.n_particles() - start;
 
-    } else if (finish < settings::n_particles) {
+    } else if (finish < global_simulation.n_particles()) {
       // If we have too few sites, repeat sites from the very end of the
       // fission bank
-      sites_needed = settings::n_particles - finish;
+      sites_needed = global_simulation.n_particles() - finish;
       // TODO: sites_needed > simulation::fission_bank.size() or other test to
       // make sure we don't need info from other proc
       for (int i = 0; i < sites_needed; ++i) {
         int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
-        if (settings::ifp_on) {
+        if (global_simulation.ifp_on()) {
           copy_ifp_data_from_fission_banks(i_bank,
             temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
         }
@@ -257,7 +258,7 @@ void synchronize_bank()
 
   // IFP number of generation
   int ifp_n_generation;
-  if (settings::ifp_on) {
+  if (global_simulation.ifp_on()) {
     broadcast_ifp_n_generation(
       ifp_n_generation, temp_delayed_groups, temp_lifetimes);
   }
@@ -269,14 +270,14 @@ void synchronize_bank()
   vector<int> send_delayed_groups;
   vector<double> send_lifetimes;
 
-  if (start < settings::n_particles) {
+  if (start < global_simulation.n_particles()) {
     // Determine the index of the processor which has the first part of the
     // source_bank for the local processor
     int neighbor = upper_bound_index(
       simulation::work_index.begin(), simulation::work_index.end(), start);
 
     // Resize IFP send buffers
-    if (settings::ifp_on && mpi::n_procs > 1) {
+    if (global_simulation.ifp_on() && mpi::n_procs > 1) {
       resize_ifp_data(send_delayed_groups, send_lifetimes,
         ifp_n_generation * 3 * simulation::work_per_rank);
     }
@@ -294,7 +295,7 @@ void synchronize_bank()
           mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
           &requests.back());
 
-        if (settings::ifp_on) {
+        if (global_simulation.ifp_on()) {
           // Send IFP data
           send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
             temp_delayed_groups, send_delayed_groups, temp_lifetimes,
@@ -338,7 +339,7 @@ void synchronize_bank()
   }
 
   // Resize IFP receive buffers
-  if (settings::ifp_on && mpi::n_procs > 1) {
+  if (global_simulation.ifp_on() && mpi::n_procs > 1) {
     resize_ifp_data(recv_delayed_groups, recv_lifetimes,
       ifp_n_generation * simulation::work_per_rank);
   }
@@ -362,7 +363,7 @@ void synchronize_bank()
       MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n),
         mpi::source_site, neighbor, neighbor, mpi::intracomm, &requests.back());
 
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         // Receive IFP data
         receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
           recv_delayed_groups, recv_lifetimes, deserialization_info);
@@ -376,7 +377,7 @@ void synchronize_bank()
       std::copy(&temp_sites[index_temp], &temp_sites[index_temp + n],
         &simulation::source_bank[index_local]);
 
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         copy_partial_ifp_data_to_source_banks(
           index_temp, n, index_local, temp_delayed_groups, temp_lifetimes);
       }
@@ -395,15 +396,15 @@ void synchronize_bank()
   int n_request = requests.size();
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
-  if (settings::ifp_on) {
+  if (global_simulation.ifp_on()) {
     deserialize_ifp_info(ifp_n_generation, deserialization_info,
       recv_delayed_groups, recv_lifetimes);
   }
 
 #else
-  std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
+  std::copy(temp_sites.data(), temp_sites.data() + global_simulation.n_particles(),
     simulation::source_bank.begin());
-  if (settings::ifp_on) {
+  if (global_simulation.ifp_on()) {
     copy_complete_ifp_data_to_source_banks(temp_delayed_groups, temp_lifetimes);
   }
 #endif
@@ -417,8 +418,8 @@ void calculate_average_keff()
   // Determine overall generation and number of active generations
   int i = overall_generation() - 1;
   int n;
-  if (simulation::current_batch > settings::n_inactive) {
-    n = settings::gen_per_batch * simulation::n_realizations +
+  if (simulation::current_batch > global_simulation.n_inactive()) {
+    n = global_simulation.gen_per_batch() * simulation::n_realizations +
         simulation::current_gen;
   } else {
     n = 0;
@@ -438,7 +439,7 @@ void calculate_average_keff()
 
     if (n > 1) {
       double t_value;
-      if (settings::confidence_intervals) {
+      if (global_simulation.confidence_intervals()) {
         // Calculate t-value for confidence intervals
         double alpha = 1.0 - CONFIDENCE_LEVEL;
         t_value = t_percentile(1.0 - alpha / 2.0, n - 1);
@@ -463,7 +464,7 @@ int openmc_get_keff(double* k_combined)
   // Special case for n <=3. Notice that at the end,
   // there is a N-3 term in a denominator.
   if (simulation::n_realizations <= 3 ||
-      settings::solver_type == SolverType::RANDOM_RAY) {
+      global_simulation.solver_type() == SolverType::RANDOM_RAY) {
     k_combined[0] = simulation::keff;
     k_combined[1] = simulation::keff_std;
     if (simulation::n_realizations <= 1) {
@@ -682,7 +683,7 @@ void ufs_count_sites()
     // Since the total starting weight is not equal to n_particles, we need to
     // renormalize the weight of the source sites
     for (int i = 0; i < simulation::work_per_rank; ++i) {
-      simulation::source_bank[i].wgt *= settings::n_particles / total;
+      simulation::source_bank[i].wgt *= global_simulation.n_particles() / total;
     }
   }
 }
@@ -706,10 +707,10 @@ double ufs_get_weight(const Particle& p)
 
 void write_eigenvalue_hdf5(hid_t group)
 {
-  write_dataset(group, "n_inactive", settings::n_inactive);
-  write_dataset(group, "generations_per_batch", settings::gen_per_batch);
+  write_dataset(group, "n_inactive", global_simulation.n_inactive());
+  write_dataset(group, "generations_per_batch", global_simulation.gen_per_batch());
   write_dataset(group, "k_generation", simulation::k_generation);
-  if (settings::entropy_on) {
+  if (global_simulation.entropy_on()) {
     write_dataset(group, "entropy", simulation::entropy);
   }
   write_dataset(group, "k_col_abs", simulation::k_col_abs);
@@ -722,11 +723,13 @@ void write_eigenvalue_hdf5(hid_t group)
 
 void read_eigenvalue_hdf5(hid_t group)
 {
-  read_dataset(group, "generations_per_batch", settings::gen_per_batch);
-  int n = simulation::restart_batch * settings::gen_per_batch;
+  int gen_per_batch;
+  read_dataset(group, "generations_per_batch", gen_per_batch);
+  global_simulation.set_gen_per_batch(gen_per_batch);
+  int n = simulation::restart_batch * gen_per_batch;
   simulation::k_generation.resize(n);
   read_dataset(group, "k_generation", simulation::k_generation);
-  if (settings::entropy_on) {
+  if (global_simulation.entropy_on()) {
     read_dataset(group, "entropy", simulation::entropy);
   }
   read_dataset(group, "k_col_abs", simulation::k_col_abs);

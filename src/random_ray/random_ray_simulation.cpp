@@ -75,7 +75,7 @@ void openmc_run_random_ray()
 
     double source_normalization_factor =
       sim.domain()->compute_fixed_source_normalization_factor() /
-      (settings::n_batches - settings::n_inactive);
+      (global_simulation.n_batches() - global_simulation.n_inactive());
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < forward_flux.size(); i++) {
@@ -254,7 +254,7 @@ void validate_random_ray_inputs()
 
   // Validate external sources
   ///////////////////////////////////////////////////////////////////
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     if (model::external_sources.size() < 1) {
       fatal_error("Must provide a particle source (in addition to ray source) "
                   "in fixed source random ray mode.");
@@ -379,7 +379,7 @@ RandomRaySimulation::RandomRaySimulation()
 {
   // There are no source sites in random ray mode, so be sure to disable to
   // ensure we don't attempt to write source sites to statepoint
-  settings::source_write = false;
+  global_simulation.set_source_write(false);
 
   // Random ray mode does not have an inner loop over generations within a
   // batch, so set the current gen to 1
@@ -405,7 +405,7 @@ RandomRaySimulation::RandomRaySimulation()
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
   domain_->apply_meshes();
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
     domain_->convert_external_sources();
     domain_->count_external_source_regions();
@@ -418,7 +418,7 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
     forward_source_region_map)
 {
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     if (RandomRay::mesh_subdivision_enabled_) {
       domain_->source_regions_ = forward_source_regions;
       domain_->source_region_map_ = forward_source_region_map;
@@ -432,7 +432,7 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
 void RandomRaySimulation::simulate()
 {
   // Random ray power iteration loop
-  while (simulation::current_batch < settings::n_batches) {
+  while (simulation::current_batch < global_simulation.n_batches()) {
     // Initialize the current batch
     initialize_batch();
     initialize_generation();
@@ -468,7 +468,7 @@ void RandomRaySimulation::simulate()
 // Transport sweep over all random rays for the iteration
 #pragma omp parallel for schedule(dynamic)                                     \
   reduction(+ : total_geometric_intersections_)
-      for (int i = 0; i < settings::n_particles; i++) {
+      for (int i = 0; i < global_simulation.n_particles(); i++) {
         RandomRay ray(i, domain_.get());
         total_geometric_intersections_ +=
           ray.transport_history_based_single_ray();
@@ -484,7 +484,7 @@ void RandomRaySimulation::simulate()
 
       // Normalize scalar flux and update volumes
       domain_->normalize_scalar_flux_and_volumes(
-        settings::n_particles * RandomRay::distance_active_);
+        global_simulation.n_particles() * RandomRay::distance_active_);
 
       // Add source to scalar flux, compute number of FSR hits
       int64_t n_hits = domain_->add_source_to_scalar_flux();
@@ -492,7 +492,7 @@ void RandomRaySimulation::simulate()
       // Apply transport stabilization factors
       domain_->apply_transport_stabilization();
 
-      if (settings::run_mode == RunMode::EIGENVALUE) {
+      if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
         // Compute random ray k-eff
         k_eff_ = domain_->compute_k_eff(k_eff_);
 
@@ -501,7 +501,7 @@ void RandomRaySimulation::simulate()
       }
 
       // Execute all tallying tasks, if this is an active batch
-      if (simulation::current_batch > settings::n_inactive) {
+      if (simulation::current_batch > global_simulation.n_inactive()) {
 
         // Add this iteration's scalar flux estimate to final accumulated
         // estimate
@@ -538,7 +538,7 @@ void RandomRaySimulation::output_simulation_results() const
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
-      avg_miss_rate_ / settings::n_batches, negroups_,
+      avg_miss_rate_ / global_simulation.n_batches(), negroups_,
       domain_->n_source_regions(), domain_->n_external_source_regions_);
     if (model::plots.size() > 0) {
       domain_->output_to_vtk();
@@ -583,7 +583,7 @@ void RandomRaySimulation::print_results_random_ray(
 {
   using namespace simulation;
 
-  if (settings::verbosity >= 6) {
+  if (global_simulation.verbosity() >= 6) {
     double total_integrations = total_geometric_intersections * negroups;
     double time_per_integration =
       simulation::time_transport.elapsed() / total_integrations;
@@ -593,9 +593,9 @@ void RandomRaySimulation::print_results_random_ray(
 
     header("Simulation Statistics", 4);
     fmt::print(
-      " Total Iterations                  = {}\n", settings::n_batches);
+      " Total Iterations                  = {}\n", global_simulation.n_batches());
     fmt::print(
-      " Number of Rays per Iteration      = {}\n", settings::n_particles);
+      " Number of Rays per Iteration      = {}\n", global_simulation.n_particles());
     fmt::print(" Inactive Distance                 = {} cm\n",
       RandomRay::distance_inactive_);
     fmt::print(" Active Distance                   = {} cm\n",
@@ -606,16 +606,16 @@ void RandomRaySimulation::print_results_random_ray(
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
-      static_cast<double>(total_geometric_intersections) / settings::n_batches);
+      static_cast<double>(total_geometric_intersections) / global_simulation.n_batches());
     fmt::print("   Avg per Iteration per SR        = {:.2f}\n",
       static_cast<double>(total_geometric_intersections) /
-        static_cast<double>(settings::n_batches) / n_source_regions);
+        static_cast<double>(global_simulation.n_batches()) / n_source_regions);
     fmt::print(" Avg SR Miss Rate per Iteration    = {:.4f}%\n", avg_miss_rate);
     fmt::print(" Energy Groups                     = {}\n", negroups);
     fmt::print(
       " Total Integrations                = {:.4e}\n", total_integrations);
     fmt::print("   Avg per Iteration               = {:.4e}\n",
-      total_integrations / settings::n_batches);
+      total_integrations / global_simulation.n_batches());
 
     std::string estimator;
     switch (domain_->volume_estimator_) {
@@ -672,7 +672,7 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     show_time("MPI source reductions only", time_bank_sendrecv.elapsed(), 1);
     show_time("Other iteration routines", misc_time, 1);
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       show_time("Time in inactive batches", time_inactive.elapsed());
     }
     show_time("Time in active batches", time_active.elapsed());
@@ -681,7 +681,7 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Time per integration", time_per_integration);
   }
 
-  if (settings::verbosity >= 4 && settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.verbosity() >= 4 && global_simulation.run_mode() == RunMode::EIGENVALUE) {
     header("Results", 4);
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);

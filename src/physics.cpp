@@ -61,17 +61,17 @@ void collision(Particle& p)
     break;
   }
 
-  if (settings::weight_window_checkpoint_collision)
+  if (global_simulation.weight_window_checkpoint_collision())
     apply_weight_windows(p);
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
-  if (p.E() < settings::energy_cutoff[type]) {
+  if (p.E() < global_simulation.energy_cutoff()[type]) {
     p.wgt() = 0.0;
   }
 
   // Display information about collision
-  if (settings::verbosity >= 10 || p.trace()) {
+  if (global_simulation.verbosity() >= 10 || p.trace()) {
     std::string msg;
     if (p.event() == TallyEvent::KILL) {
       msg = fmt::format("    Killed. Energy = {} eV.", p.E());
@@ -107,10 +107,10 @@ void sample_neutron_reaction(Particle& p)
 
   if (nuc->fissionable_ && p.neutron_xs(i_nuclide).fission > 0.0) {
     auto& rx = sample_fission(i_nuclide, p);
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
-    } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
-               settings::create_fission_neutrons) {
+    } else if (global_simulation.run_mode() == RunMode::FIXED_SOURCE &&
+               global_simulation.create_fission_neutrons()) {
       create_fission_sites(p, i_nuclide, rx);
 
       // Make sure particle population doesn't grow out of control for
@@ -125,7 +125,7 @@ void sample_neutron_reaction(Particle& p)
   }
 
   // Create secondary photons
-  if (settings::photon_transport) {
+  if (global_simulation.photon_transport()) {
     sample_secondary_photons(p, i_nuclide);
   }
 
@@ -153,15 +153,15 @@ void sample_neutron_reaction(Particle& p)
   }
 
   // Play russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
+  if (global_simulation.survival_biasing()) {
     // if survival normalization is on, use normalized weight cutoff and
     // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
+    if (global_simulation.survival_normalization()) {
+      if (p.wgt() < global_simulation.weight_cutoff() * p.wgt_born()) {
+        russian_roulette(p, global_simulation.weight_survive() * p.wgt_born());
       }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
+    } else if (p.wgt() < global_simulation.weight_cutoff()) {
+      russian_roulette(p, global_simulation.weight_survive());
     }
   }
 }
@@ -170,7 +170,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
-  double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+  double weight = global_simulation.ufs_on() ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt() / simulation::keff * weight *
@@ -197,7 +197,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  bool use_fission_bank = (global_simulation.run_mode() == RunMode::EIGENVALUE);
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -235,7 +235,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         break;
       }
       // Iterated Fission Probability (IFP) method
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         ifp(p, site, idx);
       }
     } else {
@@ -282,7 +282,7 @@ void sample_photon_reaction(Particle& p)
   // photons with energy below the cutoff may have been produced by neutrons
   // reactions or atomic relaxation
   int photon = static_cast<int>(ParticleType::photon);
-  if (p.E() < settings::energy_cutoff[photon]) {
+  if (p.E() < global_simulation.energy_cutoff()[photon]) {
     p.E() = 0.0;
     p.wgt() = 0.0;
     return;
@@ -332,7 +332,7 @@ void sample_photon_reaction(Particle& p)
     double phi = uniform_distribution(0., 2.0 * PI, p.current_seed());
     double E_electron = (alpha - alpha_out) * MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(ParticleType::electron);
-    if (E_electron >= settings::energy_cutoff[electron]) {
+    if (E_electron >= global_simulation.energy_cutoff()[electron]) {
       double mu_electron = (alpha - alpha_out * p.mu()) /
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
                                      2.0 * alpha * alpha_out * p.mu());
@@ -452,7 +452,7 @@ void sample_electron_reaction(Particle& p)
 {
   // TODO: create reaction types
 
-  if (settings::electron_treatment == ElectronTreatment::TTB) {
+  if (global_simulation.electron_treatment() == ElectronTreatment::TTB) {
     double E_lost;
     thick_target_bremsstrahlung(p, &E_lost);
   }
@@ -466,7 +466,7 @@ void sample_positron_reaction(Particle& p)
 {
   // TODO: create reaction types
 
-  if (settings::electron_treatment == ElectronTreatment::TTB) {
+  if (global_simulation.electron_treatment() == ElectronTreatment::TTB) {
     double E_lost;
     thick_target_bremsstrahlung(p, &E_lost);
   }
@@ -605,7 +605,7 @@ void sample_photon_product(
         // For fission, artificially increase the photon yield to account
         // for delayed photons
         double f = 1.0;
-        if (settings::delayed_photon_scaling) {
+        if (global_simulation.delayed_photon_scaling()) {
           if (is_fission(rx->mt_)) {
             if (nuc->prompt_photons_ && nuc->delayed_photons_) {
               double energy_prompt = (*nuc->prompt_photons_)(p.E());
@@ -629,7 +629,7 @@ void sample_photon_product(
 
 void absorption(Particle& p, int i_nuclide)
 {
-  if (settings::survival_biasing) {
+  if (global_simulation.survival_biasing()) {
     // Determine weight absorbed in survival biasing
     const double wgt_absorb = p.wgt() * p.neutron_xs(i_nuclide).absorption /
                               p.neutron_xs(i_nuclide).total;
@@ -638,7 +638,7 @@ void absorption(Particle& p, int i_nuclide)
     p.wgt() -= wgt_absorb;
 
     // Score implicit absorption estimate of keff
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       p.keff_tally_absorption() += wgt_absorb *
                                    p.neutron_xs(i_nuclide).nu_fission /
                                    p.neutron_xs(i_nuclide).absorption;
@@ -647,8 +647,8 @@ void absorption(Particle& p, int i_nuclide)
     // See if disappearance reaction happens
     if (p.neutron_xs(i_nuclide).absorption >
         prn(p.current_seed()) * p.neutron_xs(i_nuclide).total) {
-      // Score absorption estimate of keff
-      if (settings::run_mode == RunMode::EIGENVALUE) {
+      // Score implicit absorption estimate of keff
+      if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
         p.keff_tally_absorption() += p.wgt() *
                                      p.neutron_xs(i_nuclide).nu_fission /
                                      p.neutron_xs(i_nuclide).absorption;
@@ -831,14 +831,14 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
   if (nuc.resonant_) {
 
     // sampling method to use
-    sampling_method = settings::res_scat_method;
+    sampling_method = global_simulation.res_scat_method();
 
     // upper resonance scattering energy bound (target is at rest above this E)
-    if (E > settings::res_scat_energy_max) {
+    if (E > global_simulation.res_scat_energy_max()) {
       return {};
 
       // lower resonance scattering energy bound (should be no resonances below)
-    } else if (E < settings::res_scat_energy_min) {
+    } else if (E < global_simulation.res_scat_energy_min()) {
       sampling_method = ResScatMethod::cxs;
     }
 
@@ -1160,7 +1160,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   double photon_wgt = p.wgt();
   int y = 1;
 
-  if (settings::use_decay_photons) {
+  if (global_simulation.use_decay_photons()) {
     // For decay photons, sample a single photon and modify the weight
     if (y_t <= 0.0)
       return;
@@ -1195,7 +1195,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // Stedry, "Self-consistent energy normalization for quasistatic reactor
     // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
     double wgt = photon_wgt;
-    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
       wgt *= simulation::keff;
     }
 
@@ -1203,7 +1203,7 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
 
     // Tag secondary particle with parent nuclide
-    if (created_photon && settings::use_decay_photons) {
+    if (created_photon && global_simulation.use_decay_photons()) {
       p.secondary_bank().back().parent_nuclide =
         rx->products_[i_product].parent_nuclide_;
     }

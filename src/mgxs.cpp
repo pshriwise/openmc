@@ -14,6 +14,7 @@
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
@@ -88,14 +89,14 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   // If only one temperature is available, lets just use nearest temperature
   // interpolation
   if ((num_temps == 1) &&
-      (settings::temperature_method == TemperatureMethod::INTERPOLATION)) {
+      (global_simulation.temperature_method() == TemperatureMethod::INTERPOLATION)) {
     warning("Cross sections for " + strtrim(name) + " are only available " +
             "at one temperature.  Reverting to the nearest temperature " +
             "method.");
-    settings::temperature_method = TemperatureMethod::NEAREST;
+    global_simulation.set_temperature_method(TemperatureMethod::NEAREST);
   }
 
-  switch (settings::temperature_method) {
+  switch (global_simulation.temperature_method()) {
   case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
@@ -115,7 +116,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
       }
 
       double temp_actual = temps_available[i_closest];
-      if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
+      if (std::fabs(temp_actual - T) < global_simulation.temperature_tolerance()) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(),
               std::round(temp_actual)) == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
@@ -282,7 +283,7 @@ Mgxs::Mgxs(
 
   // Set number of energy and delayed groups
   AngleDistributionType final_scatter_format = scatter_format;
-  if (settings::legendre_to_tabular) {
+  if (global_simulation.legendre_to_tabular()) {
     if (scatter_format == AngleDistributionType::LEGENDRE)
       final_scatter_format = AngleDistributionType::TABULAR;
   }
@@ -345,13 +346,13 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
     vector<int> micro_t(micros.size(), 0);
     vector<double> micro_t_interp(micros.size(), 0.);
     for (int m = 0; m < micros.size(); m++) {
-      switch (settings::temperature_method) {
+      switch (global_simulation.temperature_method()) {
       case TemperatureMethod::NEAREST: {
         micro_t[m] = xt::argmin(xt::abs(micros[m]->kTs - temp_desired))[0];
         auto temp_actual = micros[m]->kTs[micro_t[m]];
 
         if (std::abs(temp_actual - temp_desired) >=
-            K_BOLTZMANN * settings::temperature_tolerance) {
+            K_BOLTZMANN * global_simulation.temperature_tolerance()) {
           fatal_error(fmt::format("MGXS Library does not contain cross section "
                                   "for {} at or near {} K.",
             name, std::round(temp_desired / K_BOLTZMANN)));
@@ -387,7 +388,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
     // combine the data. We will step through each microscopic data and
     // add in its lower and upper temperature points
     for (int m = 0; m < micros.size(); m++) {
-      if (settings::temperature_method == TemperatureMethod::NEAREST) {
+      if (global_simulation.temperature_method() == TemperatureMethod::NEAREST) {
         // Nearest interpolation only has one temperature point per isotope
         // and so we dont need to include a temperature interpolant in
         // the interpolant vector

@@ -13,7 +13,7 @@
 #include "openmc/particle.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/tallies/derivative.h"
@@ -181,7 +181,7 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Set IFP if needed
-  if (!settings::ifp_on) {
+  if (!global_simulation.ifp_on()) {
     // Determine if this tally has an IFP score
     bool has_ifp_score = false;
     for (int score : scores_) {
@@ -194,19 +194,19 @@ Tally::Tally(pugi::xml_node node)
 
     // Check for errors
     if (has_ifp_score) {
-      if (settings::run_mode == RunMode::EIGENVALUE) {
-        if (settings::ifp_n_generation < 0) {
-          settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
+      if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
+        if (global_simulation.ifp_n_generation() < 0) {
+          global_simulation.set_ifp_n_generation(DEFAULT_IFP_N_GENERATION);
           warning(fmt::format(
             "{} generations will be used for IFP (default value). It can be "
             "changed using the 'ifp_n_generation' settings.",
-            settings::ifp_n_generation));
+            global_simulation.ifp_n_generation()));
         }
-        if (settings::ifp_n_generation > settings::n_inactive) {
+        if (global_simulation.ifp_n_generation() > global_simulation.n_inactive()) {
           fatal_error("'ifp_n_generation' must be lower than or equal to the "
                       "number of inactive cycles.");
         }
-        settings::ifp_on = true;
+        global_simulation.set_ifp_on(true);
       } else {
         fatal_error(
           "Iterated Fission Probability can only be used in an eigenvalue "
@@ -216,22 +216,22 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Set IFP parameters if needed
-  if (settings::ifp_on) {
+  if (global_simulation.ifp_on()) {
     for (int score : scores_) {
       switch (score) {
       case SCORE_IFP_TIME_NUM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::GenerationTime;
-        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
-          settings::ifp_parameter = IFPParameter::Both;
+        if (global_simulation.ifp_parameter() == IFPParameter::None) {
+          global_simulation.set_ifp_parameter(IFPParameter::GenerationTime);
+        } else if (global_simulation.ifp_parameter() == IFPParameter::BetaEffective) {
+          global_simulation.set_ifp_parameter(IFPParameter::Both);
         }
         break;
       case SCORE_IFP_BETA_NUM:
       case SCORE_IFP_DENOM:
-        if (settings::ifp_parameter == IFPParameter::None) {
-          settings::ifp_parameter = IFPParameter::BetaEffective;
-        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
-          settings::ifp_parameter = IFPParameter::Both;
+        if (global_simulation.ifp_parameter() == IFPParameter::None) {
+          global_simulation.set_ifp_parameter(IFPParameter::BetaEffective);
+        } else if (global_simulation.ifp_parameter() == IFPParameter::GenerationTime) {
+          global_simulation.set_ifp_parameter(IFPParameter::Both);
         }
         break;
       }
@@ -239,7 +239,7 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Check if tally is compatible with particle type
-  if (!settings::photon_transport) {
+  if (!global_simulation.photon_transport()) {
     for (int score : scores_) {
       switch (score) {
       case SCORE_PULSE_HEIGHT:
@@ -249,7 +249,7 @@ Tally::Tally(pugi::xml_node node)
       }
     }
   }
-  if (settings::photon_transport) {
+  if (global_simulation.photon_transport()) {
     if (particle_filter_index == C_NONE) {
       for (int score : scores_) {
         switch (score) {
@@ -332,7 +332,7 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // If settings.xml trigger is turned on, create tally triggers
-  if (settings::trigger_on) {
+  if (global_simulation.trigger_on()) {
     this->init_triggers(node);
   }
 
@@ -593,7 +593,7 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case SCORE_NU_SCATTER:
-      if (settings::run_CE) {
+      if (global_simulation.run_CE()) {
         estimator_ = TallyEstimator::ANALOG;
       } else {
         if (energyout_present || legendre_present)
@@ -617,7 +617,7 @@ void Tally::set_scores(const vector<std::string>& scores)
       break;
 
     case HEATING:
-      if (settings::photon_transport)
+      if (global_simulation.photon_transport())
         estimator_ = TallyEstimator::COLLISION;
       break;
 
@@ -666,7 +666,7 @@ void Tally::set_scores(const vector<std::string>& scores)
   }
 
   // Make sure all scores are compatible with multigroup mode.
-  if (!settings::run_CE) {
+  if (!global_simulation.run_CE()) {
     for (auto sc : scores_)
       if (sc > 0)
         fatal_error("Cannot tally " + reaction_name(sc) +
@@ -810,12 +810,12 @@ void Tally::reset()
 void Tally::accumulate()
 {
   // Increment number of realizations
-  n_realizations_ += settings::reduce_tallies ? 1 : mpi::n_procs;
+  n_realizations_ += global_simulation.reduce_tallies() ? 1 : mpi::n_procs;
 
-  if (mpi::master || !settings::reduce_tallies) {
+  if (mpi::master || !global_simulation.reduce_tallies()) {
     // Calculate total source strength for normalization
     double total_source = 0.0;
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
       total_source = model::external_sources_probability.integral();
     } else {
       total_source = 1.0;
@@ -823,9 +823,9 @@ void Tally::accumulate()
 
     // Account for number of source particles in normalization
     double norm =
-      total_source / (settings::n_particles * settings::gen_per_batch);
+      total_source / (global_simulation.n_particles() * global_simulation.gen_per_batch());
 
-    if (settings::solver_type == SolverType::RANDOM_RAY) {
+    if (global_simulation.solver_type() == SolverType::RANDOM_RAY) {
       norm = 1.0;
     }
 
@@ -903,7 +903,7 @@ std::string Tally::nuclide_name(int nuclide_idx) const
 void read_tallies_xml()
 {
   // Check if tallies.xml exists. If not, just return since it is optional
-  std::string filename = settings::path_input + "tallies.xml";
+  std::string filename = global_simulation.path_input() + "tallies.xml";
   if (!file_exists(filename))
     return;
 
@@ -921,14 +921,14 @@ void read_tallies_xml(pugi::xml_node root)
 {
   // Check for <assume_separate> setting
   if (check_for_node(root, "assume_separate")) {
-    settings::assume_separate = get_node_value_bool(root, "assume_separate");
+    global_simulation.set_assume_separate(get_node_value_bool(root, "assume_separate"));
   }
 
   // Check for user meshes and allocate
   read_meshes(root);
 
   // We only need the mesh info for plotting
-  if (settings::run_mode == RunMode::PLOTTING)
+  if (global_simulation.run_mode() == RunMode::PLOTTING)
     return;
 
   // Read data for tally derivatives
@@ -962,7 +962,7 @@ void read_tallies_xml(pugi::xml_node root)
 void reduce_tally_results()
 {
   // Don't reduce tally is no_reduce option is on
-  if (settings::reduce_tallies) {
+  if (global_simulation.reduce_tallies()) {
     for (int i_tally : model::active_tallies) {
       // Skip any tallies that are not active
       auto& tally {model::tallies[i_tally]};
@@ -1025,7 +1025,7 @@ void accumulate_tallies()
 {
 #ifdef OPENMC_MPI
   // Combine tally results onto master process
-  if (mpi::n_procs > 1 && settings::solver_type == SolverType::MONTE_CARLO) {
+  if (mpi::n_procs > 1 && global_simulation.solver_type() == SolverType::MONTE_CARLO) {
     reduce_tally_results();
   }
 #endif
@@ -1034,11 +1034,11 @@ void accumulate_tallies()
   simulation::n_realizations += 1;
 
   // Accumulate on master only unless run is not reduced then do it on all
-  if (mpi::master || !settings::reduce_tallies) {
+  if (mpi::master || !global_simulation.reduce_tallies()) {
     auto& gt = simulation::global_tallies;
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      if (simulation::current_batch > settings::n_inactive) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
+      if (simulation::current_batch > global_simulation.n_inactive()) {
         // Accumulate products of different estimators of k
         double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
                        simulation::total_weight;

@@ -1,4 +1,5 @@
 #include "openmc/error.h"
+#include "openmc/simulation_manager.h"
 
 #include "openmc/message_passing.h"
 #include "openmc/settings.h"
@@ -102,7 +103,7 @@ void write_message(const std::string& message, int level)
   if (!mpi::master)
     return;
 
-  if (level <= settings::verbosity) {
+  if (level <= global_simulation.verbosity()) {
     std::cout << " ";
     output(message, std::cout, 1);
   }

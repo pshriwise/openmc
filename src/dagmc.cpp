@@ -12,6 +12,7 @@
 #include "openmc/material.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
+#include "openmc/simulation_manager.h"
 
 #ifdef OPENMC_UWUW
 #include "uwuw.hpp"
@@ -59,7 +60,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
     if (!starts_with(filename_, "/")) {
-      std::filesystem::path d(dir_name(settings::path_input));
+      std::filesystem::path d(dir_name(global_simulation.path_input()));
       filename_ = (d / filename_).string();
     }
   } else {
@@ -263,14 +264,14 @@ void DAGUniverse::init_geometry()
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
     } else {
       c->sqrtkT_.push_back(
-        std::sqrt(K_BOLTZMANN * settings::temperature_default));
+        std::sqrt(K_BOLTZMANN * global_simulation.temperature_default()));
     }
 
     model::cells.emplace_back(std::move(c));
   }
 
   // allocate the cell overlap count if necessary
-  if (settings::check_overlaps) {
+  if (global_simulation.check_overlaps()) {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
 
@@ -296,8 +297,8 @@ void DAGUniverse::init_geometry()
                                   : dagmc_instance_->id_by_index(2, i + 1);
 
     // set surface source attribute if needed
-    if (contains(settings::source_write_surf_id, s->id_) ||
-        settings::source_write_surf_id.empty()) {
+    if (contains(global_simulation.source_write_surf_id(), s->id_) ||
+        global_simulation.source_write_surf_id().empty()) {
       s->surf_source_ = true;
     }
 
@@ -550,7 +551,7 @@ void DAGUniverse::legacy_assign_material(
           mat_string, c->id_));
   }
 
-  if (settings::verbosity >= 10) {
+  if (global_simulation.verbosity() >= 10) {
     const auto& m = model::materials[model::material_map.at(c->material_[0])];
     std::stringstream msg;
     msg << "DAGMC material " << mat_string << " was assigned";
@@ -638,7 +639,7 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
   // Notify User that an override is being applied on a DAGMCCell
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
 
-  if (settings::verbosity >= 10) {
+  if (global_simulation.verbosity() >= 10) {
     auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on "
                            "override information (see input XML).",
       c->id_);
@@ -704,7 +705,7 @@ std::pair<double, int32_t> DAGCell::distance(
     // into the implicit complement on the other side where no intersection will
     // be found. Treating this as a lost particle is problematic when plotting.
     // Instead, the infinite distance and invalid surface index are returned.
-    if (settings::run_mode == RunMode::PLOTTING)
+    if (global_simulation.run_mode() == RunMode::PLOTTING)
       return {INFTY, -1};
 
     // the particle should be marked as lost immediately if an intersection

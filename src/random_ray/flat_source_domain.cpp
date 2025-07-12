@@ -160,7 +160,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
   }
 
   // Add external source if in fixed source mode
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
 #pragma omp parallel for
     for (int64_t se = 0; se < n_source_elements(); se++) {
       source_regions_.source(se) += source_regions_.external_source(se);
@@ -176,7 +176,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 {
   double normalization_factor = 1.0 / total_active_distance_per_iteration;
   double volume_normalization_factor =
-    1.0 / (total_active_distance_per_iteration * simulation::current_batch);
+    1.0 / (total_active_distance_per_iteration * global_simulation.current_batch());
 
 // Normalize scalar flux to total distance travelled by all rays this
 // iteration
@@ -206,7 +206,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int material = source_regions_.material(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
       source_regions_.scalar_flux_new(sr, g) +=
         0.5f * source_regions_.external_source(sr, g) *
         source_regions_.volume_sq(sr);
@@ -234,7 +234,7 @@ void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
 int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
-  double inverse_batch = 1.0 / simulation::current_batch;
+  double inverse_batch = 1.0 / global_simulation.current_batch();
 
 #pragma omp parallel for reduction(+ : n_hits)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
@@ -537,7 +537,7 @@ double FlatSourceDomain::compute_fixed_source_normalization_factor() const
 {
   // If we are not in fixed source mode, then there are no external sources
   // so no normalization is needed.
-  if (settings::run_mode != RunMode::FIXED_SOURCE || adjoint_) {
+  if (global_simulation.run_mode() != RunMode::FIXED_SOURCE || adjoint_) {
     return 1.0;
   }
 
@@ -705,7 +705,7 @@ double FlatSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
   return source_regions_.scalar_flux_final(sr, g) /
-         (settings::n_batches - settings::n_inactive);
+         (global_simulation.n_batches() - global_simulation.n_inactive());
 }
 
 // Outputs all basic material, FSR ID, multigroup flux, and
@@ -906,7 +906,7 @@ void FlatSourceDomain::output_to_vtk() const
     }
 
     // Plot fission source
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       std::fprintf(plot, "SCALARS total_fission_source float\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int i = 0; i < Nx * Ny * Nz; i++) {

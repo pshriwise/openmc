@@ -12,7 +12,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/surface.h"
 
 namespace openmc {
@@ -23,7 +23,7 @@ void write_summary()
   write_message("Writing summary.h5 file...", 5);
 
   // Set filename for summary file
-  std::string filename = fmt::format("{}summary.h5", settings::path_output);
+  std::string filename = fmt::format("{}summary.h5", global_simulation.path_output());
 
   // Create a new file using default properties.
   hid_t file = file_open(filename, 'w');
@@ -60,7 +60,7 @@ void write_nuclides(hid_t file)
   vector<double> awrs;
 
   for (int i = 0; i < data::nuclides.size(); ++i) {
-    if (settings::run_CE) {
+    if (global_simulation.run_CE()) {
       const auto& nuc {data::nuclides[i]};
       nuc_names.push_back(nuc->name_);
       awrs.push_back(nuc->awr_);
@@ -165,7 +165,7 @@ extern "C" int openmc_properties_export(const char* filename)
   write_attribute(file, "git_sha1", GIT_SHA1);
 #endif
   write_attribute(file, "date_and_time", time_stamp());
-  write_attribute(file, "path", settings::path_input);
+  write_attribute(file, "path", global_simulation.path_input());
 
   // Write cell properties
   auto geom_group = create_group(file, "geometry");

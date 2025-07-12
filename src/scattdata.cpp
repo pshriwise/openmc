@@ -839,7 +839,7 @@ void ScattDataTabular::combine(
 void convert_legendre_to_tabular(ScattDataLegendre& leg, ScattDataTabular& tab)
 {
   // See if the user wants us to figure out how many points to use
-  int n_mu = settings::legendre_to_tabular_points;
+  int n_mu = global_simulation.legendre_to_tabular_points();
   if (n_mu == C_NONE) {
     // then we will use 2 pts if its P0, or the default if a higher order
     // TODO use an error minimization algorithm that also picks n_mu

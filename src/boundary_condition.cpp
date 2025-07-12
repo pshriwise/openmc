@@ -1,4 +1,5 @@
 #include "openmc/boundary_condition.h"
+#include "openmc/simulation_manager.h"
 
 #include <exception>
 
@@ -18,7 +19,7 @@ namespace openmc {
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
   // Random ray and Monte Carlo need different treatments at vacuum BCs
-  if (settings::solver_type == SolverType::RANDOM_RAY) {
+  if (global_simulation.solver_type() == SolverType::RANDOM_RAY) {
     // Reflect ray off of the surface
     ReflectiveBC().handle_particle(p, surf);
 

@@ -5,6 +5,7 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 
 #include "xtensor/xmath.hpp"
 
@@ -32,7 +33,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
     return;
 
   int photon = static_cast<int>(ParticleType::photon);
-  if (p.E() < settings::energy_cutoff[photon])
+  if (p.E() < global_simulation.energy_cutoff()[photon])
     return;
 
   // Get bremsstrahlung data for this material and particle type
@@ -111,7 +112,7 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
     double w = std::exp(w_l) *
                std::pow(a * (c - c_l) / (std::exp(w_l) * p_l) + 1.0, 1.0 / a);
 
-    if (w > settings::energy_cutoff[photon]) {
+    if (w > global_simulation.energy_cutoff()[photon]) {
       // If the energy of the secondary photon is larger than the remaining
       // energy of the primary particle, adjust it to the remaining energy
       if (*E_lost + w > p.E()) {

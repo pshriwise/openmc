@@ -7,7 +7,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/particle_restart.h"
 #include "openmc/random_ray/random_ray_simulation.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 
 int main(int argc, char* argv[])
 {
@@ -29,10 +29,10 @@ int main(int argc, char* argv[])
   }
 
   // start problem based on mode
-  switch (settings::run_mode) {
+  switch (global_simulation.run_mode()) {
   case RunMode::FIXED_SOURCE:
   case RunMode::EIGENVALUE:
-    switch (settings::solver_type) {
+    switch (global_simulation.solver_type()) {
     case SolverType::MONTE_CARLO:
       err = openmc_run();
       break;

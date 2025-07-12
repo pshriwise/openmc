@@ -5,6 +5,7 @@
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 
 namespace openmc {
 
@@ -48,13 +49,13 @@ vector<T> _ifp(const T& value, const vector<T>& data)
   vector<T> updated;
   size_t source_idx = data.size();
 
-  if (source_idx < settings::ifp_n_generation) {
+  if (source_idx < global_simulation.ifp_n_generation()) {
     updated.resize(source_idx + 1);
     for (size_t i = 0; i < source_idx; i++) {
       updated[i] = data[i];
     }
     updated[source_idx] = value;
-  } else if (source_idx == settings::ifp_n_generation) {
+  } else if (source_idx == global_simulation.ifp_n_generation()) {
     updated.resize(source_idx);
     for (size_t i = 0; i < source_idx - 1; i++) {
       updated[i] = data[i + 1];

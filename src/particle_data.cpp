@@ -1,4 +1,5 @@
 #include "openmc/particle_data.h"
+#include "openmc/simulation_manager.h"
 
 #include <sstream>
 
@@ -97,7 +98,7 @@ ParticleData::ParticleData()
   // Every particle starts with no accumulated flux derivative.  Note that in
   // event mode, we construct the particle once up front, so have to run this
   // even if the current batch is inactive.
-  if (!model::active_tallies.empty() || settings::event_based) {
+  if (!model::active_tallies.empty() || global_simulation.event_based()) {
     flux_derivs_.resize(model::tally_derivs.size());
     zero_flux_derivs();
   }

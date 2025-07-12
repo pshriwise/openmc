@@ -241,7 +241,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // is compressed into vectors storing only those nuclides that are
       // non-zero
       auto n_nuc =
-        settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
+        global_simulation.run_CE() ? data::nuclides.size() : data::mg.nuclides_.size();
       xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
 #ifdef OPENMC_MPI
@@ -447,7 +447,7 @@ void VolumeCalculation::to_hdf5(
 
     vector<std::string> nucnames;
     for (int i_nuc : result.nuclides) {
-      nucnames.push_back(settings::run_CE ? data::nuclides[i_nuc]->name_
+      nucnames.push_back(global_simulation.run_CE() ? data::nuclides[i_nuc]->name_
                                           : data::mg.nuclides_[i_nuc].name);
     }
 
@@ -554,7 +554,7 @@ int openmc_calculate_volumes()
 
       // Write volumes to HDF5 file
       std::string filename =
-        fmt::format("{}volume_{}.h5", settings::path_output, i + 1);
+        fmt::format("{}volume_{}.h5", global_simulation.path_output(), i + 1);
       vol_calc.to_hdf5(filename, results);
     }
   }

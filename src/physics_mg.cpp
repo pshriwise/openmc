@@ -31,11 +31,11 @@ void collision_mg(Particle& p)
   // Sample the reaction type
   sample_reaction(p);
 
-  if (settings::weight_window_checkpoint_collision)
+  if (global_simulation.weight_window_checkpoint_collision())
     apply_weight_windows(p);
 
   // Display information about collision
-  if ((settings::verbosity >= 10) || p.trace()) {
+  if ((global_simulation.verbosity() >= 10) || p.trace()) {
     write_message(fmt::format("    Energy Group = {}", p.g()), 1);
   }
 }
@@ -48,9 +48,9 @@ void sample_reaction(Particle& p)
   // absorption (including fission)
 
   if (model::materials[p.material()]->fissionable()) {
-    if (settings::run_mode == RunMode::EIGENVALUE ||
-        (settings::run_mode == RunMode::FIXED_SOURCE &&
-          settings::create_fission_neutrons)) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE ||
+        (global_simulation.run_mode() == RunMode::FIXED_SOURCE &&
+          global_simulation.create_fission_neutrons())) {
       create_fission_sites(p);
     }
   }
@@ -67,15 +67,15 @@ void sample_reaction(Particle& p)
   scatter(p);
 
   // Play Russian roulette if survival biasing is turned on
-  if (settings::survival_biasing) {
+  if (global_simulation.survival_biasing()) {
     // if survival normalization is applicable, use normalized weight cutoff and
     // normalized weight survive
-    if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
-        russian_roulette(p, settings::weight_survive * p.wgt_born());
+    if (global_simulation.survival_normalization()) {
+      if (p.wgt() < global_simulation.weight_cutoff() * p.wgt_born()) {
+        russian_roulette(p, global_simulation.weight_survive() * p.wgt_born());
       }
-    } else if (p.wgt() < settings::weight_cutoff) {
-      russian_roulette(p, settings::weight_survive);
+    } else if (p.wgt() < global_simulation.weight_cutoff()) {
+      russian_roulette(p, global_simulation.weight_survive());
     }
   }
 }
@@ -99,7 +99,7 @@ void create_fission_sites(Particle& p)
 {
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
-  double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
+  double weight = global_simulation.ufs_on() ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt() / simulation::keff * weight * p.macro_xs().nu_fission /
@@ -126,7 +126,7 @@ void create_fission_sites(Particle& p)
 
   // Determine whether to place fission sites into the shared fission bank
   // or the secondary particle bank.
-  bool use_fission_bank = (settings::run_mode == RunMode::EIGENVALUE);
+  bool use_fission_bank = (global_simulation.run_mode() == RunMode::EIGENVALUE);
 
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
@@ -221,7 +221,7 @@ void create_fission_sites(Particle& p)
 
 void absorption(Particle& p)
 {
-  if (settings::survival_biasing) {
+  if (global_simulation.survival_biasing()) {
     // Determine weight absorbed in survival biasing
     double wgt_absorb = p.wgt() * p.macro_xs().absorption / p.macro_xs().total;
 

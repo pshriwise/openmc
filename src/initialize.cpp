@@ -1,4 +1,5 @@
 #include "openmc/initialize.h"
+#include "openmc/simulation_manager.h"
 
 #include <clocale>
 #include <cstddef>
@@ -28,7 +29,7 @@
 #include "openmc/output.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/summary.h"
@@ -69,20 +70,20 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
   // also)
-  if (!settings::libmesh_init && !libMesh::initialized()) {
+  if (!global_simulation.libmesh_init() && !libMesh::initialized()) {
 #ifdef OPENMC_MPI
     // pass command line args, empty MPI communicator, and number of threads.
     // Because libMesh was not initialized, we assume that OpenMC is the primary
     // application and that its main MPI comm should be used.
-    settings::libmesh_init =
-      make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads);
+    global_simulation.set_libmesh_init(
+      make_unique<libMesh::LibMeshInit>(argc, argv, comm, n_threads));
 #else
     // pass command line args, empty MPI communicator, and number of threads
-    settings::libmesh_init =
-      make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads);
+    global_simulation.set_libmesh_init(
+      make_unique<libMesh::LibMeshInit>(argc, argv, 0, n_threads));
 #endif
 
-    settings::libmesh_comm = &(settings::libmesh_init->comm());
+    global_simulation.set_libmesh_comm(&(global_simulation.libmesh_init()->comm()));
   }
 
 #endif
@@ -127,8 +128,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   initial_output();
 
   // Check for particle restart run
-  if (settings::particle_restart_run)
-    settings::run_mode = RunMode::PARTICLE;
+  if (global_simulation.particle_restart_run())
+    global_simulation.set_run_mode(RunMode::PARTICLE);
 
   // Stop initialization timer
   simulation::time_initialize.stop();
@@ -188,15 +189,15 @@ int parse_command_line(int argc, char* argv[])
     std::string arg {argv[i]};
     if (arg[0] == '-') {
       if (arg == "-p" || arg == "--plot") {
-        settings::run_mode = RunMode::PLOTTING;
-        settings::check_overlaps = true;
+        global_simulation.set_run_mode(RunMode::PLOTTING);
+        global_simulation.set_check_overlaps(true);
 
       } else if (arg == "-n" || arg == "--particles") {
         i += 1;
-        settings::n_particles = std::stoll(argv[i]);
+        global_simulation.set_n_particles(std::stoll(argv[i]));
 
       } else if (arg == "-e" || arg == "--event") {
-        settings::event_based = true;
+        global_simulation.set_event_based(true);
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
         // Check what type of file this is
@@ -207,12 +208,11 @@ int parse_command_line(int argc, char* argv[])
 
         // Set path and flag for type of run
         if (filetype == "statepoint") {
-          settings::path_statepoint = argv[i];
-          settings::path_statepoint_c = settings::path_statepoint.c_str();
-          settings::restart_run = true;
+          global_simulation.set_path_statepoint(argv[i]);
+          global_simulation.set_restart_run(true);
         } else if (filetype == "particle restart") {
-          settings::path_particle_restart = argv[i];
-          settings::particle_restart_run = true;
+          global_simulation.set_path_particle_restart(argv[i]);
+          global_simulation.set_particle_restart_run(true);
         } else {
           auto msg =
             fmt::format("Unrecognized file after restart flag: {}.", filetype);
@@ -221,7 +221,7 @@ int parse_command_line(int argc, char* argv[])
         }
 
         // If its a restart run check for additional source file
-        if (settings::restart_run && i + 1 < argc) {
+        if (global_simulation.restart_run() && i + 1 < argc) {
           // Check if it has extension we can read
           if (ends_with(argv[i + 1], ".h5")) {
 
@@ -237,23 +237,23 @@ int parse_command_line(int argc, char* argv[])
             }
 
             // It is a source file
-            settings::path_sourcepoint = argv[i + 1];
+            global_simulation.set_path_sourcepoint(argv[i + 1]);
             i += 1;
 
           } else {
             // Source is in statepoint file
-            settings::path_sourcepoint = settings::path_statepoint;
+            global_simulation.set_path_sourcepoint(global_simulation.path_statepoint());
           }
 
         } else {
           // Source is assumed to be in statepoint file
-          settings::path_sourcepoint = settings::path_statepoint;
+          global_simulation.set_path_sourcepoint(global_simulation.path_statepoint());
         }
 
       } else if (arg == "-g" || arg == "--geometry-debug") {
-        settings::check_overlaps = true;
+        global_simulation.set_check_overlaps(true);
       } else if (arg == "-c" || arg == "--volume") {
-        settings::run_mode = RunMode::VOLUME;
+        global_simulation.set_run_mode(RunMode::VOLUME);
       } else if (arg == "-s" || arg == "--threads") {
         // Read number of threads
         i += 1;
@@ -283,7 +283,7 @@ int parse_command_line(int argc, char* argv[])
         return OPENMC_E_UNASSIGNED;
 
       } else if (arg == "-t" || arg == "--track") {
-        settings::write_all_tracks = true;
+        global_simulation.set_write_all_tracks(true);
 
       } else {
         fmt::print(stderr, "Unknown option: {}\n", argv[i]);
@@ -297,20 +297,20 @@ int parse_command_line(int argc, char* argv[])
 
   // Determine directory where XML input files are
   if (argc > 1 && last_flag < argc - 1) {
-    settings::path_input = std::string(argv[last_flag + 1]);
+    global_simulation.set_path_input(std::string(argv[last_flag + 1]));
 
     // check that the path is either a valid directory or file
-    if (!dir_exists(settings::path_input) &&
-        !file_exists(settings::path_input)) {
+    if (!dir_exists(global_simulation.path_input()) &&
+        !file_exists(global_simulation.path_input())) {
       fatal_error(fmt::format(
         "The path specified to the OpenMC executable '{}' does not exist.",
-        settings::path_input));
+        global_simulation.path_input()));
     }
 
     // Add slash at end of directory if it isn't there
-    if (!ends_with(settings::path_input, "/") &&
-        dir_exists(settings::path_input)) {
-      settings::path_input += "/";
+    if (!ends_with(global_simulation.path_input(), "/") &&
+        dir_exists(global_simulation.path_input())) {
+      global_simulation.set_path_input(global_simulation.path_input() + "/");
     }
   }
 
@@ -319,7 +319,7 @@ int parse_command_line(int argc, char* argv[])
 
 bool read_model_xml()
 {
-  std::string model_filename = settings::path_input;
+  std::string model_filename = global_simulation.path_input();
 
   // if the current filename is a directory, append the default model filename
   if (model_filename.empty() || dir_exists(model_filename))
@@ -346,13 +346,13 @@ bool read_model_xml()
 
   // Verbosity
   if (check_for_node(settings_root, "verbosity")) {
-    settings::verbosity = std::stoi(get_node_value(settings_root, "verbosity"));
+    global_simulation.set_verbosity(std::stoi(get_node_value(settings_root, "verbosity")));
   }
 
   // To this point, we haven't displayed any output since we didn't know what
   // the verbosity is. Now that we checked for it, show the title if necessary
   if (mpi::master) {
-    if (settings::verbosity >= 2)
+    if (global_simulation.verbosity() >= 2)
       title();
   }
 
@@ -366,7 +366,7 @@ bool read_model_xml()
   auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml",
     "tallies.xml", "plots.xml"};
   for (const auto& input : other_inputs) {
-    if (file_exists(settings::path_input + input)) {
+    if (file_exists(global_simulation.path_input() + input)) {
       warning((fmt::format("Other XML file input(s) are present. These files "
                            "may be ignored in favor of the {} file.",
         model_filename)));
@@ -383,7 +383,7 @@ bool read_model_xml()
       "No <materials> node present in the {} file.", model_filename));
   }
 
-  if (settings::run_mode != RunMode::PLOTTING) {
+  if (global_simulation.run_mode() != RunMode::PLOTTING) {
     read_cross_sections_xml(root.child("materials"));
   }
   read_materials_xml(root.child("materials"));
@@ -412,7 +412,7 @@ bool read_model_xml()
   } else {
     // When no <plots> element is present in the model.xml file, check for a
     // regular plots.xml file
-    std::string filename = settings::path_input + "plots.xml";
+    std::string filename = global_simulation.path_input() + "plots.xml";
     if (file_exists(filename)) {
       read_plots_xml();
     }
@@ -426,7 +426,7 @@ bool read_model_xml()
 void read_separate_xml_files()
 {
   read_settings_xml();
-  if (settings::run_mode != RunMode::PLOTTING) {
+  if (global_simulation.run_mode() != RunMode::PLOTTING) {
     read_cross_sections_xml();
   }
 
@@ -456,18 +456,18 @@ void read_separate_xml_files()
 void initial_output()
 {
   // write initial output
-  if (settings::run_mode == RunMode::PLOTTING) {
+  if (global_simulation.run_mode() == RunMode::PLOTTING) {
     // Read plots.xml if it exists
-    if (mpi::master && settings::verbosity >= 5)
+    if (mpi::master && global_simulation.verbosity() >= 5)
       print_plot();
 
   } else {
     // Write summary information
-    if (mpi::master && settings::output_summary)
+    if (mpi::master && global_simulation.output_summary())
       write_summary();
 
     // Warn if overlap checking is on
-    if (mpi::master && settings::check_overlaps) {
+    if (mpi::master && global_simulation.check_overlaps()) {
       warning("Cell overlap checking is ON.");
     }
   }

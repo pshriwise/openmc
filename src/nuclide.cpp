@@ -63,7 +63,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   read_attribute(group, "metastable", metastable_);
   read_attribute(group, "atomic_weight_ratio", awr_);
 
-  if (settings::run_mode == RunMode::VOLUME) {
+  if (global_simulation.run_mode() == RunMode::VOLUME) {
     // Determine whether nuclide is fissionable and then exit
     int mt;
     hid_t rxs_group = open_group(group, "reactions");
@@ -93,13 +93,13 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
 
   // If only one temperature is available, revert to nearest temperature
   if (temps_available.size() == 1 &&
-      settings::temperature_method == TemperatureMethod::INTERPOLATION) {
+      global_simulation.temperature_method() == TemperatureMethod::INTERPOLATION) {
     if (mpi::master) {
       warning("Cross sections for " + name_ +
               " are only available at one "
               "temperature. Reverting to nearest temperature method.");
     }
-    settings::temperature_method = TemperatureMethod::NEAREST;
+    global_simulation.set_temperature_method(TemperatureMethod::NEAREST);
   }
 
   // Determine actual temperatures to read -- start by checking whether a
@@ -108,8 +108,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   // actually appear in the model
   vector<int> temps_to_read;
   int n = temperature.size();
-  double T_min = n > 0 ? settings::temperature_range[0] : 0.0;
-  double T_max = n > 0 ? settings::temperature_range[1] : INFTY;
+  double T_min = n > 0 ? global_simulation.temperature_range()[0] : 0.0;
+  double T_max = n > 0 ? global_simulation.temperature_range()[1] : INFTY;
   if (T_max > 0.0) {
     // Determine first available temperature below or equal to T_min
     auto T_min_it =
@@ -129,7 +129,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
     }
   }
 
-  switch (settings::temperature_method) {
+  switch (global_simulation.temperature_method()) {
   case TemperatureMethod::NEAREST:
     // Find nearest temperatures
     for (double T_desired : temperature) {
@@ -145,7 +145,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         }
       }
 
-      if (std::abs(T_actual - T_desired) < settings::temperature_tolerance) {
+      if (std::abs(T_actual - T_desired) < global_simulation.temperature_tolerance()) {
         if (!contains(temps_to_read, std::round(T_actual))) {
           temps_to_read.push_back(std::round(T_actual));
 
@@ -193,14 +193,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         // If no pairs found, check if the desired temperature falls just
         // outside of data
         if (std::abs(T_desired - temps_available.front()) <=
-            settings::temperature_tolerance) {
+            global_simulation.temperature_tolerance()) {
           if (!contains(temps_to_read, temps_available.front())) {
             temps_to_read.push_back(temps_available.front());
           }
           continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
-            settings::temperature_tolerance) {
+            global_simulation.temperature_tolerance()) {
           if (!contains(temps_to_read, temps_available.back())) {
             temps_to_read.push_back(temps_available.back());
           }
@@ -386,7 +386,7 @@ void Nuclide::create_derived(
             // For fission, artificially increase the photon yield to
             // account for delayed photons
             double f = 1.0;
-            if (settings::delayed_photon_scaling) {
+            if (global_simulation.delayed_photon_scaling()) {
               if (is_fission(rx->mt_)) {
                 if (prompt_photons && delayed_photons) {
                   double energy_prompt = (*prompt_photons)(E);
@@ -452,11 +452,11 @@ void Nuclide::create_derived(
     }
   }
 
-  if (settings::res_scat_on) {
+  if (global_simulation.res_scat_on()) {
     // Determine if this nuclide should be treated as a resonant scatterer
-    if (!settings::res_scat_nuclides.empty()) {
+    if (!global_simulation.res_scat_nuclides().empty()) {
       // If resonant nuclides were specified, check the list explicitly
-      for (const auto& name : settings::res_scat_nuclides) {
+      for (const auto& name : global_simulation.res_scat_nuclides()) {
         if (name_ == name) {
           resonant_ = true;
 
@@ -504,7 +504,7 @@ void Nuclide::init_grid()
   int neutron = static_cast<int>(ParticleType::neutron);
   double E_min = data::energy_min[neutron];
   double E_max = data::energy_max[neutron];
-  int M = settings::n_log_bins;
+  int M = global_simulation.n_log_bins();
 
   // Determine equal-logarithmic energy spacing
   double spacing = std::log(E_max / E_min) / M;
@@ -541,7 +541,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
   case EmissionMode::prompt:
     return (*fission_rx_[0]->products_[0].yield_)(E);
   case EmissionMode::delayed:
-    if (n_precursor_ > 0 && settings::create_delayed_neutrons) {
+    if (n_precursor_ > 0 && global_simulation.create_delayed_neutrons()) {
       auto rx = fission_rx_[0];
       if (group >= 1 && group < rx->products_.size()) {
         // If delayed group specified, determine yield immediately
@@ -566,7 +566,7 @@ double Nuclide::nu(double E, EmissionMode mode, int group) const
       return 0.0;
     }
   case EmissionMode::total:
-    if (total_nu_ && settings::create_delayed_neutrons) {
+    if (total_nu_ && global_simulation.create_delayed_neutrons()) {
       return (*total_nu_)(E);
     } else {
       return (*fission_rx_[0]->products_[0].yield_)(E);
@@ -678,7 +678,7 @@ void Nuclide::calculate_xs(
     double kT = p.sqrtkT() * p.sqrtkT();
     double f;
     int i_temp = -1;
-    switch (settings::temperature_method) {
+    switch (global_simulation.temperature_method()) {
     case TemperatureMethod::NEAREST: {
       double max_diff = INFTY;
       for (int t = 0; t < kTs_.size(); ++t) {
@@ -829,7 +829,7 @@ void Nuclide::calculate_xs(
 
   // If the particle is in the unresolved resonance range and there are
   // probability tables, we need to determine cross sections from the table
-  if (settings::urr_ptables_on && urr_present_ && !use_mp) {
+  if (global_simulation.urr_ptables_on() && urr_present_ && !use_mp) {
     if (urr_data_[micro.index_temp].energy_in_bounds(p.E()))
       this->calculate_urr_xs(micro.index_temp, p);
   }
@@ -1010,7 +1010,7 @@ std::pair<int64_t, double> Nuclide::find_temperature(double T) const
   double f = 0.0;
   double kT = K_BOLTZMANN * T;
   int64_t n = kTs_.size();
-  switch (settings::temperature_method) {
+  switch (global_simulation.temperature_method()) {
   case TemperatureMethod::NEAREST: {
     double max_diff = INFTY;
     for (int64_t t = 0; t < n; ++t) {
@@ -1142,11 +1142,11 @@ extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 
     // Read multipole file into the appropriate entry on the nuclides array
     int i_nuclide = data::nuclide_map.at(name);
-    if (settings::temperature_multipole)
+    if (global_simulation.temperature_multipole())
       read_multipole_data(i_nuclide);
 
     // Read elemental data, if necessary
-    if (settings::photon_transport) {
+    if (global_simulation.photon_transport()) {
       auto element = to_element(name);
       if (data::element_map.find(element) == data::element_map.end() ||
           data::element_map.at(element) >= data::elements.size()) {

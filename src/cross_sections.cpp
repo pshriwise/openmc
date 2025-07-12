@@ -12,8 +12,9 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/string_utils.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
@@ -95,7 +96,7 @@ Library::Library(pugi::xml_node node, const std::string& directory)
 void read_cross_sections_xml()
 {
   pugi::xml_document doc;
-  std::string filename = settings::path_input + "materials.xml";
+  std::string filename = global_simulation.path_input() + "materials.xml";
   // Check if materials.xml exists
   if (!file_exists(filename)) {
     fatal_error("Material XML file '" + filename + "' does not exist.");
@@ -116,7 +117,7 @@ void read_cross_sections_xml(pugi::xml_node root)
   if (!check_for_node(root, "cross_sections")) {
     // No cross_sections.xml file specified in settings.xml, check
     // environment variable
-    if (settings::run_CE) {
+    if (global_simulation.run_CE()) {
       char* envvar = std::getenv("OPENMC_CROSS_SECTIONS");
       if (!envvar) {
         fatal_error(
@@ -127,36 +128,36 @@ void read_cross_sections_xml(pugi::xml_node root)
           " user's guide at https://docs.openmc.org/ for "
           "information on how to set up data libraries.");
       }
-      settings::path_cross_sections = envvar;
-    } else {
-      char* envvar = std::getenv("OPENMC_MG_CROSS_SECTIONS");
-      if (!envvar) {
-        fatal_error(
-          "No mgxs.h5 file was specified in "
-          "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
-          "variable. OpenMC needs such a file to identify where to "
-          "find MG cross section libraries. Please consult the user's "
-          "guide at https://docs.openmc.org for information on "
-          "how to set up MG cross section libraries.");
-      }
-      settings::path_cross_sections = envvar;
+      global_simulation.set_path_cross_sections(envvar);
+          } else {
+        char* envvar = std::getenv("OPENMC_MG_CROSS_SECTIONS");
+        if (!envvar) {
+          fatal_error(
+            "No mgxs.h5 file was specified in "
+            "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
+            "variable. OpenMC needs such a file to identify where to "
+            "find MG cross section libraries. Please consult the user's "
+            "guide at https://docs.openmc.org for information on "
+            "how to set up MG cross section libraries.");
+        }
+        global_simulation.set_path_cross_sections(envvar);
     }
-  } else {
-    settings::path_cross_sections = get_node_value(root, "cross_sections");
+      } else {
+      global_simulation.set_path_cross_sections(get_node_value(root, "cross_sections"));
 
-    // If no '/' found, the file is probably in the input directory
-    auto pos = settings::path_cross_sections.rfind("/");
-    if (pos == std::string::npos && !settings::path_input.empty()) {
-      settings::path_cross_sections =
-        settings::path_input + "/" + settings::path_cross_sections;
+      // If no '/' found, the file is probably in the input directory
+      auto pos = global_simulation.path_cross_sections().rfind("/");
+      if (pos == std::string::npos && !global_simulation.path_input().empty()) {
+        global_simulation.set_path_cross_sections(
+          global_simulation.path_input() + "/" + global_simulation.path_cross_sections());
+      }
     }
-  }
 
   // Now that the cross_sections.xml or mgxs.h5 has been located, read it in
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     read_ce_cross_sections_xml();
   } else {
-    data::mg.read_header(settings::path_cross_sections);
+    data::mg.read_header(global_simulation.path_cross_sections());
     put_mgxs_header_data_to_globals();
   }
 
@@ -171,13 +172,14 @@ void read_cross_sections_xml(pugi::xml_node root)
   }
 
   // Check that 0K nuclides are listed in the cross_sections.xml file
-  for (const auto& name : settings::res_scat_nuclides) {
-    LibraryKey key {Library::Type::neutron, name};
-    if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find resonant scatterer " + name +
-                  " in cross_sections.xml file!");
-    }
-  }
+  // TODO: Add res_scat_nuclides to simulation config
+  // for (const auto& name : global_simulation.res_scat_nuclides()) {
+  //   LibraryKey key {Library::Type::neutron, name};
+  //   if (data::library_map.find(key) == data::library_map.end()) {
+  //     fatal_error("Could not find resonant scatterer " + name +
+  //                 " in cross_sections.xml file!");
+  //   }
+  // }
 }
 
 void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
@@ -251,8 +253,8 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
     mat->finalize();
   } // materials
 
-  if (settings::photon_transport &&
-      settings::electron_treatment == ElectronTreatment::TTB) {
+  if (global_simulation.photon_transport() &&
+      global_simulation.electron_treatment() == ElectronTreatment::TTB) {
     // Take logarithm of energies since they are log-log interpolated
     data::ttb_e_grid = xt::log(data::ttb_e_grid);
   }
@@ -264,7 +266,7 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
     4, "Maximum neutron data temperature: {} K", data::temperature_max);
 
   // If the user wants multipole, make sure we found a multipole library.
-  if (settings::temperature_multipole) {
+  if (global_simulation.temperature_multipole()) {
     bool mp_found = false;
     for (const auto& nuc : data::nuclides) {
       if (nuc->multipole_) {
@@ -283,7 +285,7 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
 void read_ce_cross_sections_xml()
 {
   // Check if cross_sections.xml exists
-  std::filesystem::path filename(settings::path_cross_sections);
+  std::filesystem::path filename(global_simulation.path_cross_sections());
   if (!std::filesystem::exists(filename)) {
     fatal_error(
       "Cross sections XML file '" + filename.string() + "' does not exist.");
@@ -314,7 +316,7 @@ void read_ce_cross_sections_xml()
     if (filename.has_parent_path()) {
       directory = filename.parent_path().string();
     } else {
-      directory = settings::path_input;
+      directory = global_simulation.path_input();
     }
   }
 
@@ -331,9 +333,9 @@ void read_ce_cross_sections_xml()
 
 void finalize_cross_sections()
 {
-  if (settings::run_mode != RunMode::PLOTTING) {
+  if (global_simulation.run_mode() != RunMode::PLOTTING) {
     simulation::time_read_xs.start();
-    if (settings::run_CE) {
+          if (global_simulation.run_CE()) {
       // Determine desired temperatures for each nuclide and S(a,b) table
       double_2dvec nuc_temps(data::nuclide_map.size());
       double_2dvec thermal_temps(data::thermal_scatt_map.size());

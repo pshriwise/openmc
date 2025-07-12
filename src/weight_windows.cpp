@@ -25,7 +25,7 @@
 #include "openmc/physics_common.h"
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
@@ -54,7 +54,7 @@ openmc::vector<unique_ptr<WeightWindowsGenerator>> weight_windows_generators;
 
 void apply_weight_windows(Particle& p)
 {
-  if (!settings::weight_windows_on)
+  if (!global_simulation.weight_windows_on())
     return;
 
   // WW on photon and neutron only
@@ -119,7 +119,7 @@ void apply_weight_windows(Particle& p)
   // the window
   if (weight > weight_window.upper_weight) {
     // do not further split the particle if above the limit
-    if (p.n_split() >= settings::max_history_splits)
+    if (p.n_split() >= global_simulation.max_history_splits())
       return;
 
     double n_split = std::ceil(weight / weight_window.upper_weight);
@@ -835,7 +835,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   int32_t mesh_idx = model::mesh_map[mesh_id];
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-  int32_t active_batches = settings::n_batches - settings::n_inactive;
+  int32_t active_batches = global_simulation.n_batches() - global_simulation.n_inactive();
   if (max_realizations_ > active_batches) {
     auto msg =
       fmt::format("The maximum number of specified tally realizations ({}) is "
@@ -862,14 +862,14 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   std::string method_string = get_node_value(node, "method");
   if (method_string == "magic") {
     method_ = WeightWindowUpdateMethod::MAGIC;
-    if (settings::solver_type == SolverType::RANDOM_RAY &&
+    if (global_simulation.solver_type() == SolverType::RANDOM_RAY &&
         FlatSourceDomain::adjoint_) {
       fatal_error("Random ray weight window generation with MAGIC cannot be "
                   "done in adjoint mode.");
     }
   } else if (method_string == "fw_cadis") {
     method_ = WeightWindowUpdateMethod::FW_CADIS;
-    if (settings::solver_type != SolverType::RANDOM_RAY) {
+    if (global_simulation.solver_type() != SolverType::RANDOM_RAY) {
       fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
     FlatSourceDomain::adjoint_ = true;

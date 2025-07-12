@@ -27,6 +27,7 @@
 #include "openmc/timer.h"
 #include "openmc/volume_calc.h"
 #include "openmc/weight_windows.h"
+#include "openmc/simulation_manager.h"
 
 #include "xtensor/xview.hpp"
 
@@ -53,7 +54,7 @@ void free_memory()
   if (mpi::master) {
     free_memory_cmfd();
   }
-  if (settings::event_based) {
+  if (global_simulation.event_based()) {
     free_event_queues();
   }
 }
@@ -74,77 +75,79 @@ int openmc_finalize()
   reset_timers();
 
   // Reset global variables
-  settings::assume_separate = false;
-  settings::check_overlaps = false;
-  settings::confidence_intervals = false;
-  settings::create_fission_neutrons = true;
-  settings::create_delayed_neutrons = true;
-  settings::electron_treatment = ElectronTreatment::LED;
-  settings::delayed_photon_scaling = true;
-  settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
-  settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
-  settings::entropy_on = false;
-  settings::event_based = false;
-  settings::gen_per_batch = 1;
-  settings::legendre_to_tabular = true;
-  settings::legendre_to_tabular_points = -1;
-  settings::material_cell_offsets = true;
-  settings::max_lost_particles = 10;
-  settings::max_order = 0;
-  settings::max_particles_in_flight = 100000;
-  settings::max_particle_events = 1'000'000;
-  settings::max_history_splits = 10'000'000;
-  settings::max_tracks = 1000;
-  settings::max_write_lost_particles = -1;
-  settings::n_log_bins = 8000;
-  settings::n_inactive = 0;
-  settings::n_particles = -1;
-  settings::output_summary = true;
-  settings::output_tallies = true;
-  settings::particle_restart_run = false;
-  settings::path_cross_sections.clear();
-  settings::path_input.clear();
-  settings::path_output.clear();
-  settings::path_particle_restart.clear();
-  settings::path_sourcepoint.clear();
-  settings::path_statepoint.clear();
-  settings::photon_transport = false;
-  settings::reduce_tallies = true;
-  settings::rel_max_lost_particles = 1.0e-6;
-  settings::res_scat_on = false;
-  settings::res_scat_method = ResScatMethod::rvs;
-  settings::res_scat_energy_min = 0.01;
-  settings::res_scat_energy_max = 1000.0;
-  settings::restart_run = false;
-  settings::run_CE = true;
-  settings::run_mode = RunMode::UNSET;
-  settings::source_latest = false;
-  settings::source_rejection_fraction = 0.05;
-  settings::source_separate = false;
-  settings::source_write = true;
-  settings::ssw_cell_id = C_NONE;
-  settings::ssw_cell_type = SSWCellType::None;
-  settings::ssw_max_particles = 0;
-  settings::ssw_max_files = 1;
-  settings::survival_biasing = false;
-  settings::temperature_default = 293.6;
-  settings::temperature_method = TemperatureMethod::NEAREST;
-  settings::temperature_multipole = false;
-  settings::temperature_range = {0.0, 0.0};
-  settings::temperature_tolerance = 10.0;
-  settings::trigger_on = false;
-  settings::trigger_predict = false;
-  settings::trigger_batch_interval = 1;
-  settings::uniform_source_sampling = false;
-  settings::ufs_on = false;
-  settings::urr_ptables_on = true;
-  settings::verbosity = 7;
-  settings::weight_cutoff = 0.25;
-  settings::weight_survive = 1.0;
-  settings::weight_windows_file.clear();
-  settings::weight_windows_on = false;
-  settings::write_all_tracks = false;
-  settings::write_initial_source = false;
+  global_simulation.set_assume_separate(false);
+  global_simulation.set_check_overlaps(false);
+  global_simulation.set_confidence_intervals(false);
+  global_simulation.set_create_fission_neutrons(true);
+  global_simulation.set_create_delayed_neutrons(true);
+  global_simulation.set_electron_treatment(ElectronTreatment::LED);
+  global_simulation.set_delayed_photon_scaling(true);
+  global_simulation.set_energy_cutoff(std::array<double, 2>{0.0, 1000.0});
+  global_simulation.set_time_cutoff(std::array<double, 2>{INFTY, INFTY});
+  global_simulation.set_entropy_on(false);
+  global_simulation.set_event_based(false);
+  global_simulation.set_gen_per_batch(1);
+  global_simulation.set_legendre_to_tabular(true);
+  global_simulation.set_legendre_to_tabular_points(-1);
+  global_simulation.set_material_cell_offsets(true);
+  global_simulation.set_max_lost_particles(10);
+  global_simulation.set_max_order(0);
+  global_simulation.set_max_particles_in_flight(100000);
+  global_simulation.set_max_particle_events(1'000'000);
+  global_simulation.set_max_history_splits(10'000'000);
+  global_simulation.set_max_tracks(1000);
+  global_simulation.set_max_write_lost_particles(-1);
+  global_simulation.set_n_log_bins(8000);
+  global_simulation.set_n_inactive(0);
+  global_simulation.set_n_particles(-1);
+  global_simulation.set_output_summary(true);
+  global_simulation.set_output_tallies(true);
+  global_simulation.set_particle_restart_run(false);
+  global_simulation.set_path_cross_sections("");
+  global_simulation.set_path_input("");
+  global_simulation.set_path_output("");
+  global_simulation.set_path_particle_restart("");
+  global_simulation.set_path_sourcepoint("");
+  global_simulation.set_path_statepoint("");
+  global_simulation.set_photon_transport(false);
+  global_simulation.set_reduce_tallies(true);
+  global_simulation.set_rel_max_lost_particles(1.0e-6);
+  global_simulation.set_res_scat_on(false);
+  global_simulation.set_res_scat_method(ResScatMethod::rvs);
+  global_simulation.set_res_scat_energy_min(0.01);
+  global_simulation.set_res_scat_energy_max(1000.0);
+  global_simulation.set_restart_run(false);
+  global_simulation.set_run_CE(true);
+  global_simulation.set_run_mode(RunMode::UNSET);
+  global_simulation.set_source_latest(false);
+  global_simulation.set_source_rejection_fraction(0.05);
+  global_simulation.set_source_separate(false);
+  global_simulation.set_source_write(true);
+  global_simulation.set_ssw_cell_id(C_NONE);
+  global_simulation.set_ssw_cell_type(SSWCellType::None);
+  global_simulation.set_ssw_max_particles(0);
+  global_simulation.set_ssw_max_files(1);
+  global_simulation.set_survival_biasing(false);
+  global_simulation.set_temperature_default(293.6);
+  global_simulation.set_temperature_method(TemperatureMethod::NEAREST);
+  global_simulation.set_temperature_multipole(false);
+  global_simulation.set_temperature_range(std::array<double, 2>{0.0, 0.0});
+  global_simulation.set_temperature_tolerance(10.0);
+  global_simulation.set_trigger_on(false);
+  global_simulation.set_trigger_predict(false);
+  global_simulation.set_trigger_batch_interval(1);
+  global_simulation.set_uniform_source_sampling(false);
+  global_simulation.set_ufs_on(false);
+  global_simulation.set_urr_ptables_on(true);
+  global_simulation.set_verbosity(7);
+  global_simulation.set_weight_cutoff(0.25);
+  global_simulation.set_weight_survive(1.0);
+  global_simulation.set_weight_windows_file("");
+  global_simulation.set_weight_windows_on(false);
+  global_simulation.set_write_all_tracks(false);
+  global_simulation.set_write_initial_source(false);
+  global_simulation.set_cmfd_run(false);
+  global_simulation.set_source_write_surf_id({});
 
   simulation::keff = 1.0;
   simulation::need_depletion_rx = false;
@@ -167,7 +170,7 @@ int openmc_finalize()
   free_memory();
 
 #ifdef LIBMESH
-  settings::libmesh_init.reset();
+  global_simulation.set_libmesh_init(nullptr);
 #endif
 
   // Free all MPI types
@@ -202,7 +205,7 @@ int openmc_reset()
   simulation::k_sum = {0.0, 0.0};
   simulation::satisfy_triggers = false;
 
-  settings::cmfd_run = false;
+  global_simulation.set_cmfd_run(false);
 
   simulation::n_lost_particles = 0;
 

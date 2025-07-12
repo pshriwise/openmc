@@ -387,7 +387,7 @@ inline void read_nd_vector(hid_t obj_id, const char* name,
   if (object_exists(obj_id, name)) {
     read_dataset_as_shape(obj_id, name, result, true);
   } else if (must_have) {
-    fatal_error(std::string("Must provide " + std::string(name) + "!"));
+    openmc::fatal_error(std::string("Must provide " + std::string(name) + "!"));
   }
 }
 

@@ -29,7 +29,7 @@
 #include "openmc/nuclide.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
@@ -165,12 +165,12 @@ void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
 
   // Compute fraction of accepted sites and compare against minimum
   double fraction = static_cast<double>(n_accept) / n_reject;
-  if (fraction <= settings::source_rejection_fraction) {
+  if (fraction <= global_simulation.source_rejection_fraction()) {
     fatal_error(fmt::format(
       "Too few source sites satisfied the constraints (minimum source "
       "rejection fraction = {}). Please check your source definition or "
       "set a lower value of Settings.source_rejection_fraction.",
-      settings::source_rejection_fraction));
+      global_simulation.source_rejection_fraction()));
   }
 }
 
@@ -288,7 +288,7 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
       particle_ = ParticleType::neutron;
     } else if (temp_str == "photon") {
       particle_ = ParticleType::photon;
-      settings::photon_transport = true;
+      global_simulation.set_photon_transport(true);
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }
@@ -374,7 +374,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   site.u = angle_->sample(seed);
 
   // Sample energy and time for neutron and photon sources
-  if (settings::solver_type != SolverType::RANDOM_RAY) {
+  if (global_simulation.solver_type() != SolverType::RANDOM_RAY) {
     // Check for monoenergetic source above maximum particle energy
     auto p = static_cast<int>(particle_);
     auto energy_ptr = dynamic_cast<Discrete*>(energy_.get());
@@ -600,7 +600,7 @@ void initialize_source()
 #pragma omp parallel for
   for (int64_t i = 0; i < simulation::work_per_rank; ++i) {
     // initialize random number seed
-    int64_t id = simulation::total_gen * settings::n_particles +
+    int64_t id = simulation::total_gen * global_simulation.n_particles() +
                  simulation::work_index[mpi::rank] + i + 1;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
 
@@ -609,9 +609,9 @@ void initialize_source()
   }
 
   // Write out initial source
-  if (settings::write_initial_source) {
+  if (global_simulation.write_initial_source()) {
     write_message("Writing out initial source...", 5);
-    std::string filename = settings::path_output + "initial_source.h5";
+    std::string filename = global_simulation.path_output() + "initial_source.h5";
     hid_t file_id = file_open(filename, 'w', true);
     write_source_bank(file_id, simulation::source_bank, simulation::work_index);
     file_close(file_id);
@@ -624,7 +624,7 @@ SourceSite sample_external_source(uint64_t* seed)
   int i = 0;
   int n_sources = model::external_sources.size();
   if (n_sources > 1) {
-    if (settings::uniform_source_sampling) {
+    if (global_simulation.uniform_source_sampling()) {
       i = prn(seed) * n_sources;
     } else {
       i = model::external_sources_probability.sample(seed);
@@ -637,14 +637,14 @@ SourceSite sample_external_source(uint64_t* seed)
   // For uniform source sampling, multiply the weight by the ratio of the actual
   // probability of sampling source i to the biased probability of sampling
   // source i, which is (strength_i / total_strength) / (1 / n)
-  if (n_sources > 1 && settings::uniform_source_sampling) {
+  if (n_sources > 1 && global_simulation.uniform_source_sampling()) {
     double total_strength = model::external_sources_probability.integral();
     site.wgt *=
       model::external_sources[i]->strength() * n_sources / total_strength;
   }
 
   // If running in MG, convert site.E to group
-  if (!settings::run_CE) {
+  if (!global_simulation.run_CE()) {
     site.E = lower_bound_index(data::mg.rev_energy_bins_.begin(),
       data::mg.rev_energy_bins_.end(), site.E);
     site.E = data::mg.num_energy_groups_ - site.E - 1.;

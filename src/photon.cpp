@@ -272,7 +272,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Calculate total pair production
   pair_production_total_ = pair_production_nuclear_ + pair_production_electron_;
 
-  if (settings::electron_treatment == ElectronTreatment::TTB) {
+  if (global_simulation.electron_treatment() == ElectronTreatment::TTB) {
     // Read bremsstrahlung scaled DCS
     rgroup = open_group(group, "bremsstrahlung");
     read_dataset(rgroup, "dcs", dcs_);
@@ -295,10 +295,10 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     // Truncate the bremsstrahlung data at the cutoff energy
     int photon = static_cast<int>(ParticleType::photon);
     const auto& E {electron_energy};
-    double cutoff = settings::energy_cutoff[photon];
+    double cutoff = global_simulation.energy_cutoff()[photon];
     if (cutoff > E(0)) {
       size_t i_grid = lower_bound_index(
-        E.cbegin(), E.cend(), settings::energy_cutoff[photon]);
+        E.cbegin(), E.cend(), global_simulation.energy_cutoff()[photon]);
 
       // calculate interpolation factor
       double f = (std::log(cutoff) - std::log(E(i_grid))) /

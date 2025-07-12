@@ -1,4 +1,5 @@
 #include "openmc/material.h"
+#include "openmc/simulation_manager.h"
 
 #include <algorithm> // for min, max, sort, fill
 #include <cassert>
@@ -138,7 +139,7 @@ Material::Material(pugi::xml_node node)
 
   vector<std::string> names;
   vector<double> densities;
-  if (settings::run_CE && num_macros > 0) {
+  if (global_simulation.run_CE() && num_macros > 0) {
     fatal_error("Macroscopic can not be used in continuous-energy mode.");
   } else if (num_macros > 1) {
     fatal_error("Only one macroscopic object permitted per material, " +
@@ -217,7 +218,7 @@ Material::Material(pugi::xml_node node)
   auto n = names.size();
   nuclide_.reserve(n);
   atom_density_ = xt::empty<double>({n});
-  if (settings::photon_transport)
+  if (global_simulation.photon_transport())
     element_.reserve(n);
 
   for (int i = 0; i < n; ++i) {
@@ -225,7 +226,7 @@ Material::Material(pugi::xml_node node)
 
     // Check that this nuclide is listed in the nuclear data library
     // (cross_sections.xml for CE and the MGXS HDF5 for MG)
-    if (settings::run_mode != RunMode::PLOTTING) {
+    if (global_simulation.run_mode() != RunMode::PLOTTING) {
       LibraryKey key {Library::Type::neutron, name};
       if (data::library_map.find(key) == data::library_map.end()) {
         fatal_error("Could not find nuclide " + name +
@@ -246,11 +247,11 @@ Material::Material(pugi::xml_node node)
 
     // If the corresponding element hasn't been encountered yet and photon
     // transport will be used, we need to add its symbol to the element_dict
-    if (settings::photon_transport) {
+    if (global_simulation.photon_transport()) {
       std::string element = to_element(name);
 
       // Make sure photon cross section data is available
-      if (settings::run_mode != RunMode::PLOTTING) {
+      if (global_simulation.run_mode() != RunMode::PLOTTING) {
         LibraryKey key {Library::Type::photon, element};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error(
@@ -271,7 +272,7 @@ Material::Material(pugi::xml_node node)
     atom_density_(i) = densities[i];
   }
 
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     // By default, isotropic-in-lab is not used
     if (iso_lab.size() > 0) {
       p0_.resize(n);
@@ -309,7 +310,7 @@ Material::Material(pugi::xml_node node)
 
   // =======================================================================
   // READ AND PARSE <sab> TAG FOR THERMAL SCATTERING DATA
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     // Loop over <sab> elements
 
     vector<std::string> sab_names;
@@ -329,7 +330,7 @@ Material::Material(pugi::xml_node node)
 
       // Check that the thermal scattering table is listed in the
       // cross_sections.xml file
-      if (settings::run_mode != RunMode::PLOTTING) {
+      if (global_simulation.run_mode() != RunMode::PLOTTING) {
         LibraryKey key {Library::Type::thermal, name};
         if (data::library_map.find(key) == data::library_map.end()) {
           fatal_error("Could not find thermal scattering data " + name +
@@ -392,7 +393,7 @@ Material& Material::clone()
 void Material::finalize()
 {
   // Set fissionable if any nuclide is fissionable
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     for (const auto& i_nuc : nuclide_) {
       if (data::nuclides[i_nuc]->fissionable_) {
         fissionable_ = true;
@@ -401,8 +402,8 @@ void Material::finalize()
     }
 
     // Generate material bremsstrahlung data for electrons and positrons
-    if (settings::photon_transport &&
-        settings::electron_treatment == ElectronTreatment::TTB) {
+    if (global_simulation.photon_transport() &&
+        global_simulation.electron_treatment() == ElectronTreatment::TTB) {
       this->init_bremsstrahlung();
     }
 
@@ -422,7 +423,7 @@ void Material::normalize_density()
   for (int i = 0; i < nuclide_.size(); ++i) {
     // determine atomic weight ratio
     int i_nuc = nuclide_[i];
-    double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_
+    double awr = global_simulation.run_CE() ? data::nuclides[i_nuc]->awr_
                                   : data::mg.nuclides_[i_nuc].awr;
 
     // if given weight percent, convert all values so that they are divided
@@ -443,7 +444,7 @@ void Material::normalize_density()
     double sum_percent = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
-      double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_
+      double awr = global_simulation.run_CE() ? data::nuclides[i_nuc]->awr_
                                     : data::mg.nuclides_[i_nuc].awr;
       sum_percent += atom_density_(i) * awr;
     }
@@ -459,8 +460,8 @@ void Material::normalize_density()
   charge_density_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
-    double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
-    int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
+    double awr = global_simulation.run_CE() ? data::nuclides[i_nuc]->awr_ : 1.0;
+    int z = global_simulation.run_CE() ? data::nuclides[i_nuc]->Z_ : 0.0;
     density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
     charge_density_ += atom_density_(i) * z;
   }
@@ -803,7 +804,7 @@ void Material::init_bremsstrahlung()
 
 void Material::init_nuclide_index()
 {
-  int n = settings::run_CE ? data::nuclides.size() : data::mg.nuclides_.size();
+  int n = global_simulation.run_CE() ? data::nuclides.size() : data::mg.nuclides_.size();
   mat_nuclide_index_.resize(n);
   std::fill(mat_nuclide_index_.begin(), mat_nuclide_index_.end(), C_NONE);
   for (int i = 0; i < nuclide_.size(); ++i) {
@@ -991,7 +992,7 @@ void Material::set_density(double density, const std::string& units)
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = data::nuclides[i_nuc]->awr_;
-      int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
+      int z = global_simulation.run_CE() ? data::nuclides[i_nuc]->Z_ : 0.0;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
       charge_density_ += atom_density_(i) * z;
     }
@@ -1021,7 +1022,7 @@ void Material::set_densities(
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
     atom_density_ = xt::zeros<double>({n});
-    if (settings::photon_transport)
+    if (global_simulation.photon_transport())
       element_.resize(n);
   }
 
@@ -1039,7 +1040,7 @@ void Material::set_densities(
     atom_density_(i) = density[i];
     sum_density += density[i];
 
-    if (settings::photon_transport) {
+    if (global_simulation.photon_transport()) {
       auto element_name = to_element(nuc);
       element_[i] = data::element_map.at(element_name);
     }
@@ -1049,8 +1050,8 @@ void Material::set_densities(
   this->set_density(sum_density, "atom/b-cm");
 
   // Generate material bremsstrahlung data for electrons and positrons
-  if (settings::photon_transport &&
-      settings::electron_treatment == ElectronTreatment::TTB) {
+  if (global_simulation.photon_transport() &&
+      global_simulation.electron_treatment() == ElectronTreatment::TTB) {
     this->init_bremsstrahlung();
   }
 
@@ -1070,7 +1071,7 @@ double Material::volume() const
 double Material::temperature() const
 {
   // If material doesn't have an assigned temperature, use global default
-  return temperature_ >= 0 ? temperature_ : settings::temperature_default;
+  return temperature_ >= 0 ? temperature_ : global_simulation.temperature_default();
 }
 
 void Material::to_hdf5(hid_t group) const
@@ -1091,7 +1092,7 @@ void Material::to_hdf5(hid_t group) const
   vector<std::string> nuc_names;
   vector<std::string> macro_names;
   vector<double> nuc_densities;
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       nuc_names.push_back(data::nuclides[i_nuc]->name_);
@@ -1173,7 +1174,7 @@ void Material::add_nuclide(const std::string& name, double density)
   nuclide_.push_back(i_nuc);
 
   // Append new element if photon transport is on
-  if (settings::photon_transport) {
+  if (global_simulation.photon_transport()) {
     int i_elem = data::element_map[to_element(name)];
     element_.push_back(i_elem);
   }
@@ -1325,7 +1326,7 @@ void read_materials_xml()
   pugi::xml_document doc;
 
   // Check if materials.xml exists
-  std::string filename = settings::path_input + "materials.xml";
+  std::string filename = global_simulation.path_input() + "materials.xml";
   if (!file_exists(filename)) {
     fatal_error("Material XML file '" + filename + "' does not exist!");
   }

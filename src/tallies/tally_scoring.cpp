@@ -201,7 +201,7 @@ double score_fission_q(const Particle& p, int score_bin, const Tally& tally,
 {
   if (tally.estimator_ == TallyEstimator::ANALOG) {
     const Nuclide& nuc {*data::nuclides[p.event_nuclide()]};
-    if (settings::survival_biasing) {
+    if (global_simulation.survival_biasing()) {
       // No fission events occur if survival biasing is on -- need to
       // calculate fraction of absorptions that would have resulted in
       // fission scaled by the Q-value
@@ -264,7 +264,7 @@ double get_nuclide_neutron_heating(
   if (kerma == 0.0)
     return 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     // Determine kerma for fission as (EFR + EB)*sigma_f
     double kerma_fission =
       nuc.fragments_
@@ -279,7 +279,7 @@ double get_nuclide_neutron_heating(
     // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H. Stedry,
     // "Self-consistent energy normalization for quasistatic reactor
     // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
-    kerma = simulation::keff * kerma_non_fission + kerma_fission;
+    kerma = global_simulation.keff() * kerma_non_fission + kerma_fission;
   }
   return kerma;
 }
@@ -403,7 +403,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
     auto g = bank.delayed_group;
 
     // determine score based on bank site weight and keff
-    double score = simulation::keff * bank.wgt;
+    double score = global_simulation.keff() * bank.wgt;
 
     // Add derivative information for differential tallies.  Note that the
     // i_nuclide and atom_density arguments do not matter since this is an
@@ -411,7 +411,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(p, i_tally, 0, 0., SCORE_NU_FISSION, score);
 
-    if (!settings::run_CE && eo_filt.matches_transport_groups()) {
+    if (!global_simulation.run_CE() && eo_filt.matches_transport_groups()) {
 
       // determine outgoing energy group from fission bank
       auto g_out = static_cast<int>(bank.E);
@@ -426,7 +426,7 @@ void score_fission_eout(Particle& p, int i_tally, int i_score, int score_bin)
     } else {
 
       double E_out;
-      if (settings::run_CE) {
+      if (global_simulation.run_CE()) {
         E_out = bank.E;
       } else {
         E_out = data::mg.energy_bin_avg_[static_cast<int>(bank.E)];
@@ -544,7 +544,7 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
     // Calculate interpolated cross section
     double xs = rx.xs(micro);
 
-    if (settings::run_mode == RunMode::EIGENVALUE &&
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE &&
         score_bin == HEATING_LOCAL) {
       // Determine kerma for fission as (EFR + EGP + EGD + EB)*sigma_f
       double kerma_fission =
@@ -562,7 +562,7 @@ double get_nuclide_xs(const Particle& p, int i_nuclide, int score_bin)
       // and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
       // Stedry, "Self-consistent energy normalization for quasistatic reactor
       // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
-      xs = simulation::keff * kerma_non_fission + kerma_fission;
+      xs = global_simulation.keff() * kerma_non_fission + kerma_fission;
     }
     return xs;
   } else {
@@ -942,12 +942,12 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_TIME_NUM:
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_generation_time_or_both()) {
             const auto& lifetimes =
               simulation::ifp_source_lifetime_bank[p.current_work() - 1];
-            if (lifetimes.size() == settings::ifp_n_generation) {
+            if (lifetimes.size() == global_simulation.ifp_n_generation()) {
               score = lifetimes[0] * p.wgt_last();
             }
           }
@@ -956,12 +956,12 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_BETA_NUM:
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_beta_effective_or_both()) {
             const auto& delayed_groups =
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
-            if (delayed_groups.size() == settings::ifp_n_generation) {
+            if (delayed_groups.size() == global_simulation.ifp_n_generation()) {
               if (delayed_groups[0] > 0) {
                 score = p.wgt_last();
               }
@@ -972,7 +972,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_IFP_DENOM:
-      if (settings::ifp_on) {
+      if (global_simulation.ifp_on()) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           int ifp_data_size;
           if (is_beta_effective_or_both()) {
@@ -984,7 +984,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
               simulation::ifp_source_lifetime_bank[p.current_work() - 1]
                 .size());
           }
-          if (ifp_data_size == settings::ifp_n_generation) {
+          if (ifp_data_size == global_simulation.ifp_n_generation()) {
             score = p.wgt_last();
           }
         }
@@ -1114,7 +1114,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
   auto E = p.E_last();
 
   // Determine how much weight was absorbed due to survival biasing
-  double wgt_absorb = settings::survival_biasing
+  double wgt_absorb = global_simulation.survival_biasing()
                         ? p.wgt_last() *
                             p.neutron_xs(p.event_nuclide()).absorption /
                             p.neutron_xs(p.event_nuclide()).total
@@ -1196,7 +1196,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       if (p.type() != Type::neutron && p.type() != Type::photon)
         continue;
 
-      if (settings::survival_biasing) {
+      if (global_simulation.survival_biasing()) {
         // No absorption events actually occur if survival biasing is on --
         // just use weight absorbed in survival biasing
         score = wgt_absorb * flux;
@@ -1213,7 +1213,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing) {
+      if (global_simulation.survival_biasing()) {
         // No fission events occur if survival biasing is on -- use collision
         // estimator instead
         if (p.neutron_xs(p.event_nuclide()).total > 0) {
@@ -1237,7 +1237,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing || p.fission()) {
+      if (global_simulation.survival_biasing() || p.fission()) {
         if (tally.energyout_filter_ != C_NONE) {
           // Fission has multiple outgoing neutrons so this helper function
           // is used to handle scoring the multiple filter bins.
@@ -1245,7 +1245,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           continue;
         }
       }
-      if (settings::survival_biasing) {
+      if (global_simulation.survival_biasing()) {
         // No fission events occur if survival biasing is on -- use collision
         // estimator instead
         if (p.neutron_xs(p.event_nuclide()).total > 0) {
@@ -1263,14 +1263,14 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
         // number of particles that were banked in the fission bank. Since
         // this was weighted by 1/keff, we multiply by keff to get the proper
         // score.
-        score = simulation::keff * p.wgt_bank() * flux;
+        score = global_simulation.keff() * p.wgt_bank() * flux;
       }
       break;
 
     case SCORE_PROMPT_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing || p.fission()) {
+      if (global_simulation.survival_biasing() || p.fission()) {
         if (tally.energyout_filter_ != C_NONE) {
           // Fission has multiple outgoing neutrons so this helper function
           // is used to handle scoring the multiple filter bins.
@@ -1278,7 +1278,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           continue;
         }
       }
-      if (settings::survival_biasing) {
+      if (global_simulation.survival_biasing()) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // prompt-nu-fission
@@ -1302,14 +1302,14 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
         auto n_delayed = std::accumulate(
           p.n_delayed_bank(), p.n_delayed_bank() + MAX_DELAYED_GROUPS, 0);
         auto prompt_frac = 1. - n_delayed / static_cast<double>(p.n_bank());
-        score = simulation::keff * p.wgt_bank() * prompt_frac * flux;
+        score = global_simulation.keff() * p.wgt_bank() * prompt_frac * flux;
       }
       break;
 
     case SCORE_DELAYED_NU_FISSION:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing || p.fission()) {
+      if (global_simulation.survival_biasing() || p.fission()) {
         if (tally.energyout_filter_ != C_NONE) {
           // Fission has multiple outgoing neutrons so this helper function
           // is used to handle scoring the multiple filter bins.
@@ -1317,7 +1317,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           continue;
         }
       }
-      if (settings::survival_biasing) {
+      if (global_simulation.survival_biasing()) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // delayed-nu-fission
@@ -1367,7 +1367,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           // Tally each delayed group bin individually
           for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
             auto d = filt.groups()[d_bin];
-            score = simulation::keff * p.wgt_bank() / p.n_bank() *
+            score = global_simulation.keff() * p.wgt_bank() / p.n_bank() *
                     p.n_delayed_bank(d - 1) * flux;
             score_fission_delayed_dg(
               i_tally, d_bin, score, score_index, p.filter_matches());
@@ -1378,7 +1378,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
           auto n_delayed = std::accumulate(
             p.n_delayed_bank(), p.n_delayed_bank() + MAX_DELAYED_GROUPS, 0);
           score =
-            simulation::keff * p.wgt_bank() / p.n_bank() * n_delayed * flux;
+            global_simulation.keff() * p.wgt_bank() / p.n_bank() * n_delayed * flux;
         }
       }
       break;
@@ -1386,7 +1386,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
     case SCORE_DECAY_RATE:
       if (p.macro_xs().fission == 0)
         continue;
-      if (settings::survival_biasing) {
+      if (global_simulation.survival_biasing()) {
         // No fission events occur if survival biasing is on -- need to
         // calculate fraction of absorptions that would have resulted in
         // delayed-nu-fission
@@ -1402,18 +1402,13 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
               auto d = filt.groups()[d_bin];
               auto yield = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
               auto rate = rxn.products_[d].decay_rate_;
-              score = p.wgt_last() * yield *
-                      p.neutron_xs(p.event_nuclide()).fission /
-                      p.neutron_xs(p.event_nuclide()).total * rate * flux;
+              score = p.neutron_xs(i_nuclide).fission * yield * flux *
+                      atom_density * rate;
               score_fission_delayed_dg(
                 i_tally, d_bin, score, score_index, p.filter_matches());
             }
             continue;
           } else {
-            // If the delayed group filter is not present, compute the score
-            // by multiplying the absorbed weight by the fraction of the
-            // delayed-nu-fission xs to the absorption xs for all delayed
-            // groups
             score = 0.;
             // We need to be careful not to overshoot the number of
             // delayed groups since this could cause the range of the
@@ -1427,9 +1422,8 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
 
               auto yield = nuc.nu(E, ReactionProduct::EmissionMode::delayed, d);
               auto rate = product.decay_rate_;
-              score += rate * p.wgt_last() *
-                       p.neutron_xs(p.event_nuclide()).fission * yield /
-                       p.neutron_xs(p.event_nuclide()).total * flux;
+              score += p.neutron_xs(i_nuclide).fission * flux * yield *
+                       atom_density * rate;
             }
           }
         }
@@ -1452,7 +1446,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
             const auto& nuc {*data::nuclides[p.event_nuclide()]};
             const auto& rxn {*nuc.fission_rx_[0]};
             auto rate = rxn.products_[g].decay_rate_;
-            score += simulation::keff * bank.wgt * rate * flux;
+            score += global_simulation.keff() * bank.wgt * rate * flux;
             if (tally.delayedgroup_filter_ != C_NONE) {
               auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
               const DelayedGroupFilter& filt {
@@ -1478,31 +1472,24 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       score = 0.;
       // Kappa-fission values are determined from the Q-value listed for the
       // fission cross section.
-      if (settings::survival_biasing) {
-        // No fission events occur if survival biasing is on -- need to
-        // calculate fraction of absorptions that would have resulted in
-        // fission scaled by the Q-value
-        const auto& nuc {*data::nuclides[p.event_nuclide()]};
-        if (p.neutron_xs(p.event_nuclide()).total > 0 && nuc.fissionable_) {
+      if (i_nuclide >= 0) {
+        const auto& nuc {*data::nuclides[i_nuclide]};
+        if (nuc.fissionable_) {
           const auto& rxn {*nuc.fission_rx_[0]};
-          score = p.wgt_last() * rxn.q_value_ *
-                  p.neutron_xs(p.event_nuclide()).fission /
-                  p.neutron_xs(p.event_nuclide()).total * flux;
+          score = rxn.q_value_ * p.neutron_xs(i_nuclide).fission *
+                  atom_density * flux;
         }
-      } else {
-        // Skip any non-absorption events
-        if (p.event() == TallyEvent::SCATTER)
-          continue;
-        // All fission events will contribute, so again we can use particle's
-        // weight entering the collision as the estimate for the fission
-        // reaction rate
-        const auto& nuc {*data::nuclides[p.event_nuclide()]};
-        if (p.neutron_xs(p.event_nuclide()).absorption > 0 &&
-            nuc.fissionable_) {
-          const auto& rxn {*nuc.fission_rx_[0]};
-          score = p.wgt_last() * rxn.q_value_ *
-                  p.neutron_xs(p.event_nuclide()).fission /
-                  p.neutron_xs(p.event_nuclide()).absorption * flux;
+      } else if (p.material() != MATERIAL_VOID) {
+        const Material& material {*model::materials[p.material()]};
+        for (auto i = 0; i < material.nuclide_.size(); ++i) {
+          auto j_nuclide = material.nuclide_[i];
+          auto atom_density = material.atom_density_(i);
+          const auto& nuc {*data::nuclides[j_nuclide]};
+          if (nuc.fissionable_) {
+            const auto& rxn {*nuc.fission_rx_[0]};
+            score += rxn.q_value_ * p.neutron_xs(j_nuclide).fission *
+                     atom_density * flux;
+          }
         }
       }
       break;
@@ -1622,7 +1609,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   double wgt_absorb = 0.0;
   if (tally.estimator_ == TallyEstimator::ANALOG ||
       tally.estimator_ == TallyEstimator::COLLISION) {
-    if (settings::survival_biasing) {
+    if (global_simulation.survival_biasing()) {
       // Determine weight that was absorbed
       wgt_absorb = p.wgt_last() * p.neutron_xs(p.event_nuclide()).absorption /
                    p.neutron_xs(p.event_nuclide()).total;
@@ -1795,7 +1782,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_ABSORPTION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No absorption events actually occur if survival biasing is on --
           // just use weight absorbed in survival biasing
           score = wgt_absorb * flux;
@@ -1824,7 +1811,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_FISSION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission
@@ -1859,7 +1846,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_NU_FISSION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing || p.fission()) {
+        if (global_simulation.survival_biasing() || p.fission()) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
@@ -1867,7 +1854,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             continue;
           }
         }
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // nu-fission
@@ -1891,7 +1878,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           // number of particles that were banked in the fission bank. Since
           // this was weighted by 1/keff, we multiply by keff to get the proper
           // score.
-          score = simulation::keff * p.wgt_bank() * flux;
+          score = global_simulation.keff() * p.wgt_bank() * flux;
           if (i_nuclide >= 0) {
             score *= atom_density *
                      nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
@@ -1911,7 +1898,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_PROMPT_NU_FISSION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing || p.fission()) {
+        if (global_simulation.survival_biasing() || p.fission()) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
@@ -1919,7 +1906,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             continue;
           }
         }
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // prompt-nu-fission
@@ -1947,7 +1934,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
           auto n_delayed = std::accumulate(
             p.n_delayed_bank(), p.n_delayed_bank() + MAX_DELAYED_GROUPS, 0);
           auto prompt_frac = 1. - n_delayed / static_cast<double>(p.n_bank());
-          score = simulation::keff * p.wgt_bank() * prompt_frac * flux;
+          score = global_simulation.keff() * p.wgt_bank() * prompt_frac * flux;
           if (i_nuclide >= 0) {
             score *= atom_density *
                      nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
@@ -1967,7 +1954,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_DELAYED_NU_FISSION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing || p.fission()) {
+        if (global_simulation.survival_biasing() || p.fission()) {
           if (tally.energyout_filter_ != C_NONE) {
             // Fission has multiple outgoing neutrons so this helper function
             // is used to handle scoring the multiple filter bins.
@@ -1975,7 +1962,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             continue;
           }
         }
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
@@ -2038,7 +2025,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             // Tally each delayed group bin individually
             for (auto d_bin = 0; d_bin < filt.n_bins(); ++d_bin) {
               auto d = filt.groups()[d_bin];
-              score = simulation::keff * p.wgt_bank() / p.n_bank() *
+              score = global_simulation.keff() * p.wgt_bank() / p.n_bank() *
                       p.n_delayed_bank(d - 1) * flux;
               if (i_nuclide >= 0) {
                 score *=
@@ -2055,7 +2042,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             auto n_delayed = std::accumulate(
               p.n_delayed_bank(), p.n_delayed_bank() + MAX_DELAYED_GROUPS, 0);
             score =
-              simulation::keff * p.wgt_bank() / p.n_bank() * n_delayed * flux;
+              global_simulation.keff() * p.wgt_bank() / p.n_bank() * n_delayed * flux;
             if (i_nuclide >= 0) {
               score *=
                 atom_density *
@@ -2099,7 +2086,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_DECAY_RATE:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // delayed-nu-fission
@@ -2175,13 +2162,13 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
             if (d != -1) {
               if (i_nuclide >= 0) {
                 score +=
-                  simulation::keff * atom_density * bank.wgt * flux *
+                  global_simulation.keff() * atom_density * bank.wgt * flux *
                   nuc_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr, nullptr, &d,
                     nuc_t, nuc_a) *
                   nuc_xs.get_xs(MgxsType::FISSION, p_g, nuc_t, nuc_a) /
                   macro_xs.get_xs(MgxsType::FISSION, p_g, macro_t, macro_a);
               } else {
-                score += simulation::keff * bank.wgt * flux *
+                score += global_simulation.keff() * bank.wgt * flux *
                          macro_xs.get_xs(MgxsType::DECAY_RATE, p_g, nullptr,
                            nullptr, &d, macro_t, macro_a);
               }
@@ -2252,7 +2239,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 
     case SCORE_KAPPA_FISSION:
       if (tally.estimator_ == TallyEstimator::ANALOG) {
-        if (settings::survival_biasing) {
+        if (global_simulation.survival_biasing()) {
           // No fission events occur if survival biasing is on -- need to
           // calculate fraction of absorptions that would have resulted in
           // fission scaled by the Q-value
@@ -2346,7 +2333,7 @@ void score_analog_tally_ce(Particle& p)
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
     // tallies specified
-    if (settings::assume_separate)
+    if (global_simulation.assume_separate())
       break;
   }
 
@@ -2395,7 +2382,7 @@ void score_analog_tally_mg(Particle& p)
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
     // tallies specified
-    if (settings::assume_separate)
+    if (global_simulation.assume_separate())
       break;
   }
 
@@ -2458,7 +2445,7 @@ void score_tracklength_tally(Particle& p, double distance)
         }
 
         // TODO: consider replacing this "if" with pointers or templates
-        if (settings::run_CE) {
+        if (global_simulation.run_CE()) {
           score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),
             filter_index, filter_weight, i_nuclide, atom_density, flux);
         } else {
@@ -2472,7 +2459,7 @@ void score_tracklength_tally(Particle& p, double distance)
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
     // tallies specified
-    if (settings::assume_separate)
+    if (global_simulation.assume_separate())
       break;
   }
 
@@ -2536,7 +2523,7 @@ void score_collision_tally(Particle& p)
         }
 
         // TODO: consider replacing this "if" with pointers or templates
-        if (settings::run_CE) {
+        if (global_simulation.run_CE()) {
           score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),
             filter_index, filter_weight, i_nuclide, atom_density, flux);
         } else {
@@ -2550,7 +2537,7 @@ void score_collision_tally(Particle& p)
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
     // tallies specified
-    if (settings::assume_separate)
+    if (global_simulation.assume_separate())
       break;
   }
 
@@ -2594,7 +2581,7 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
     // separate, this implies that once a tally has been scored to, we needn't
     // check the others. This cuts down on overhead when there are many
     // tallies specified
-    if (settings::assume_separate)
+    if (global_simulation.assume_separate())
       break;
   }
 

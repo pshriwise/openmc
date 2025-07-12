@@ -10,6 +10,9 @@
 #include "openmc/capi.h"
 #include "openmc/settings.h"
 
+// Forward declaration to break circular dependency
+class OpenMCSimulation;
+
 #if defined(__GNUC__) || defined(__clang__)
 #define UNREACHABLE() __builtin_unreachable()
 #else
@@ -59,13 +62,14 @@ inline void write_message(const std::stringstream& message, int level)
   write_message(message.str(), level);
 }
 
+// Non-template function declaration for level-based messages
+void write_message_level(int level, const std::string& msg);
+
+// Template function that forwards to the non-template implementation
 template<typename... Params>
-void write_message(
-  int level, const std::string& message, const Params&... fmt_args)
+void write_message(int level, const std::string& message, const Params&... fmt_args)
 {
-  if (settings::verbosity >= level) {
-    write_message(fmt::format(message, fmt_args...));
-  }
+  write_message_level(level, fmt::format(message, fmt_args...));
 }
 
 template<typename... Params>

@@ -37,7 +37,7 @@ SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
 //==============================================================================
 SourceRegion::SourceRegion(int negroups, bool is_linear)
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     // If in eigenvalue mode, set starting flux to guess of 1
     scalar_flux_old_.assign(negroups, 1.0);
   } else {
@@ -71,7 +71,7 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
     source_[g] = handle.source(g);
   }
 
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     external_source_present_ = handle.external_source_present();
     for (int g = 0; g < scalar_flux_new_.size(); g++) {
       external_source_[g] = handle.external_source(g);
@@ -119,7 +119,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
     scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
     source_.push_back(sr.source_[g]);
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
       external_source_.push_back(sr.external_source_[g]);
     }
 
@@ -217,7 +217,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.scalar_flux_old_ = &scalar_flux_old(sr, 0);
   handle.scalar_flux_new_ = &scalar_flux_new(sr, 0);
   handle.source_ = &source(sr, 0);
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     handle.external_source_ = &external_source(sr, 0);
   } else {
     handle.external_source_ = nullptr;

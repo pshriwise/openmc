@@ -18,7 +18,7 @@
 #include "openmc/search.h"
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_thermal.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/string_utils.h"
 
 namespace openmc {
@@ -68,23 +68,23 @@ ThermalScattering::ThermalScattering(
   // temperature range was given, in which case all temperatures in the range
   // are loaded irrespective of what temperatures actually appear in the model
   vector<int> temps_to_read;
-  if (settings::temperature_range[1] > 0.0) {
+  if (global_simulation.temperature_range()[1] > 0.0) {
     for (const auto& T : temps_available) {
-      if (settings::temperature_range[0] <= T &&
-          T <= settings::temperature_range[1]) {
+      if (global_simulation.temperature_range()[0] <= T &&
+          T <= global_simulation.temperature_range()[1]) {
         temps_to_read.push_back(std::round(T));
       }
     }
   }
 
-  switch (settings::temperature_method) {
+  switch (global_simulation.temperature_method()) {
   case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
 
       auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
       auto temp_actual = temps_available[i_closest];
-      if (std::abs(temp_actual - T) < settings::temperature_tolerance) {
+      if (std::abs(temp_actual - T) < global_simulation.temperature_tolerance()) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(),
               std::round(temp_actual)) == temps_to_read.end()) {
           temps_to_read.push_back(std::round(temp_actual));
@@ -124,13 +124,13 @@ ThermalScattering::ThermalScattering(
         // If no pairs found, check if the desired temperature falls within
         // bounds' tolerance
         if (std::abs(T - temps_available[0]) <=
-            settings::temperature_tolerance) {
+            global_simulation.temperature_tolerance()) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
                 temps_available[0]) == temps_to_read.end()) {
             temps_to_read.push_back(temps_available[0]);
           }
         } else if (std::abs(T - temps_available[n - 1]) <=
-                   settings::temperature_tolerance) {
+                   global_simulation.temperature_tolerance()) {
           if (std::find(temps_to_read.begin(), temps_to_read.end(),
                 temps_available[n - 1]) == temps_to_read.end()) {
             temps_to_read.push_back(temps_available[n - 1]);
@@ -179,7 +179,7 @@ void ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
   auto n = kTs_.size();
   if (n > 1) {
-    if (settings::temperature_method == TemperatureMethod::NEAREST) {
+    if (global_simulation.temperature_method() == TemperatureMethod::NEAREST) {
       while (kTs_[i + 1] < kT && i + 1 < n - 1)
         ++i;
       // Pick closer of two bounding temperatures

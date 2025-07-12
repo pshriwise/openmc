@@ -1,5 +1,6 @@
 
 #include "openmc/cell.h"
+#include "openmc/simulation_manager.h"
 
 #include <algorithm>
 #include <cassert>
@@ -98,13 +99,13 @@ double Cell::temperature(int32_t instance) const
 
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
-  if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
-    if (T < (data::temperature_min - settings::temperature_tolerance)) {
+  if (global_simulation.temperature_method() == TemperatureMethod::INTERPOLATION) {
+    if (T < (data::temperature_min - global_simulation.temperature_tolerance())) {
       throw std::runtime_error {
         fmt::format("Temperature of {} K is below minimum temperature at "
                     "which data is available of {} K.",
           T, data::temperature_min)};
-    } else if (T > (data::temperature_max + settings::temperature_tolerance)) {
+    } else if (T > (data::temperature_max + global_simulation.temperature_tolerance())) {
       throw std::runtime_error {
         fmt::format("Temperature of {} K is above maximum temperature at "
                     "which data is available of {} K.",
@@ -1000,7 +1001,7 @@ void read_cells(pugi::xml_node node)
   populate_universes();
 
   // Allocate the cell overlap count if necessary.
-  if (settings::check_overlaps) {
+  if (global_simulation.check_overlaps()) {
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
 

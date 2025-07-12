@@ -58,7 +58,7 @@ int openmc_run()
   // Ensure that a batch isn't executed in the case that the maximum number of
   // batches has already been run in a restart statepoint file
   int status = 0;
-  if (openmc::simulation::current_batch >= openmc::settings::n_max_batches) {
+  if (openmc::simulation::current_batch >= openmc::global_simulation.n_batches()) {
     status = openmc::STATUS_EXIT_MAX_BATCH;
   }
 
@@ -81,7 +81,7 @@ int openmc_simulation_init()
     return 0;
 
   // Initialize nuclear data (energy limits, log grid)
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     initialize_data();
   }
 
@@ -92,15 +92,15 @@ int openmc_simulation_init()
   allocate_banks();
 
   // Create track file if needed
-  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+  if (!global_simulation.track_identifiers().empty() || global_simulation.write_all_tracks()) {
     open_track_file();
   }
 
   // If doing an event-based simulation, intialize the particle buffer
   // and event queues
-  if (settings::event_based) {
+  if (global_simulation.event_based()) {
     int64_t event_buffer_length =
-      std::min(simulation::work_per_rank, settings::max_particles_in_flight);
+      std::min(simulation::work_per_rank, global_simulation.max_particles_in_flight());
     init_event_queues(event_buffer_length);
   }
 
@@ -125,39 +125,39 @@ int openmc_simulation_init()
 
   // If this is a restart run, load the state point data and binary source
   // file
-  if (settings::restart_run) {
+  if (global_simulation.restart_run()) {
     load_state_point();
     write_message("Resuming simulation...", 6);
   } else {
     // Only initialize primary source bank for eigenvalue simulations
-    if (settings::run_mode == RunMode::EIGENVALUE &&
-        settings::solver_type == SolverType::MONTE_CARLO) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE &&
+        global_simulation.solver_type() == SolverType::MONTE_CARLO) {
       initialize_source();
     }
   }
 
   // Display header
   if (mpi::master) {
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
-      if (settings::solver_type == SolverType::MONTE_CARLO) {
+    if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
+      if (global_simulation.solver_type() == SolverType::MONTE_CARLO) {
         header("FIXED SOURCE TRANSPORT SIMULATION", 3);
-      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+      } else if (global_simulation.solver_type() == SolverType::RANDOM_RAY) {
         header("FIXED SOURCE TRANSPORT SIMULATION (RANDOM RAY SOLVER)", 3);
       }
-    } else if (settings::run_mode == RunMode::EIGENVALUE) {
-      if (settings::solver_type == SolverType::MONTE_CARLO) {
+    } else if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
+      if (global_simulation.solver_type() == SolverType::MONTE_CARLO) {
         header("K EIGENVALUE SIMULATION", 3);
-      } else if (settings::solver_type == SolverType::RANDOM_RAY) {
+      } else if (global_simulation.solver_type() == SolverType::RANDOM_RAY) {
         header("K EIGENVALUE SIMULATION (RANDOM RAY SOLVER)", 3);
       }
-      if (settings::verbosity >= 7)
+      if (global_simulation.verbosity() >= 7)
         print_columns();
     }
   }
 
   // load weight windows from file
-  if (!settings::weight_windows_file.empty()) {
-    openmc_weight_windows_import(settings::weight_windows_file.c_str());
+  if (!global_simulation.weight_windows_file().empty()) {
+    openmc_weight_windows_import(global_simulation.weight_windows_file().c_str());
   }
 
   // Set flag indicating initialization is done
@@ -183,19 +183,19 @@ int openmc_simulation_finalize()
   }
 
   // Close track file if open
-  if (!settings::track_identifiers.empty() || settings::write_all_tracks) {
+  if (!global_simulation.track_identifiers().empty() || global_simulation.write_all_tracks()) {
     close_track_file();
   }
 
   // Increment total number of generations
-  simulation::total_gen += simulation::current_batch * settings::gen_per_batch;
+  simulation::total_gen += simulation::current_batch * global_simulation.gen_per_batch();
 
 #ifdef OPENMC_MPI
   broadcast_results();
 #endif
 
   // Write tally results to tallies.out
-  if (settings::output_tallies && mpi::master)
+  if (global_simulation.output_tallies() && mpi::master)
     write_tallies();
 
   // If weight window generators are present in this simulation,
@@ -213,14 +213,14 @@ int openmc_simulation_finalize()
   simulation::time_finalize.stop();
   simulation::time_total.stop();
   if (mpi::master) {
-    if (settings::solver_type != SolverType::RANDOM_RAY) {
-      if (settings::verbosity >= 6)
+    if (global_simulation.solver_type() != SolverType::RANDOM_RAY) {
+      if (global_simulation.verbosity() >= 6)
         print_runtime();
-      if (settings::verbosity >= 4)
+      if (global_simulation.verbosity() >= 4)
         print_results();
     }
   }
-  if (settings::check_overlaps)
+  if (global_simulation.check_overlaps())
     print_overlap_check();
 
   // Reset flags
@@ -243,7 +243,7 @@ int openmc_next_batch(int* status)
 
   // =======================================================================
   // LOOP OVER GENERATIONS
-  for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
+  for (current_gen = 1; current_gen <= global_simulation.gen_per_batch(); ++current_gen) {
 
     initialize_generation();
 
@@ -251,7 +251,7 @@ int openmc_next_batch(int* status)
     simulation::time_transport.start();
 
     // Transport loop
-    if (settings::event_based) {
+    if (global_simulation.event_based()) {
       transport_event_based();
     } else {
       transport_history_based();
@@ -267,7 +267,7 @@ int openmc_next_batch(int* status)
 
   // Check simulation ending criteria
   if (status) {
-    if (simulation::current_batch >= settings::n_max_batches) {
+    if (simulation::current_batch >= global_simulation.n_batches()) {
       *status = STATUS_EXIT_MAX_BATCH;
     } else if (simulation::satisfy_triggers) {
       *status = STATUS_EXIT_ON_TRIGGER;
@@ -286,7 +286,7 @@ bool openmc_is_statepoint_batch()
   if (!simulation::initialized)
     return false;
   else
-    return contains(settings::statepoint_batch, simulation::current_batch);
+    return contains(global_simulation.statepoint_batch(), simulation::current_batch);
 }
 
 namespace openmc {
@@ -329,8 +329,8 @@ vector<int64_t> work_index;
 
 void allocate_banks()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      settings::solver_type == SolverType::MONTE_CARLO) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE &&
+      global_simulation.solver_type() == SolverType::MONTE_CARLO) {
     // Allocate source bank
     simulation::source_bank.resize(simulation::work_per_rank);
 
@@ -338,14 +338,14 @@ void allocate_banks()
     init_fission_bank(3 * simulation::work_per_rank);
 
     // Allocate IFP bank
-    if (settings::ifp_on) {
+    if (global_simulation.ifp_on()) {
       resize_simulation_ifp_banks();
     }
   }
 
-  if (settings::surf_source_write) {
+  if (global_simulation.surf_source_write()) {
     // Allocate surface source bank
-    simulation::surf_source_bank.reserve(settings::ssw_max_particles);
+    simulation::surf_source_bank.reserve(global_simulation.ssw_max_particles());
   }
 }
 
@@ -353,9 +353,9 @@ void initialize_batch()
 {
   // Increment current batch
   ++simulation::current_batch;
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    if (settings::solver_type == SolverType::RANDOM_RAY &&
-        simulation::current_batch < settings::n_inactive + 1) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
+    if (global_simulation.solver_type() == SolverType::RANDOM_RAY &&
+        simulation::current_batch < global_simulation.n_inactive() + 1) {
       write_message(
         6, "Simulating batch {:<4} (inactive)", simulation::current_batch);
     } else {
@@ -369,11 +369,11 @@ void initialize_batch()
   // Determine if this batch is the first inactive or active batch.
   bool first_inactive = false;
   bool first_active = false;
-  if (!settings::restart_run) {
-    first_inactive = settings::n_inactive > 0 && simulation::current_batch == 1;
-    first_active = simulation::current_batch == settings::n_inactive + 1;
-  } else if (simulation::current_batch == simulation::restart_batch + 1) {
-    first_inactive = simulation::restart_batch < settings::n_inactive;
+  if (!global_simulation.restart_run()) {
+    first_inactive = global_simulation.n_inactive() > 0 && simulation::current_batch == 1;
+    first_active = simulation::current_batch == global_simulation.n_inactive() + 1;
+  } else {
+    first_inactive = simulation::restart_batch < global_simulation.n_inactive();
     first_active = !first_inactive;
   }
 
@@ -400,15 +400,15 @@ void finalize_batch()
   simulation::time_tallies.stop();
 
   // update weight windows if needed
-  if (settings::solver_type != SolverType::RANDOM_RAY ||
-      simulation::current_batch == settings::n_batches) {
+  if (global_simulation.solver_type() != SolverType::RANDOM_RAY ||
+      simulation::current_batch == global_simulation.n_batches()) {
     for (const auto& wwg : variance_reduction::weight_windows_generators) {
       wwg->update();
     }
   }
 
   // Reset global tally results
-  if (simulation::current_batch <= settings::n_inactive) {
+  if (simulation::current_batch <= global_simulation.n_inactive()) {
     xt::view(simulation::global_tallies, xt::all()) = 0.0;
     simulation::n_realizations = 0;
   }
@@ -420,18 +420,18 @@ void finalize_batch()
   MPI_Bcast(&simulation::satisfy_triggers, 1, MPI_C_BOOL, 0, mpi::intracomm);
 #endif
   if (simulation::satisfy_triggers ||
-      (settings::trigger_on &&
-        simulation::current_batch == settings::n_max_batches)) {
-    settings::statepoint_batch.insert(simulation::current_batch);
+      (global_simulation.trigger_on() &&
+        simulation::current_batch == global_simulation.n_batches())) {
+    global_simulation.statepoint_batch().insert(simulation::current_batch);
   }
 
   // Write out state point if it's been specified for this batch and is not
   // a CMFD run instance
-  if (contains(settings::statepoint_batch, simulation::current_batch) &&
-      !settings::cmfd_run) {
-    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
-        settings::source_write && !settings::source_separate) {
-      bool b = (settings::run_mode == RunMode::EIGENVALUE);
+  if (contains(global_simulation.statepoint_batch(), simulation::current_batch) &&
+      !global_simulation.cmfd_run()) {
+    if (contains(global_simulation.sourcepoint_batch(), simulation::current_batch) &&
+        global_simulation.source_write() && !global_simulation.source_separate()) {
+      bool b = (global_simulation.run_mode() == RunMode::EIGENVALUE);
       openmc_statepoint_write(nullptr, &b);
     } else {
       bool b = false;
@@ -439,40 +439,40 @@ void finalize_batch()
     }
   }
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     // Write out a separate source point if it's been specified for this batch
-    if (contains(settings::sourcepoint_batch, simulation::current_batch) &&
-        settings::source_write && settings::source_separate) {
+    if (contains(global_simulation.sourcepoint_batch(), simulation::current_batch) &&
+        global_simulation.source_write() && global_simulation.source_separate()) {
 
       // Determine width for zero padding
-      int w = std::to_string(settings::n_max_batches).size();
+      int w = std::to_string(global_simulation.n_batches()).size();
       std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
-        settings::path_output, simulation::current_batch, w);
+        global_simulation.path_output(), simulation::current_batch, w);
       span<SourceSite> bankspan(simulation::source_bank);
       write_source_point(source_point_filename, bankspan,
-        simulation::work_index, settings::source_mcpl_write);
+        simulation::work_index, global_simulation.source_mcpl_write());
     }
 
     // Write a continously-overwritten source point if requested.
-    if (settings::source_latest) {
-      auto filename = settings::path_output + "source";
+    if (global_simulation.source_latest()) {
+      auto filename = global_simulation.path_output() + "source";
       span<SourceSite> bankspan(simulation::source_bank);
       write_source_point(filename, bankspan, simulation::work_index,
-        settings::source_mcpl_write);
+        global_simulation.source_mcpl_write());
     }
   }
 
   // Write out surface source if requested.
-  if (settings::surf_source_write &&
-      simulation::ssw_current_file <= settings::ssw_max_files) {
-    bool last_batch = (simulation::current_batch == settings::n_batches);
+  if (global_simulation.surf_source_write() &&
+      simulation::ssw_current_file <= global_simulation.ssw_max_files()) {
+    bool last_batch = (simulation::current_batch == global_simulation.n_batches());
     if (simulation::surf_source_bank.full() || last_batch) {
       // Determine appropriate filename
-      auto filename = fmt::format("{}surface_source.{}", settings::path_output,
+      auto filename = fmt::format("{}surface_source.{}", global_simulation.path_output(),
         simulation::current_batch);
-      if (settings::ssw_max_files == 1 ||
+      if (global_simulation.ssw_max_files() == 1 ||
           (simulation::ssw_current_file == 1 && last_batch)) {
-        filename = settings::path_output + "surface_source";
+        filename = global_simulation.path_output() + "surface_source";
       }
 
       // Get span of source bank and calculate parallel index vector
@@ -483,12 +483,12 @@ void finalize_batch()
 
       // Write surface source file
       write_source_point(
-        filename, surfbankspan, surf_work_index, settings::surf_mcpl_write);
+        filename, surfbankspan, surf_work_index, global_simulation.surf_mcpl_write());
 
       // Reset surface source bank and increment counter
       simulation::surf_source_bank.clear();
-      if (!last_batch && settings::ssw_max_files >= 1) {
-        simulation::surf_source_bank.reserve(settings::ssw_max_particles);
+      if (!last_batch && global_simulation.ssw_max_files() >= 1) {
+        simulation::surf_source_bank.reserve(global_simulation.ssw_max_particles());
       }
       ++simulation::ssw_current_file;
     }
@@ -497,12 +497,12 @@ void finalize_batch()
 
 void initialize_generation()
 {
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     // Clear out the fission bank
     simulation::fission_bank.resize(0);
 
     // Count source sites if using uniform fission source weighting
-    if (settings::ufs_on)
+    if (global_simulation.ufs_on())
       ufs_count_sites();
 
     // Store current value of tracklength k
@@ -516,7 +516,7 @@ void finalize_generation()
   auto& gt = simulation::global_tallies;
 
   // Update global tallies with the accumulation variables
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
     gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
       global_tally_absorption;
@@ -526,15 +526,15 @@ void finalize_generation()
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
   // reset tallies
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;
   }
   global_tally_leakage = 0.0;
 
-  if (settings::run_mode == RunMode::EIGENVALUE &&
-      settings::solver_type == SolverType::MONTE_CARLO) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE &&
+      global_simulation.solver_type() == SolverType::MONTE_CARLO) {
     // If using shared memory, stable sort the fission bank (by parent IDs)
     // so as to allow for reproducibility regardless of which order particles
     // are run in.
@@ -544,11 +544,11 @@ void finalize_generation()
     synchronize_bank();
   }
 
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy
-    if (settings::entropy_on &&
-        settings::solver_type == SolverType::MONTE_CARLO)
+    if (global_simulation.entropy_on() &&
+        global_simulation.solver_type() == SolverType::MONTE_CARLO)
       shannon_entropy();
 
     // Collect results and statistics
@@ -556,7 +556,7 @@ void finalize_generation()
     calculate_average_keff();
 
     // Write generation output
-    if (mpi::master && settings::verbosity >= 7) {
+    if (mpi::master && global_simulation.verbosity() >= 7) {
       print_generation();
     }
   }
@@ -565,13 +565,13 @@ void finalize_generation()
 void initialize_history(Particle& p, int64_t index_source)
 {
   // set defaults
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     // set defaults for eigenvalue simulations from primary bank
     p.from_source(&simulation::source_bank[index_source - 1]);
-  } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  } else if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     // initialize random number seed
     int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                   settings::n_particles +
+                   global_simulation.n_particles() +
                  simulation::work_index[mpi::rank] + index_source;
     uint64_t seed = init_seed(id, STREAM_SOURCE);
     // sample from external source distribution or custom library then set
@@ -603,15 +603,15 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // set random number seed
   int64_t particle_seed =
-    (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
+    (simulation::total_gen + overall_generation() - 1) * global_simulation.n_particles() +
     p.id();
   init_particle_seeds(particle_seed, p.seeds());
 
   // set particle trace
   p.trace() = false;
-  if (simulation::current_batch == settings::trace_batch &&
-      simulation::current_gen == settings::trace_gen &&
-      p.id() == settings::trace_particle)
+  if (simulation::current_batch == global_simulation.trace_batch() &&
+      simulation::current_gen == global_simulation.trace_gen() &&
+      p.id() == global_simulation.trace_particle())
     p.trace() = true;
 
   // Set particle track.
@@ -622,7 +622,7 @@ void initialize_history(Particle& p, int64_t index_source)
   apply_weight_windows(p);
 
   // Display message if high verbosity or trace is on
-  if (settings::verbosity >= 9 || p.trace()) {
+  if (global_simulation.verbosity() >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());
   }
 
@@ -631,7 +631,7 @@ void initialize_history(Particle& p, int64_t index_source)
   simulation::total_weight += p.wgt();
 
   // Force calculation of cross-sections by setting last energy to zero
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     p.invalidate_neutron_xs();
   }
 
@@ -643,16 +643,16 @@ void initialize_history(Particle& p, int64_t index_source)
 int overall_generation()
 {
   using namespace simulation;
-  return settings::gen_per_batch * (current_batch - 1) + current_gen;
+  return global_simulation.gen_per_batch() * (current_batch - 1) + current_gen;
 }
 
 void calculate_work()
 {
   // Determine minimum amount of particles to simulate on each processor
-  int64_t min_work = settings::n_particles / mpi::n_procs;
+  int64_t min_work = global_simulation.n_particles() / mpi::n_procs;
 
   // Determine number of processors that have one extra particle
-  int64_t remainder = settings::n_particles % mpi::n_procs;
+  int64_t remainder = global_simulation.n_particles() % mpi::n_procs;
 
   int64_t i_bank = 0;
   simulation::work_index.resize(mpi::n_procs + 1);
@@ -686,7 +686,7 @@ void initialize_data()
     }
   }
 
-  if (settings::photon_transport) {
+  if (global_simulation.photon_transport()) {
     for (const auto& elem : data::elements) {
       if (elem->energy_.size() >= 1) {
         int photon = static_cast<int>(ParticleType::photon);
@@ -698,7 +698,7 @@ void initialize_data()
       }
     }
 
-    if (settings::electron_treatment == ElectronTreatment::TTB) {
+    if (global_simulation.electron_treatment() == ElectronTreatment::TTB) {
       // Determine if minimum/maximum energy for bremsstrahlung is greater/less
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
@@ -738,7 +738,7 @@ void initialize_data()
   int neutron = static_cast<int>(ParticleType::neutron);
   simulation::log_spacing =
     std::log(data::energy_max[neutron] / data::energy_min[neutron]) /
-    settings::n_log_bins;
+    global_simulation.n_log_bins();
 }
 
 #ifdef OPENMC_MPI
@@ -824,7 +824,7 @@ void transport_event_based()
   while (remaining_work > 0) {
     // Figure out # of particles to run for this subiteration
     int64_t n_particles =
-      std::min(remaining_work, settings::max_particles_in_flight);
+      std::min(remaining_work, global_simulation.max_particles_in_flight());
 
     // Initialize all particle histories for this subiteration
     process_init_events(n_particles, source_offset);

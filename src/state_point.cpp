@@ -21,7 +21,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
@@ -43,10 +43,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     filename_ = filename;
   } else {
     // Determine width for zero padding
-    int w = std::to_string(settings::n_max_batches).size();
+    int w = std::to_string(global_simulation.n_batches()).size();
 
     // Set filename for state point
-    filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
+    filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", global_simulation.path_output(),
       simulation::current_batch, w);
   }
 
@@ -84,7 +84,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "date_and_time", time_stamp());
 
     // Write path to input
-    write_attribute(file_id, "path", settings::path_input);
+    write_attribute(file_id, "path", global_simulation.path_input());
 
     // Write out random number seed
     write_dataset(file_id, "seed", openmc_get_seed());
@@ -94,8 +94,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
     // Write run information
     write_dataset(file_id, "energy_mode",
-      settings::run_CE ? "continuous-energy" : "multi-group");
-    switch (settings::run_mode) {
+      global_simulation.run_CE() ? "continuous-energy" : "multi-group");
+    switch (global_simulation.run_mode()) {
     case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
       break;
@@ -105,9 +105,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     default:
       break;
     }
-    write_attribute(file_id, "photon_transport", settings::photon_transport);
-    write_dataset(file_id, "n_particles", settings::n_particles);
-    write_dataset(file_id, "n_batches", settings::n_batches);
+    write_attribute(file_id, "photon_transport", global_simulation.photon_transport());
+    write_dataset(file_id, "n_particles", global_simulation.n_particles());
+    write_dataset(file_id, "n_batches", global_simulation.n_batches());
 
     // Write out current batch number
     write_dataset(file_id, "current_batch", simulation::current_batch);
@@ -116,7 +116,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_attribute(file_id, "source_present", write_source_);
 
     // Write out information for eigenvalue run
-    if (settings::run_mode == RunMode::EIGENVALUE)
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
 
     hid_t tallies_group = create_group(file_id, "tallies");
@@ -227,7 +227,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           if (i_nuclide == -1) {
             nuclides.push_back("total");
           } else {
-            if (settings::run_CE) {
+            if (global_simulation.run_CE()) {
               nuclides.push_back(data::nuclides[i_nuclide]->name_);
             } else {
               nuclides.push_back(data::mg.nuclides_[i_nuclide].name);
@@ -251,7 +251,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       }
     }
 
-    if (settings::reduce_tallies) {
+    if (global_simulation.reduce_tallies()) {
       // Write global tallies
       write_dataset(file_id, "global_tallies", simulation::global_tallies);
 
@@ -282,7 +282,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   }
 
   // Check for the no-tally-reduction method
-  if (!settings::reduce_tallies) {
+  if (!global_simulation.reduce_tallies()) {
     // If using the no-tally-reduction method, we need to collect tally
     // results before writing them to the state point file.
     write_tally_results_nr(file_id);
@@ -303,11 +303,11 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(runtime_group, "simulation",
       time_inactive.elapsed() + time_active.elapsed());
     write_dataset(runtime_group, "transport", time_transport.elapsed());
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       write_dataset(runtime_group, "inactive batches", time_inactive.elapsed());
     }
     write_dataset(runtime_group, "active batches", time_active.elapsed());
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       write_dataset(
         runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(
@@ -352,12 +352,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
 void restart_set_keff()
 {
-  if (simulation::restart_batch > settings::n_inactive) {
-    for (int i = settings::n_inactive; i < simulation::restart_batch; ++i) {
+  if (simulation::restart_batch > global_simulation.n_inactive()) {
+    for (int i = global_simulation.n_inactive(); i < simulation::restart_batch; ++i) {
       simulation::k_sum[0] += simulation::k_generation[i];
       simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
     }
-    int n = settings::gen_per_batch * simulation::n_realizations;
+    int n = global_simulation.gen_per_batch() * simulation::n_realizations;
     simulation::keff = simulation::k_sum[0] / n;
   } else {
     simulation::keff = simulation::k_generation.back();
@@ -367,8 +367,8 @@ void restart_set_keff()
 void load_state_point()
 {
   write_message(
-    fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
-  openmc_statepoint_load(settings::path_statepoint.c_str());
+    fmt::format("Loading state point {}...", global_simulation.path_statepoint()), 5);
+  openmc_statepoint_load(global_simulation.path_statepoint().c_str());
 }
 
 void statepoint_version_check(hid_t file_id)
@@ -410,10 +410,10 @@ extern "C" int openmc_statepoint_load(const char* filename)
   // It is not impossible for a state point to be generated from a CE run but
   // to be loaded in to an MG run (or vice versa), check to prevent that.
   read_dataset(file_id, "energy_mode", word);
-  if (word == "multi-group" && settings::run_CE) {
+  if (word == "multi-group" && global_simulation.run_CE()) {
     fatal_error("State point file is from multigroup run but current run is "
                 "continous energy.");
-  } else if (word == "continuous-energy" && !settings::run_CE) {
+  } else if (word == "continuous-energy" && !global_simulation.run_CE()) {
     fatal_error("State point file is from continuous-energy run but current "
                 "run is multigroup!");
   }
@@ -421,28 +421,33 @@ extern "C" int openmc_statepoint_load(const char* filename)
   // Read and overwrite run information except number of batches
   read_dataset(file_id, "run_mode", word);
   if (word == "fixed source") {
-    settings::run_mode = RunMode::FIXED_SOURCE;
+    global_simulation.set_run_mode(RunMode::FIXED_SOURCE);
   } else if (word == "eigenvalue") {
-    settings::run_mode = RunMode::EIGENVALUE;
+    global_simulation.set_run_mode(RunMode::EIGENVALUE);
   }
-  read_attribute(file_id, "photon_transport", settings::photon_transport);
-  read_dataset(file_id, "n_particles", settings::n_particles);
+  bool photon_transport_temp;
+  read_attribute(file_id, "photon_transport", photon_transport_temp);
+  global_simulation.set_photon_transport(photon_transport_temp);
+
+  int64_t n_particles_temp;
+  read_dataset(file_id, "n_particles", n_particles_temp);
+  global_simulation.set_n_particles(n_particles_temp);
   int temp;
   read_dataset(file_id, "n_batches", temp);
 
   // Take maximum of statepoint n_batches and input n_batches
-  settings::n_batches = std::max(settings::n_batches, temp);
+  global_simulation.set_n_batches(std::max(global_simulation.n_batches(), temp));
 
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  if (settings::restart_run &&
-      simulation::restart_batch >= settings::n_max_batches) {
+  if (global_simulation.restart_run() &&
+      simulation::restart_batch >= global_simulation.n_batches()) {
     warning(fmt::format(
       "The number of batches specified for simulation ({}) is smaller "
       "than or equal to the number of batches in the restart statepoint file "
       "({})",
-      settings::n_max_batches, simulation::restart_batch));
+      global_simulation.n_batches(), simulation::restart_batch));
   }
 
   // Logical flag for source present in statepoint file
@@ -450,15 +455,15 @@ extern "C" int openmc_statepoint_load(const char* filename)
   read_attribute(file_id, "source_present", source_present);
 
   // Read information specific to eigenvalue run
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     read_dataset(file_id, "n_inactive", temp);
     read_eigenvalue_hdf5(file_id);
 
     // Take maximum of statepoint n_inactive and input n_inactive
-    settings::n_inactive = std::max(settings::n_inactive, temp);
+    global_simulation.set_n_inactive(std::max(global_simulation.n_inactive(), temp));
 
     // Check to make sure source bank is present
-    if (settings::path_sourcepoint == settings::path_statepoint &&
+    if (global_simulation.path_sourcepoint() == global_simulation.path_statepoint() &&
         !source_present) {
       fatal_error("Source bank must be contained in statepoint restart file");
     }
@@ -469,7 +474,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
 
   // Set k_sum, keff, and current_batch based on whether restart file is part
   // of active cycle or inactive cycle
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     restart_set_keff();
   }
 
@@ -519,7 +524,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   }
 
   // Read source if in eigenvalue mode
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
 
     // Check if source was written out separately
     if (!source_present) {
@@ -529,10 +534,10 @@ extern "C" int openmc_statepoint_load(const char* filename)
 
       // Write message
       write_message(
-        "Loading source file " + settings::path_sourcepoint + "...", 5);
+        "Loading source file " + global_simulation.path_sourcepoint() + "...", 5);
 
       // Open source file
-      file_id = file_open(settings::path_sourcepoint.c_str(), 'r', true);
+      file_id = file_open(global_simulation.path_sourcepoint().c_str(), 'r', true);
     }
 
     // Read source
@@ -905,7 +910,7 @@ void write_unstructured_mesh_results()
 
       // Generate a file name based on the tally id
       // and the current batch number
-      size_t batch_width {std::to_string(settings::n_max_batches).size()};
+      size_t batch_width {std::to_string(global_simulation.n_batches()).size()};
       std::string filename = fmt::format("tally_{0}.{1:0{2}}", tally->id_,
         simulation::current_batch, batch_width);
 
@@ -942,7 +947,7 @@ void write_tally_results_nr(hid_t file_id)
 
   // Transfer values to value on master
   if (mpi::master) {
-    if (simulation::current_batch == settings::n_max_batches ||
+    if (simulation::current_batch == global_simulation.n_batches() ||
         simulation::satisfy_triggers) {
       std::copy(gt_reduced.begin(), gt_reduced.end(), gt.begin());
     }
@@ -987,7 +992,7 @@ void write_tally_results_nr(hid_t file_id)
 
       // At the end of the simulation, store the results back in the
       // regular TallyResults array
-      if (simulation::current_batch == settings::n_max_batches ||
+      if (simulation::current_batch == global_simulation.n_batches() ||
           simulation::satisfy_triggers) {
         values_view = values;
       }

@@ -91,7 +91,7 @@ void read_tally_derivatives(pugi::xml_node node)
   }
 
   // Make sure derivatives were not requested for an MG run.
-  if (!settings::run_CE && !model::tally_derivs.empty())
+  if (!global_simulation.run_CE() && !model::tally_derivs.empty())
     fatal_error("Differential tallies not supported in multi-group mode");
 }
 

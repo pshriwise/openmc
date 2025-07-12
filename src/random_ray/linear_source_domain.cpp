@@ -91,7 +91,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       // very small/noisy or have poorly developed spatial moments, so we zero
       // the source gradients (effectively making this a flat source region
       // temporarily), so as to improve stability.
-      if (simulation::current_batch > 10 &&
+      if (global_simulation.current_batch() > 10 &&
           source_regions_.source(sr, g_out) >= 0.0) {
         source_regions_.source_gradients(sr, g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
@@ -101,7 +101,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
     }
   }
 
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
     for (int64_t se = 0; se < n_source_elements(); se++) {
@@ -117,7 +117,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 {
   double normalization_factor = 1.0 / total_active_distance_per_iteration;
   double volume_normalization_factor =
-    1.0 / (total_active_distance_per_iteration * simulation::current_batch);
+    1.0 / (total_active_distance_per_iteration * global_simulation.current_batch());
 
 // Normalize flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
@@ -197,7 +197,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
 
   Position local_r = r - source_regions_.centroid(sr);
   MomentArray phi_linear = source_regions_.flux_moments_t(sr, g);
-  phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
+  phi_linear *= 1.0 / (global_simulation.n_batches() - global_simulation.n_inactive());
 
   MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
   MomentArray phi_solved = invM * phi_linear;

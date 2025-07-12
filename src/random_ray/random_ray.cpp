@@ -7,7 +7,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/linear_source_domain.h"
 #include "openmc/search.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 
 #include "openmc/distribution_spatial.h"
@@ -266,7 +266,7 @@ uint64_t RandomRay::transport_history_based_single_ray()
       break;
     event_cross_surface();
     // If ray has too many events, display warning and kill it
-    if (n_event() >= settings::max_particle_events) {
+    if (n_event() >= global_simulation.max_particle_events()) {
       warning("Ray " + std::to_string(id()) +
               " underwent maximum number of events, terminating ray.");
       wgt() = 0.0;
@@ -524,7 +524,7 @@ void RandomRay::attenuate_flux_flat_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] += srh.external_source(g) * distance;
     }
@@ -697,7 +697,7 @@ void RandomRay::attenuate_flux_linear_source_void(
   // compute the updated flux moments.
   for (int g = 0; g < negroups_; g++) {
     float spatial_source = 0.f;
-    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
       spatial_source = srh.external_source(g);
     }
     float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
@@ -761,7 +761,7 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+  if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] += srh.external_source(g) * distance;
     }
@@ -842,7 +842,7 @@ SourceSite RandomRay::sample_prng()
 {
   // set random number seed
   int64_t particle_seed =
-    (simulation::current_batch - 1) * settings::n_particles + id();
+    (simulation::current_batch - 1) * global_simulation.n_particles() + id();
   init_particle_seeds(particle_seed, seeds());
   stream() = STREAM_TRACKING;
 
@@ -857,7 +857,7 @@ SourceSite RandomRay::sample_halton()
   SourceSite site;
 
   // Set random number seed
-  int64_t batch_seed = (simulation::current_batch - 1) * settings::n_particles;
+  int64_t batch_seed = (simulation::current_batch - 1) * global_simulation.n_particles();
   int64_t skip = id();
   init_particle_seeds(batch_seed, seeds());
   stream() = STREAM_TRACKING;

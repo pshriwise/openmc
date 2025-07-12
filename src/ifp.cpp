@@ -1,4 +1,5 @@
 #include "openmc/ifp.h"
+#include "openmc/simulation_manager.h"
 
 #include "openmc/bank.h"
 #include "openmc/message_passing.h"
@@ -12,8 +13,8 @@ namespace openmc {
 
 bool is_beta_effective_or_both()
 {
-  if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-      settings::ifp_parameter == IFPParameter::Both) {
+  if (global_simulation.ifp_parameter() == IFPParameter::BetaEffective ||
+      global_simulation.ifp_parameter() == IFPParameter::Both) {
     return true;
   }
   return false;
@@ -21,8 +22,8 @@ bool is_beta_effective_or_both()
 
 bool is_generation_time_or_both()
 {
-  if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-      settings::ifp_parameter == IFPParameter::Both) {
+  if (global_simulation.ifp_parameter() == IFPParameter::GenerationTime ||
+      global_simulation.ifp_parameter() == IFPParameter::Both) {
     return true;
   }
   return false;
@@ -179,11 +180,11 @@ void copy_complete_ifp_data_to_source_banks(
 {
   if (is_beta_effective_or_both()) {
     std::copy(delayed_groups.data(),
-      delayed_groups.data() + settings::n_particles,
+      delayed_groups.data() + global_simulation.n_particles(),
       simulation::ifp_source_delayed_group_bank.begin());
   }
   if (is_generation_time_or_both()) {
-    std::copy(lifetimes.data(), lifetimes.data() + settings::n_particles,
+    std::copy(lifetimes.data(), lifetimes.data() + global_simulation.n_particles(),
       simulation::ifp_source_lifetime_bank.begin());
   }
 }

@@ -68,7 +68,7 @@ Reaction::Reaction(
     }
   }
 
-  if (settings::use_decay_photons) {
+  if (global_simulation.use_decay_photons()) {
     // Remove photon products for D1S method
     products_.erase(
       std::remove_if(products_.begin(), products_.end(),

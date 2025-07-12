@@ -1,4 +1,5 @@
 #include "openmc/particle_restart.h"
+#include "openmc/simulation_manager.h"
 
 #include "openmc/array.h"
 #include "openmc/constants.h"
@@ -24,17 +25,21 @@ namespace openmc {
 void read_particle_restart(Particle& p, RunMode& previous_run_mode)
 {
   // Write meessage
-  write_message(
-    5, "Loading particle restart file {}", settings::path_particle_restart);
+     write_message(
+     5, "Loading particle restart file {}", global_simulation.path_particle_restart());
 
   // Open file
-  hid_t file_id = file_open(settings::path_particle_restart, 'r');
+  hid_t file_id = file_open(global_simulation.path_particle_restart(), 'r');
 
   // Read data from file
   read_dataset(file_id, "current_batch", simulation::current_batch);
-  read_dataset(file_id, "generations_per_batch", settings::gen_per_batch);
+  int gen_per_batch;
+  read_dataset(file_id, "generations_per_batch", gen_per_batch);
+  global_simulation.set_gen_per_batch(gen_per_batch);
   read_dataset(file_id, "current_generation", simulation::current_gen);
-  read_dataset(file_id, "n_particles", settings::n_particles);
+  int64_t n_particles;
+  read_dataset(file_id, "n_particles", n_particles);
+  global_simulation.set_n_particles(n_particles);
   std::string mode;
   read_dataset(file_id, "run_mode", mode);
   if (mode == "eigenvalue") {
@@ -53,7 +58,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   read_dataset(file_id, "time", p.time());
 
   // Set energy group and average energy in multi-group mode
-  if (!settings::run_CE) {
+  if (!global_simulation.run_CE()) {
     p.g() = p.E();
     p.E() = data::mg.energy_bin_avg_[p.g()];
   }
@@ -74,7 +79,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
 void run_particle_restart()
 {
   // Set verbosity high
-  settings::verbosity = 10;
+  global_simulation.set_verbosity(10);
 
   // Initialize nuclear data (energy limits, log grid, etc.)
   initialize_data();
@@ -87,7 +92,7 @@ void run_particle_restart()
   read_particle_restart(p, previous_run_mode);
 
   // write track if that was requested on command line
-  if (settings::write_all_tracks) {
+  if (global_simulation.write_all_tracks()) {
     open_track_file();
     p.write_track() = true;
   }
@@ -101,7 +106,7 @@ void run_particle_restart()
   case RunMode::EIGENVALUE:
   case RunMode::FIXED_SOURCE:
     particle_seed = (simulation::total_gen + overall_generation() - 1) *
-                      settings::n_particles +
+                      global_simulation.n_particles() +
                     p.id();
     break;
   default:
@@ -112,7 +117,7 @@ void run_particle_restart()
   init_particle_seeds(particle_seed, p.seeds());
 
   // Force calculation of cross-sections by setting last energy to zero
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     p.invalidate_neutron_xs();
   }
 
@@ -126,7 +131,7 @@ void run_particle_restart()
   // Write output if particle made it
   print_particle(p);
 
-  if (settings::write_all_tracks) {
+  if (global_simulation.write_all_tracks()) {
     close_track_file();
   }
 }

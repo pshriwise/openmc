@@ -1,4 +1,5 @@
 #include "openmc/geometry_aux.h"
+#include "openmc/simulation_manager.h"
 
 #include <algorithm> // for std::max
 #include <sstream>
@@ -46,7 +47,7 @@ void read_geometry_xml()
   write_message("Reading geometry XML file...", 5);
 
   // Check if geometry.xml exists
-  std::string filename = settings::path_input + "geometry.xml";
+  std::string filename = global_simulation.path_input() + "geometry.xml";
   if (!file_exists(filename)) {
     fatal_error("Geometry XML file '" + filename + "' does not exist!");
   }
@@ -81,8 +82,8 @@ void read_geometry_xml(pugi::xml_node root)
     }
   }
 
-  if (settings::run_mode != RunMode::PLOTTING &&
-      settings::run_mode != RunMode::VOLUME && !boundary_exists) {
+  if (global_simulation.run_mode() != RunMode::PLOTTING &&
+      global_simulation.run_mode() != RunMode::VOLUME && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
   }
 
@@ -343,7 +344,7 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
   }
 
   // By default, add material cells to the list of distributed cells
-  if (settings::material_cell_offsets) {
+  if (global_simulation.material_cell_offsets()) {
     for (int64_t i = 0; i < model::cells.size(); ++i) {
       if (model::cells[i]->type_ == Fill::MATERIAL)
         distribcells.insert(i);

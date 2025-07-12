@@ -425,7 +425,7 @@ void XsData::scatter_from_hdf5(hid_t xsdata_grp, size_t n_ang,
   // strip off the superfluous orders if needed
   int order_dim;
   if (scatter_format == AngleDistributionType::LEGENDRE) {
-    order_dim = std::min(order_data - 1, settings::max_order) + 1;
+    order_dim = std::min(order_data - 1, global_simulation.max_order()) + 1;
   } else {
     order_dim = order_data;
   }

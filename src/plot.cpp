@@ -181,8 +181,8 @@ void read_plots_xml()
   // Check if plots.xml exists; this is only necessary when the plot runmode is
   // initiated. Otherwise, we want to read plots.xml because it may be called
   // later via the API. In that case, its ok for a plots.xml to not exist
-  std::string filename = settings::path_input + "plots.xml";
-  if (!file_exists(filename) && settings::run_mode == RunMode::PLOTTING) {
+  std::string filename = global_simulation.path_input() + "plots.xml";
+  if (!file_exists(filename) && global_simulation.run_mode() == RunMode::PLOTTING) {
     fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
   }
 
@@ -699,8 +699,8 @@ void PlottableInterface::set_overlap_color(pugi::xml_node plot_node)
 
   // make sure we allocate the vector for counting overlap checks if
   // they're going to be plotted
-  if (color_overlaps_ && settings::run_mode == RunMode::PLOTTING) {
-    settings::check_overlaps = true;
+  if (color_overlaps_ && global_simulation.run_mode() == RunMode::PLOTTING) {
+    global_simulation.set_check_overlaps(true);
     model::overlap_check_count.resize(model::cells.size(), 0);
   }
 }
@@ -1614,12 +1614,12 @@ void Ray::trace()
 
   // Attempt to initialize the particle. We may have to enter a loop to move
   // it up to the edge of the model.
-  bool inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+  bool inside_cell = exhaustive_find_cell(*this, global_simulation.verbosity() >= 10);
 
   // Advance to the boundary of the model
   while (!inside_cell) {
     advance_to_boundary_from_void();
-    inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
+    inside_cell = exhaustive_find_cell(*this, global_simulation.verbosity() >= 10);
 
     // If true this means no surface was intersected. See cell.cpp and search
     // for numeric_limits to see where we return it.
@@ -1700,12 +1700,12 @@ void Ray::trace()
     if (boundary().lattice_translation[0] != 0 ||
         boundary().lattice_translation[1] != 0 ||
         boundary().lattice_translation[2] != 0) {
-      cross_lattice(*this, boundary(), settings::verbosity >= 10);
+      cross_lattice(*this, boundary(), global_simulation.verbosity() >= 10);
     }
 
     // Record how far the ray has traveled
     traversal_distance_ += boundary().distance;
-    inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
+    inside_cell = neighbor_list_find_cell(*this, global_simulation.verbosity() >= 10);
 
     // Call the specialized logic for this type of ray. Note that we do not
     // call this if the advance distance is very small. Unfortunately, it seems

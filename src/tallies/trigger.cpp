@@ -126,14 +126,14 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
 
 double check_keff_trigger()
 {
-  if (settings::run_mode != RunMode::EIGENVALUE)
+  if (global_simulation.run_mode() != RunMode::EIGENVALUE)
     return 0.0;
 
   double k_combined[2];
   openmc_get_keff(k_combined);
 
   double uncertainty = 0.;
-  switch (settings::keff_trigger.metric) {
+  switch (global_simulation.keff_trigger().metric) {
   case TriggerMetric::variance:
     uncertainty = k_combined[1] * k_combined[1];
     break;
@@ -149,8 +149,8 @@ double check_keff_trigger()
     return 0.0;
   }
 
-  double ratio = uncertainty / settings::keff_trigger.threshold;
-  if (settings::keff_trigger.metric == TriggerMetric::variance)
+  double ratio = uncertainty / global_simulation.keff_trigger().threshold;
+  if (global_simulation.keff_trigger().metric == TriggerMetric::variance)
     ratio = std::sqrt(ratio);
   return ratio;
 }
@@ -161,11 +161,11 @@ void check_triggers()
 {
   // Make some aliases.
   const auto current_batch {simulation::current_batch};
-  const auto n_batches {settings::n_batches};
-  const auto interval {settings::trigger_batch_interval};
+  const auto n_batches {global_simulation.n_batches()};
+  const auto interval {global_simulation.trigger_batch_interval()};
 
   // See if the current batch is one for which the triggers must be checked.
-  if (!settings::trigger_on)
+  if (!global_simulation.trigger_on())
     return;
   if (current_batch < n_batches)
     return;
@@ -206,13 +206,13 @@ void check_triggers()
   write_message(msg, 7);
 
   // Estimate batches til triggers are satisfied.
-  if (settings::trigger_predict) {
+  if (global_simulation.trigger_predict()) {
     // This calculation assumes tally variance is proportional to 1/N where N is
     // the number of batches.
     auto max_ratio = std::max(keff_ratio, tally_ratio);
-    auto n_active = current_batch - settings::n_inactive;
+    auto n_active = current_batch - global_simulation.n_inactive();
     auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio) +
-                          settings::n_inactive + 1;
+                          global_simulation.n_inactive() + 1;
 
     if (max_ratio == INFINITY) {
       std::string msg =
@@ -222,7 +222,7 @@ void check_triggers()
     } else {
       std::string msg =
         fmt::format("The estimated number of batches is {}", n_pred_batches);
-      if (n_pred_batches > settings::n_max_batches) {
+      if (n_pred_batches > global_simulation.n_max_batches()) {
         msg.append(" --- greater than max batches");
         warning(msg);
       } else {

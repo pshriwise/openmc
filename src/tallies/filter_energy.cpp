@@ -43,7 +43,7 @@ void EnergyFilter::set_bins(span<const double> bins)
   // group structure.  In that case, the matching bin index is simply the group
   // (after flipping for the different ordering of the library and tallying
   // systems).
-  if (!settings::run_CE) {
+  if (!global_simulation.run_CE()) {
     if (n_bins_ == data::mg.num_energy_groups_) {
       matches_transport_groups_ = true;
       for (int64_t i = 0; i < n_bins_ + 1; ++i) {

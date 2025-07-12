@@ -1,4 +1,5 @@
 #include "openmc/particle.h"
+#include "openmc/simulation_manager.h"
 
 #include <algorithm> // copy, min
 #include <cmath>     // log, abs
@@ -80,7 +81,7 @@ bool Particle::create_secondary(
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
-  if (E < settings::energy_cutoff[static_cast<int>(type)]) {
+  if (E < global_simulation.energy_cutoff()[static_cast<int>(type)]) {
     return false;
   }
 
@@ -89,7 +90,7 @@ bool Particle::create_secondary(
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
-  bank.E = settings::run_CE ? E : g();
+      bank.E = global_simulation.run_CE() ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
   return true;
@@ -102,7 +103,7 @@ void Particle::split(double wgt)
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u();
-  bank.E = settings::run_CE ? E() : g();
+      bank.E = global_simulation.run_CE() ? E() : g();
   bank.time = time();
 
   // Convert signed index to a singed surface ID
@@ -136,7 +137,7 @@ void Particle::from_source(const SourceSite* src)
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     E() = src->E;
     g() = 0;
   } else {
@@ -198,12 +199,12 @@ void Particle::event_calculate_xs()
   if (write_track())
     write_particle_track(*this);
 
-  if (settings::check_overlaps)
+  if (global_simulation.check_overlaps())
     check_cell_overlap(*this);
 
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
-    if (settings::run_CE) {
+    if (global_simulation.run_CE()) {
       if (material() != material_last() || sqrtkT() != sqrtkT_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
@@ -256,7 +257,7 @@ void Particle::event_advance()
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
-  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  double time_cutoff = global_simulation.time_cutoff()[static_cast<int>(type())];
   if (time() > time_cutoff) {
     double dt = time() - time_cutoff;
     time() = time_cutoff;
@@ -273,7 +274,7 @@ void Particle::event_advance()
   }
 
   // Score track-length estimate of k-eff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
   }
@@ -306,7 +307,7 @@ void Particle::event_cross_surface()
       boundary().lattice_translation[2] != 0) {
     // Particle crosses lattice boundary
 
-    bool verbose = settings::verbosity >= 10 || trace();
+    bool verbose = global_simulation.verbosity() >= 10 || trace();
     cross_lattice(*this, boundary(), verbose);
     event() = TallyEvent::LATTICE;
   } else {
@@ -321,7 +322,7 @@ void Particle::event_cross_surface()
     if (surf->surf_source_ && !surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
     }
-    if (settings::weight_window_checkpoint_surface) {
+    if (global_simulation.weight_window_checkpoint_surface()) {
       apply_weight_windows(*this);
     }
     event() = TallyEvent::SURFACE;
@@ -335,7 +336,7 @@ void Particle::event_cross_surface()
 void Particle::event_collide()
 {
   // Score collision estimate of keff
-  if (settings::run_mode == RunMode::EIGENVALUE &&
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
   }
@@ -350,7 +351,7 @@ void Particle::event_collide()
   // Clear surface component
   surface() = SURFACE_NONE;
 
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     collision(*this);
   } else {
     collision_mg(*this);
@@ -362,7 +363,7 @@ void Particle::event_collide()
   if (!model::active_collision_tallies.empty())
     score_collision_tally(*this);
   if (!model::active_analog_tallies.empty()) {
-    if (settings::run_CE) {
+    if (global_simulation.run_CE()) {
       score_analog_tally_ce(*this);
     } else {
       score_analog_tally_mg(*this);
@@ -417,7 +418,7 @@ void Particle::event_revive_from_secondary()
 {
   // If particle has too many events, display warning and kill it
   ++n_event();
-  if (n_event() == settings::max_particle_events) {
+  if (n_event() == global_simulation.max_particle_events()) {
     warning("Particle " + std::to_string(id()) +
             " underwent maximum number of events.");
     wgt() = 0.0;
@@ -446,7 +447,7 @@ void Particle::event_revive_from_secondary()
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
       if (lowest_coord().cell == C_NONE) {
-        bool verbose = settings::verbosity >= 10 || trace();
+        bool verbose = global_simulation.verbosity() >= 10 || trace();
         if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
                        std::to_string(id()));
@@ -504,7 +505,7 @@ void Particle::event_death()
 
   // Record the number of progeny created by this particle.
   // This data will be used to efficiently sort the fission bank.
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+      if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny();
   }
@@ -525,7 +526,7 @@ void Particle::pht_collision_energy()
     // If the energy of the particle is below the cutoff, it will not be sampled
     // so its energy is added to the pulse-height in the cell
     int photon = static_cast<int>(ParticleType::photon);
-    if (E() < settings::energy_cutoff[photon]) {
+    if (E() < global_simulation.energy_cutoff()[photon]) {
       pht_storage()[index] += E();
     }
   }
@@ -548,7 +549,7 @@ void Particle::pht_secondary_particles()
 void Particle::cross_surface(const Surface& surf)
 {
 
-  if (settings::verbosity >= 10 || trace()) {
+  if (global_simulation.verbosity() >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf.id_);
   }
 
@@ -559,7 +560,7 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && global_simulation.run_mode() != RunMode::PLOTTING) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }
@@ -590,7 +591,7 @@ void Particle::cross_surface(const Surface& surf)
   }
 #endif
 
-  bool verbose = settings::verbosity >= 10 || trace();
+  bool verbose = global_simulation.verbosity() >= 10 || trace();
   if (neighbor_list_find_cell(*this, verbose)) {
     return;
   }
@@ -602,7 +603,7 @@ void Particle::cross_surface(const Surface& surf)
   n_coord() = 1;
   bool found = exhaustive_find_cell(*this, verbose);
 
-  if (settings::run_mode != RunMode::PLOTTING && (!found)) {
+  if (global_simulation.run_mode() != RunMode::PLOTTING && (!found)) {
     // If a cell is still not found, there are two possible causes: 1) there is
     // a void in the model, and 2) the particle hit a surface at a tangent. If
     // the particle is really traveling tangent to a surface, if we move it
@@ -645,7 +646,7 @@ void Particle::cross_vacuum_bc(const Surface& surf)
   wgt() = 0.0;
 
   // Display message
-  if (settings::verbosity >= 10 || trace()) {
+  if (global_simulation.verbosity() >= 10 || trace()) {
     write_message(1, "    Leaked out of surface {}", surf.id_);
   }
 }
@@ -700,7 +701,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   r_last_current() = r() + TINY_BIT * u();
 
   // Diagnostic message
-  if (settings::verbosity >= 10 || trace()) {
+  if (global_simulation.verbosity() >= 10 || trace()) {
     write_message(1, "    Reflected from surface {}", surf.id_);
   }
 }
@@ -750,7 +751,7 @@ void Particle::cross_periodic_bc(
   r_last_current() = r() + TINY_BIT * u();
 
   // Diagnostic message
-  if (settings::verbosity >= 10 || trace()) {
+  if (global_simulation.verbosity() >= 10 || trace()) {
     write_message(1, "    Hit periodic boundary on surface {}", surf.id_);
   }
 }
@@ -759,8 +760,8 @@ void Particle::mark_as_lost(const char* message)
 {
   // Print warning and write lost particle file
   warning(message);
-  if (settings::max_write_lost_particles < 0 ||
-      simulation::n_lost_particles < settings::max_write_lost_particles) {
+  if (global_simulation.max_write_lost_particles() < 0 ||
+      simulation::n_lost_particles < global_simulation.max_write_lost_particles()) {
     write_restart();
   }
   // Increment number of lost particles
@@ -769,13 +770,13 @@ void Particle::mark_as_lost(const char* message)
   simulation::n_lost_particles += 1;
 
   // Count the total number of simulated particles (on this processor)
-  auto n = simulation::current_batch * settings::gen_per_batch *
+  auto n = simulation::current_batch * global_simulation.gen_per_batch() *
            simulation::work_per_rank;
 
   // Abort the simulation if the maximum number of lost particles has been
   // reached
-  if (simulation::n_lost_particles >= settings::max_lost_particles &&
-      simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
+  if (simulation::n_lost_particles >= global_simulation.max_lost_particles() &&
+      simulation::n_lost_particles >= global_simulation.rel_max_lost_particles() * n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }
 }
@@ -783,11 +784,11 @@ void Particle::mark_as_lost(const char* message)
 void Particle::write_restart() const
 {
   // Dont write another restart file if in particle restart mode
-  if (settings::run_mode == RunMode::PARTICLE)
+  if (global_simulation.run_mode() == RunMode::PARTICLE)
     return;
 
   // Set up file name
-  auto filename = fmt::format("{}particle_{}_{}.h5", settings::path_output,
+  auto filename = fmt::format("{}particle_{}_{}.h5", global_simulation.path_output(),
     simulation::current_batch, id());
 
 #pragma omp critical(WriteParticleRestart)
@@ -805,10 +806,10 @@ void Particle::write_restart() const
 
     // Write data to file
     write_dataset(file_id, "current_batch", simulation::current_batch);
-    write_dataset(file_id, "generations_per_batch", settings::gen_per_batch);
+    write_dataset(file_id, "generations_per_batch", global_simulation.gen_per_batch());
     write_dataset(file_id, "current_generation", simulation::current_gen);
-    write_dataset(file_id, "n_particles", settings::n_particles);
-    switch (settings::run_mode) {
+    write_dataset(file_id, "n_particles", global_simulation.n_particles());
+    switch (global_simulation.run_mode()) {
     case RunMode::FIXED_SOURCE:
       write_dataset(file_id, "run_mode", "fixed source");
       break;
@@ -825,17 +826,17 @@ void Particle::write_restart() const
     write_dataset(file_id, "type", static_cast<int>(type()));
 
     int64_t i = current_work();
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       // take source data from primary bank for eigenvalue simulation
       write_dataset(file_id, "weight", simulation::source_bank[i - 1].wgt);
       write_dataset(file_id, "energy", simulation::source_bank[i - 1].E);
       write_dataset(file_id, "xyz", simulation::source_bank[i - 1].r);
       write_dataset(file_id, "uvw", simulation::source_bank[i - 1].u);
       write_dataset(file_id, "time", simulation::source_bank[i - 1].time);
-    } else if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    } else if (global_simulation.run_mode() == RunMode::FIXED_SOURCE) {
       // re-sample using rng random number seed used to generate source particle
       int64_t id = (simulation::total_gen + overall_generation() - 1) *
-                     settings::n_particles +
+                     global_simulation.n_particles() +
                    simulation::work_index[mpi::rank] + i;
       uint64_t seed = init_seed(id, STREAM_SOURCE);
       // re-sample source site
@@ -907,21 +908,21 @@ ParticleType str_to_particle_type(std::string str)
 
 void add_surf_source_to_bank(Particle& p, const Surface& surf)
 {
-  if (simulation::current_batch <= settings::n_inactive ||
+  if (simulation::current_batch <= global_simulation.n_inactive() ||
       simulation::surf_source_bank.full()) {
     return;
   }
 
   // If a cell/cellfrom/cellto parameter is defined
-  if (settings::ssw_cell_id != C_NONE) {
+  if (global_simulation.ssw_cell_id() != C_NONE) {
 
     // Retrieve cell index and storage type
-    int cell_idx = model::cell_map[settings::ssw_cell_id];
+    int cell_idx = model::cell_map[global_simulation.ssw_cell_id()];
 
     if (surf.bc_) {
       // Leave if cellto with vacuum boundary condition
       if (surf.bc_->type() == "vacuum" &&
-          settings::ssw_cell_type == SSWCellType::To) {
+          global_simulation.ssw_cell_type() == SSWCellType::To) {
         return;
       }
 
@@ -966,12 +967,12 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
 
       // If cellfrom and the cell before crossing is not the cell of
       // interest
-      if (settings::ssw_cell_type == SSWCellType::From && !exited) {
+      if (global_simulation.ssw_cell_type() == SSWCellType::From && !exited) {
         return;
       }
 
       // If cellto and the cell after crossing is not the cell of interest
-      if (settings::ssw_cell_type == SSWCellType::To && !entered) {
+      if (global_simulation.ssw_cell_type() == SSWCellType::To && !entered) {
         return;
       }
     }

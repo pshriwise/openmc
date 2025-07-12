@@ -40,6 +40,7 @@
 #include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/string_utils.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
@@ -507,7 +508,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   double t_norm = t_total - t_raytrace - t_mpi;
 
   // Show timing statistics
-  if (settings::verbosity < 7 || !mpi::master)
+  if (global_simulation.verbosity() < 7 || !mpi::master)
     return;
   header("Timing Statistics", 7);
   fmt::print(" Total time elapsed            = {:.4e} seconds\n", t_total);
@@ -912,7 +913,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
-  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
+  if (total_distance == 0.0 && global_simulation.solver_type() != SolverType::RANDOM_RAY)
     return;
 
   // keep a copy of the original global position to pass to get_indices,
@@ -3196,7 +3197,7 @@ void MOABMesh::write(const std::string& base_filename) const
   // add extension to the base name
   auto filename = base_filename + ".vtk";
   write_message(5, "Writing unstructured mesh {}...", filename);
-  filename = settings::path_output + filename;
+  filename = global_simulation.path_output() + filename;
 
   // write the tetrahedral elements of the mesh only
   // to avoid clutter from zero-value data on other

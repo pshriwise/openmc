@@ -33,7 +33,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/reaction.h"
-#include "openmc/settings.h"
+#include "openmc/simulation_manager.h"
 #include "openmc/simulation.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
@@ -134,7 +134,7 @@ void header(const char* msg, int level)
   auto out = header(msg);
 
   // Print header based on verbosity level.
-  if (settings::verbosity >= level) {
+  if (global_simulation.verbosity() >= level) {
     fmt::print("\n{}\n\n", out);
     std::fflush(stdout);
   }
@@ -205,7 +205,7 @@ void print_particle(Particle& p)
     fmt::print("  Surface = {}\n", (p.surface() > 0) ? surf.id_ : -surf.id_);
   }
   fmt::print("  Weight = {}\n", p.wgt());
-  if (settings::run_CE) {
+  if (global_simulation.run_CE()) {
     fmt::print("  Energy = {}\n", p.E());
   } else {
     fmt::print("  Energy Group = {}\n", p.g());
@@ -218,7 +218,7 @@ void print_particle(Particle& p)
 void print_plot()
 {
   header("PLOTTING SUMMARY", 5);
-  if (settings::verbosity < 5)
+  if (global_simulation.verbosity() < 5)
     return;
 
   for (const auto& pl : model::plots) {
@@ -368,7 +368,7 @@ void print_build_info()
 
 void print_columns()
 {
-  if (settings::entropy_on) {
+  if (global_simulation.entropy_on()) {
     fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
                "  =========   ========   ========   ====================\n");
   } else {
@@ -383,8 +383,8 @@ void print_generation()
 {
   // Determine overall generation index and number of active generations
   int idx = overall_generation() - 1;
-  int n = simulation::current_batch > settings::n_inactive
-            ? settings::gen_per_batch * simulation::n_realizations +
+  int n = simulation::current_batch > global_simulation.n_inactive()
+            ? global_simulation.gen_per_batch() * simulation::n_realizations +
                 simulation::current_gen
             : 0;
 
@@ -394,7 +394,7 @@ void print_generation()
   fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
 
   // write out entropy info
-  if (settings::entropy_on) {
+  if (global_simulation.entropy_on()) {
     fmt::print("   {:8.5f}", simulation::entropy[idx]);
   }
 
@@ -425,7 +425,7 @@ void print_runtime()
 
   // display header block
   header("Timing Statistics", 6);
-  if (settings::verbosity < 6)
+  if (global_simulation.verbosity() < 6)
     return;
 
   // display time elapsed for various sections
@@ -434,7 +434,7 @@ void print_runtime()
   show_time("Total time in simulation",
     time_inactive.elapsed() + time_active.elapsed());
   show_time("Time in transport only", time_transport.elapsed(), 1);
-  if (settings::event_based) {
+  if (global_simulation.event_based()) {
     show_time("Particle initialization", time_event_init.elapsed(), 2);
     show_time("XS lookups", time_event_calculate_xs.elapsed(), 2);
     show_time("Advancing", time_event_advance_particle.elapsed(), 2);
@@ -442,11 +442,11 @@ void print_runtime()
     show_time("Collisions", time_event_collision.elapsed(), 2);
     show_time("Particle death", time_event_death.elapsed(), 2);
   }
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     show_time("Time in inactive batches", time_inactive.elapsed(), 1);
   }
   show_time("Time in active batches", time_active.elapsed(), 1);
-  if (settings::run_mode == RunMode::EIGENVALUE) {
+  if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
     show_time("Time synchronizing fission bank", time_bank.elapsed(), 1);
     show_time("Sampling source sites", time_bank_sample.elapsed(), 2);
     show_time("SEND/RECV source sites", time_bank_sendrecv.elapsed(), 2);
@@ -457,39 +457,39 @@ void print_runtime()
   show_time("Total time elapsed", time_total.elapsed());
 
   // Calculate particle rate in active/inactive batches
-  int n_active = simulation::current_batch - settings::n_inactive;
+  int n_active = simulation::current_batch - global_simulation.n_inactive();
   double speed_inactive = 0.0;
   double speed_active;
-  if (settings::restart_run) {
-    if (simulation::restart_batch < settings::n_inactive) {
-      speed_inactive = (settings::n_particles *
-                         (settings::n_inactive - simulation::restart_batch) *
-                         settings::gen_per_batch) /
+  if (global_simulation.restart_run()) {
+    if (simulation::restart_batch < global_simulation.n_inactive()) {
+      speed_inactive = (global_simulation.n_particles() *
+                         (global_simulation.n_inactive() - simulation::restart_batch) *
+                         global_simulation.gen_per_batch()) /
                        time_inactive.elapsed();
       speed_active =
-        (settings::n_particles * n_active * settings::gen_per_batch) /
+        (global_simulation.n_particles() * n_active * global_simulation.gen_per_batch()) /
         time_active.elapsed();
     } else {
-      speed_active = (settings::n_particles *
-                       (settings::n_batches - simulation::restart_batch) *
-                       settings::gen_per_batch) /
+      speed_active = (global_simulation.n_particles() *
+                       (global_simulation.n_batches() - simulation::restart_batch) *
+                       global_simulation.gen_per_batch()) /
                      time_active.elapsed();
     }
   } else {
-    if (settings::n_inactive > 0) {
-      speed_inactive = (settings::n_particles * settings::n_inactive *
-                         settings::gen_per_batch) /
+    if (global_simulation.n_inactive() > 0) {
+      speed_inactive = (global_simulation.n_particles() * global_simulation.n_inactive() *
+                         global_simulation.gen_per_batch()) /
                        time_inactive.elapsed();
     }
     speed_active =
-      (settings::n_particles * n_active * settings::gen_per_batch) /
+      (global_simulation.n_particles() * n_active * global_simulation.gen_per_batch()) /
       time_active.elapsed();
   }
 
   // display calculation rate
-  if (!(settings::restart_run &&
-        (simulation::restart_batch >= settings::n_inactive)) &&
-      settings::n_inactive > 0) {
+  if (!(global_simulation.restart_run() &&
+        (simulation::restart_batch >= global_simulation.n_inactive())) &&
+      global_simulation.n_inactive() > 0) {
     show_rate("Calculation Rate (inactive)", speed_inactive);
   }
   show_rate("Calculation Rate (active)", speed_active);
@@ -514,13 +514,13 @@ void print_results()
 {
   // display header block for results
   header("Results", 4);
-  if (settings::verbosity < 4)
+  if (global_simulation.verbosity() < 4)
     return;
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;
   double alpha, t_n1, t_n3;
-  if (settings::confidence_intervals) {
+  if (global_simulation.confidence_intervals()) {
     alpha = 1.0 - CONFIDENCE_LEVEL;
     t_n1 = t_percentile(1.0 - alpha / 2.0, n - 1);
     t_n3 = t_percentile(1.0 - alpha / 2.0, n - 3);
@@ -533,7 +533,7 @@ void print_results()
   const auto& gt = simulation::global_tallies;
   double mean, stdev;
   if (n > 1) {
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
@@ -558,7 +558,7 @@ void print_results()
       warning("Could not compute uncertainties -- only one "
               "active batch simulated!");
 
-    if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (global_simulation.run_mode() == RunMode::EIGENVALUE) {
       fmt::print(" k-effective (Collision)    = {:.5f}\n",
         gt(GlobalTally::K_COLLISION, TallyResult::SUM) / n);
       fmt::print(" k-effective (Track-length) = {:.5f}\n",
@@ -606,7 +606,7 @@ void write_tallies()
     return;
 
   // Set filename for tallies_out
-  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  std::string filename = fmt::format("{}tallies.out", global_simulation.path_output());
 
   // Open the tallies.out file.
   std::ofstream tallies_out;
@@ -629,7 +629,7 @@ void write_tallies()
 
     // Calculate t-value for confidence intervals
     double t_value = 1;
-    if (settings::confidence_intervals) {
+    if (global_simulation.confidence_intervals()) {
       auto alpha = 1 - CONFIDENCE_LEVEL;
       t_value = t_percentile(1 - alpha * 0.5, tally.n_realizations_ - 1);
     }
@@ -690,7 +690,7 @@ void write_tallies()
         if (i_nuclide == -1) {
           fmt::print(tallies_out, "{0:{1}}Total Material\n", "", indent + 1);
         } else {
-          if (settings::run_CE) {
+          if (global_simulation.run_CE()) {
             fmt::print(tallies_out, "{0:{1}}{2}\n", "", indent + 1,
               data::nuclides[i_nuclide]->name_);
           } else {
