@@ -551,7 +551,7 @@ void Particle::cross_surface(const Surface& surf)
     write_message(1, "    Crossing surface {}", surf.id_);
   }
   // get the particle's current universe
-  auto& univ {model::universes[coord(0).universe]};
+  auto& univ {model::universes[lowest_coord().universe]};
   univ->cross_surface(*this);
 }
 
