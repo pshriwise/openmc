@@ -39,13 +39,13 @@
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
 #endif
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "moab/FileOptions.hpp"
 #endif
 
@@ -55,7 +55,7 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 const bool LIBMESH_ENABLED = true;
 #else
 const bool LIBMESH_ENABLED = false;
@@ -68,7 +68,7 @@ vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 unique_ptr<libMesh::LibMeshInit> libmesh_init;
 const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
@@ -1822,14 +1822,14 @@ extern "C" int openmc_add_unstructured_mesh(
   std::string mesh_file(filename);
   bool valid_lib = false;
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (lib_name == MOABMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   if (lib_name == LibMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
@@ -2333,7 +2333,7 @@ double XDGMesh::volume(int bin) const
 
 #endif
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
 
@@ -3029,7 +3029,7 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
 
@@ -3154,7 +3154,7 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  return this->sample_tet(tet_verts, seed);
+  return this->sample_tet<Position>(tet_verts, seed);
 }
 
 Position LibMesh::centroid(int bin) const

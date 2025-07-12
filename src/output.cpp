@@ -326,10 +326,10 @@ void print_build_info()
 #ifdef OPENMC_MPI
   mpi = y;
 #endif
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   dagmc = y;
 #endif
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
 #endif
 #ifdef OPENMC_MCPL

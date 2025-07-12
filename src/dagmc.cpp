@@ -24,7 +24,7 @@
 
 namespace openmc {
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 const bool DAGMC_ENABLED = true;
 #else
 const bool DAGMC_ENABLED = false;
@@ -38,7 +38,7 @@ const bool UWUW_ENABLED = false;
 
 } // namespace openmc
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 namespace openmc {
 

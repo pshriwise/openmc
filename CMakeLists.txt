@@ -540,7 +540,7 @@ else()
 endif()
 
 if(OPENMC_USE_DAGMC)
-  target_compile_definitions(libopenmc PRIVATE DAGMC)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_DAGMC_ENABLED)
   target_link_libraries(libopenmc dagmc-shared)
 
   if(OPENMC_USE_UWUW)
@@ -558,7 +558,7 @@ if(OPENMC_USE_XDG)
 endif()
 
 if(OPENMC_USE_LIBMESH)
-  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_LIBMESH_ENABLED)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()
 

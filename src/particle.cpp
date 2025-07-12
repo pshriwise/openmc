@@ -32,7 +32,7 @@
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
@@ -400,7 +400,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 }
@@ -465,7 +465,7 @@ void Particle::event_revive_from_secondary()
 
 void Particle::event_death()
 {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 
@@ -545,7 +545,7 @@ void Particle::cross_surface(const Surface& surf)
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
@@ -565,7 +565,7 @@ void Particle::cross_surface(const Surface& surf)
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),

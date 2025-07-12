@@ -20,7 +20,7 @@ void check_dagmc_root_univ();
 
 } // namespace openmc
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 #include "DagMC.hpp"
 #include "dagmcmetadata.hpp"

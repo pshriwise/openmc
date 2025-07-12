@@ -1304,7 +1304,7 @@ void ProjectionPlot::create_output() const
             int32_t i_surface = p.surface_index();
             if (i_surface > 0 &&
                 model::surfaces[i_surface]->geom_type() == GeometryType::DAG) {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
               int32_t i_cell = next_cell(i_surface,
                 p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
               inside_cell = i_cell >= 0;

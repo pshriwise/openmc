@@ -8,12 +8,12 @@
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
 #ifdef OPENMC_XDG
-#include "xdg/xdg.h"
+#include "openmc/xdg.h"
 #endif
 
 namespace openmc {
@@ -351,9 +351,9 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
-#ifdef DAGMC
-  // DagMC state variables
-  moab::DagMC::RayHistory& history() { return history_; }
+#ifdef OPENMC_DAGMC_ENABLED
+// DagMC state variables
+moab::DagMC::RayHistory& history() { return history_; }
   Direction& last_dir() { return last_dir_; }
 #endif
 
@@ -401,8 +401,8 @@ private:
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature
 
-#ifdef DAGMC
-  moab::DagMC::RayHistory history_;
+#ifdef OPENMC_DAGMC_ENABLED
+moab::DagMC::RayHistory history_;
   Direction last_dir_;
 #endif
 
