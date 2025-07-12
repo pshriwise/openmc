@@ -2628,7 +2628,7 @@ double XDGMesh::volume(int bin) const
 
 #endif
 
-#ifdef OPENMC_DAGNMC_ENABLED
+#ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
 
@@ -3436,7 +3436,7 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  return this->sample_tet(tet_verts, seed);
+  return this->sample_tet<Position>(tet_verts, seed);
 }
 
 Position LibMesh::centroid(int bin) const

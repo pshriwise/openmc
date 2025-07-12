@@ -13,7 +13,7 @@
 #endif
 
 #ifdef OPENMC_XDG
-#include "xdg/xdg.h"
+#include "openmc/xdg.h"
 #endif
 
 namespace openmc {

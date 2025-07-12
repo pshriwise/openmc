@@ -160,13 +160,6 @@ private:
   std::unordered_map<xdg::MeshID, int32_t> cell_index_map_;
 };
 
-//==============================================================================
-// Non-member functions
-//==============================================================================
-
-int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
-
-
 class XDGMeshUniverse : public Universe {
 
   public:
@@ -202,36 +195,43 @@ class XDGMeshUniverse : public Universe {
 
 class XDGMeshCell : public Cell {
 
-public:
+  public:
   XDGMeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx)
   { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
 
   virtual bool contains(
-  Position r, Direction u, int32_t on_surface) const override
-  {
-    int mesh_bin = model::meshes[mesh_]->get_bin(r);
-    return mesh_bin == elem_idx_;
-  };
+    Position r, Direction u, int32_t on_surface) const override
+    {
+      int mesh_bin = model::meshes[mesh_]->get_bin(r);
+      return mesh_bin == elem_idx_;
+    };
 
-  virtual std::pair<double, int32_t> distance(
-  Position r, Direction u, int32_t on_surface, GeometryState* p) const override
-  {
-    // TODO: Make appropriate call for distance here
-    // const auto& mesh = model::meshes[mesh_];
-    // return mesh->distance_to_next_bin(r, u);
-    return {INFTY, -1};
-  }
+    virtual std::pair<double, int32_t> distance(
+      Position r, Direction u, int32_t on_surface, GeometryState* p) const override
+      {
+        // TODO: Make appropriate call for distance here
+        // const auto& mesh = model::meshes[mesh_];
+        // return mesh->distance_to_next_bin(r, u);
+        return {INFTY, -1};
+      }
 
-  virtual void to_hdf5_inner(hid_t group_id) const override {};
+      virtual void to_hdf5_inner(hid_t group_id) const override {};
 
-  virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
+      virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
 
-  protected:
-    int32_t mesh_;
-    int32_t elem_idx_;
-};
+      protected:
+      int32_t mesh_;
+      int32_t elem_idx_;
+    };
+
+  //==============================================================================
+  // Non-member functions
+  //==============================================================================
+
+  int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
+
 #endif // XDG
 
 #endif // OPENMC_XDG_H
