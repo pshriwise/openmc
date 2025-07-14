@@ -158,12 +158,11 @@ void DAGUniverse::cross_surface(Particle& p) const
 
   // in DAGMC, we know what the next cell should be
   if (surf->geom_type() != GeometryType::DAG) {
-    fatal_error(fmt::format("Surface {} is not a DAGMC surface, but was passed to DAGMC Universe {}", surf->id_, id_));
+    fatal_error(fmt::format("Surface {} is not a DAGMC surface, but is being crossed in a DAGMC Universe {}", surf->id_, id_));
   }
 
-  int32_t i_cell = openmc::next_cell(p.surface_index(), p.cell_last(p.n_coord() - 1),
-                      p.lowest_coord().universe) -
-                    1;
+  int32_t i_cell = next_cell(p);
+
   // save material and temp
   p.material_last() = p.material();
   p.sqrtkT_last() = p.sqrtkT();
@@ -177,6 +176,23 @@ void DAGUniverse::cross_surface(Particle& p) const
 
   p.material() = cell->material(p.cell_instance());
   p.sqrtkT() = cell->sqrtkT(p.cell_instance());
+}
+
+int32_t DAGUniverse::next_cell(GeometryState& p) const
+{
+  auto dagmc_surface = dynamic_cast<DAGSurface*>(model::surfaces[p.surface_index()].get());
+  auto dagmc_cell = dynamic_cast<DAGCell*>(model::cells[p.lowest_coord().cell].get());
+
+  moab::EntityHandle surface_handle = dagmc_surface->mesh_handle();
+  moab::EntityHandle cell_handle = dagmc_cell->mesh_handle();
+
+  moab::EntityHandle next_cell_handle;
+  moab::ErrorCode rval = dagmc_ptr()->next_vol(surface_handle, cell_handle, next_cell_handle);
+  if (rval != moab::MB_SUCCESS) {
+    return -1;
+  }
+
+  return this->cell_index(next_cell_handle);
 }
 
 void DAGUniverse::init_dagmc()
@@ -875,24 +891,6 @@ void check_dagmc_root_univ()
   }
 }
 
-int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
-{
-  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf].get());
-  auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
-  auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
-
-  moab::EntityHandle surf_handle = surfp->mesh_handle();
-  moab::EntityHandle curr_vol = cellp->mesh_handle();
-
-  moab::EntityHandle new_vol;
-  moab::ErrorCode rval =
-    cellp->dagmc_ptr()->next_vol(surf_handle, curr_vol, new_vol);
-  if (rval != moab::MB_SUCCESS)
-    return -1;
-
-  return univp->cell_index(new_vol);
-}
-
 extern "C" int openmc_dagmc_universe_get_cell_ids(
   int32_t univ_id, int32_t* ids, size_t* n)
 {
@@ -957,8 +955,6 @@ void read_dagmc_universes(pugi::xml_node node)
 };
 
 void check_dagmc_root_univ() {};
-
-int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

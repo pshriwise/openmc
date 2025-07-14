@@ -120,7 +120,7 @@ public:
 
     //! Determine the next cell in the DAGMC universe based on embedded topology
     //! \param[in] p The GeometryState of the particle
-    void next_cell(GeometryState& p) const {};
+    int32_t next_cell(GeometryState& p) const;
 
     //! Reads UWUW materials and returns an ID map
     void read_uwuw_materials();
@@ -216,12 +216,6 @@ private:
                          //!< values are a list of material ids used
                          //!< for the override
 };
-
-//==============================================================================
-// Non-member functions
-//==============================================================================
-
-int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 
