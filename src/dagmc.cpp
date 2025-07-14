@@ -192,7 +192,7 @@ int32_t DAGUniverse::next_cell(GeometryState& p) const
     return -1;
   }
 
-  return this->cell_index(next_cell_handle);
+  return this->cell_index(next_cell_handle) - 1;
 }
 
 void DAGUniverse::init_dagmc()
