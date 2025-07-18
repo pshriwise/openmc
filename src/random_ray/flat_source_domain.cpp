@@ -635,7 +635,7 @@ void FlatSourceDomain::random_ray_tally()
         case SCORE_KAPPA_FISSION:
           // double sig_f = sigma_f_[material * negroups_ + g];
           // if (sig_f == 0) break;
-          score = kappa_fission_[material * negroups_ + g];
+          score = flux * kappa_fission_[material * negroups_ + g];
           break;
 
         default:
