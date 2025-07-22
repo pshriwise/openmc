@@ -633,68 +633,26 @@ XDGMeshUniverse::XDGMeshUniverse(pugi::xml_node node)
   create_cells(node);
 }
 
-
-void XDGMeshUniverse::create_unstructured_mesh_cells()
+int32_t XDGMeshUniverse::match_material(const std::string& material_name) const
 {
-  // // get the openmc::LibMesh mesh and libmesh mesh
-  // const auto& mesh = model::meshes[mesh_];
-  // LibMesh* mesh_ptr = dynamic_cast<LibMesh*>(mesh.get());
-  // const auto& lmesh = mesh_ptr->libmesh_mesh();
-
-  // std::set<libMesh::subdomain_id_type> subdomain_ids;
-  // lmesh->subdomain_ids(subdomain_ids);
-
-  // int mat_elements {0};
-
-  // for (const auto& subdomain_id : subdomain_ids) {
-  //   std::string subdomain_name = lmesh->subdomain_name(subdomain_id);
-  //   std::cout << "Subdomain name: " << subdomain_name << std::endl;
-  //   std::string lower_name = subdomain_name;
-  //   to_lower(lower_name);
-
-  //   if (subdomain_name == "")
-  //     continue;
-  //   // get the elements for this subdomain id
-  //   auto subdomain_elements =
-  //     lmesh->active_subdomain_elements_ptr_range(subdomain_id);
-
-  //   // determine the material ID to assign for this block
-  //   int32_t subdomain_mat_id = MATERIAL_VOID;
-  //   int32_t mat_by_name_idx = get_material_by_name(subdomain_name);
-  //   if (lower_name == "vacuum") {
-  //     subdomain_mat_id = MATERIAL_VOID;
-  //   } else if (mat_by_name_idx != -1) {
-  //     subdomain_mat_id = model::materials[mat_by_name_idx]->id();
-  //     write_message(
-  //       fmt::format("Assigning subdomain {} by name: {} with material ID {}.",
-  //         subdomain_id, subdomain_name, subdomain_mat_id),
-  //       10);
-  //   } else if (model::material_map.find(subdomain_id) !=
-  //              model::material_map.end()) {
-  //     // if no matching name is found, set cell materials by domain id
-  //     write_message(fmt::format("Assigning subdomain {} by ID.", subdomain_id,
-  //                     subdomain_name),
-  //       10);
-  //     subdomain_mat_id = subdomain_id;
-  //   } // else {
-  //   //   fatal_error(fmt::format("Could not find material by name ({}) or ID
-  //   //   ({}).", subdomain_name, subdomain_id));
-  //   // }
-
-  //   int n_subdomain_elems {0};
-  //   // set each cell in the block with the chosen material ID
-  //   for (const auto& elem_ptr : subdomain_elements) {
-  //     int bin = mesh_ptr->get_bin_from_element(elem_ptr);
-  //     // replace temporary void material assignment
-  //     model::cells[cells_[bin]]->material_[0] = subdomain_mat_id;
-  //     mat_elements++;
-  //     n_subdomain_elems++;
-  //   }
-  //   std::cout << fmt::format("{} elements\n", n_subdomain_elems);
-  // }
-
-  // std::cout << fmt::format(
-  //   "Assigned materials to {} elements.\n", mat_elements);
+  int32_t mat_id {MATERIAL_VOID};
+  if (material_name == "void" || material_name == "vacuum" || material_name == "graveyard") {
+    return MATERIAL_VOID;
+  // attempt to assign material by name
+  } else if (mat_by_name_idx != -1) {
+    int32_t mat_by_name_idx = get_material_by_name(material_name);
+    write_message(fmt::format("Assigning material {} by name", material_name), 10);
+    return mat_by_name_idx;
+  // attempt to convert to an integer and assign by ID
+  } else {
+    try {
+      mat_id = std::stoi(material_name);
+    } catch (const std::invalid_argument&) {
+      fatal_error(fmt::format("Material with name/ID '{}' not found for volume (cell) {}",
+        material_name, id_));
+    }
+  }
+  return mat_id;
 }
 
 void XDGMeshUniverse::create_cells(pugi::xml_node node)
@@ -704,80 +662,34 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
     cell_fills = get_node_array<std::string>(node, "fills");
   }
 
-  // assume unstructured mesh always (for now)
-  bool structured_mesh = false;
+  const auto& mesh = model::meshes[mesh_];
+  const auto& xdg_mesh_ptr = dynamic_cast<XDGMesh*>(mesh.get());
+  const auto& xdg_instance = xdg_mesh_ptr->xdg_instance();
 
-  int n_bins = model::meshes[mesh_]->n_bins();
-  if (cell_fills.size() != 1 && cell_fills.size() != n_bins &&
-      structured_mesh) {
+  int n_bins = mesh->n_bins();
+  if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
     fatal_error(
       fmt::format("Invalid number of cell fills provided for structured mesh "
                   "universe {}. Must be 1 or {}",
         id_, n_bins));
   }
 
-  cells_.reserve(n_bins);
-  // find the available cell id
-  int32_t next_cell_id {-1};
-  for (const auto& c : model::cells) {
-    next_cell_id = std::max(next_cell_id, c->id_);
-  }
-  next_cell_id++;
-
-  // create cells to fill the mesh elements
-  int32_t fill = MATERIAL_VOID;
-  for (int i = 0; i < n_bins; i++) {
-    // if more than one cell fill is provided, assume that each mesh
-    // element has its own fill
-
-    if (structured_mesh) {
-      if (cell_fills.size() > 1)
-        fill = std::stoi(cell_fills[0]);
-      else
-        fill = std::stoi(cell_fills[i]);
-      // check that this fill is in the material array
-      if (model::material_map.find(fill) == model::material_map.end()) {
-        fatal_error(
-          fmt::format("Material {} not found for MeshUniverse {}", fill, id_));
-      }
+  // loop over all volumes in the xdg instance
+  for (const auto& volume : xdg_instance->volumes()) {
+    const auto& material = xdg_instance->get_volume_property(volume, xdg::PropertyType::MATERIAL);
+    int32_t mat_idx = match_material(material.value);
+    // go over all elements in the volume and assign the material to the element
+    for (const auto& element : xdg_instance->get_volume_elements(volume)) {
+      element_material_map_[element].push_back(mat_idx);
     }
-
-    // create a new mesh cell
-    model::cells.push_back(std::make_unique<XDGMeshCell>(mesh_, i));
-    const auto& cell = model::cells.back();
-
-    cell->type_ = Fill::MATERIAL;
-    cell->material_.push_back(fill);
-    cell->id_ = next_cell_id++;
-    // set universe ID, this will be updated later by another loop in
-    // geometry_aux
-    cell->universe_ = id_;
-    model::cell_map[cell->id_] = model::cells.size() - 1;
-    cells_[i] = model::cells.size() - 1;
-  }
-
-  // special function if mesh is unstructured -- assume always structured for now
-  if (true) {
-    create_unstructured_mesh_cells();
-  }
+  } // end of volume loop
 
   // create a cell for the exterior of the mesh
   int32_t outer_material = MATERIAL_VOID;
   if (check_for_node(node, "outer")) {
     // get id of outer material
-    outer_material = std::stoi(get_node_value(node, "outer"));
+    outer_material() = match_material(get_node_value(node, "outer"));
   }
-  // negative one indicates that this cell is the exterior of the mesh
-  model::cells.push_back(std::make_unique<XDGMeshCell>(mesh_, -1));
-  const auto& cell = model::cells.back();
-
-  cell->type_ = Fill::MATERIAL;
-  cell->material_.push_back(outer_material);
-  cell->id_ = next_cell_id;
-  cell->universe_ = id_;
-
-  model::cell_map[cell->id_] = model::cells.size() - 1;
-  outer() = model::cell_map[cell->id_];
 }
 
 bool XDGMeshUniverse::find_cell(GeometryState& p) const
