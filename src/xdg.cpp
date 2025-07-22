@@ -702,26 +702,30 @@ bool XDGMeshUniverse::find_cell(GeometryState& p) const
   if (mesh_bin == C_NONE) {
     if (outer() == C_NONE)
       return false;
-    p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
-    p.coord(p.n_coord() - 1).cell = outer();
+    p.lowest_coord().mesh_cell_index() = mesh_bin;
+    p.lowest_coord().cell = outer();
     return true;
   }
 
-  p.coord(p.n_coord() - 1).mesh_cell_index() = mesh_bin;
-  p.coord(p.n_coord() - 1).cell = cells_[mesh_bin];
+  p.lowest_coord().mesh_cell_index() = mesh_bin;
+  p.lowest_coord().cell = cells_[mesh_bin];
+
+  
+
+
   return true;
 }
 
 void XDGMeshUniverse::next_cell(Particle& p) const
 {
-  auto& coord = p.coord(p.n_coord() - 1);
+  auto& coord = p.lowest_coord();
   const auto mesh = dynamic_cast<XDGMesh*>(model::meshes[mesh_].get());
 
   int32_t next_mesh_idx = p.boundary().mesh_translation(0);
   int32_t next_cell_idx {C_NONE};
   if (mesh->bin_is_valid(next_mesh_idx)) {
 
-    if (p.coord(p.n_coord() - 1).mesh_cell_index() == C_NONE) {
+    if (p.lowest_coord().mesh_cell_index() == C_NONE) {
       write_message(
         fmt::format(
           "\tParticle {} moving into the mesh. \n\tPosition: {} {} {}", p.id(),
