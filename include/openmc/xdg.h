@@ -173,8 +173,6 @@ class XDGMeshUniverse : public Universe {
   // contains mesh-generic code
   void create_cells(pugi::xml_node node);
 
-  // code for creating mesh cells specifically for unstructured mesh
-  void create_unstructured_mesh_cells();
 
   void set_boundary_conditions();
 
@@ -184,45 +182,15 @@ class XDGMeshUniverse : public Universe {
   void next_cell(Particle& p) const;
 
   // accessors
-  int32_t outer() const { return outer_; }
-  int32_t& outer() { return outer_; }
+  int32_t outer_material() const { return outer_material_; }
+  int32_t& outer_material() { return outer_material_; }
 
   protected:
   int32_t mesh_;
-  int32_t outer_ {C_NONE};
   std::string name_;
+  std::unordered_map<xdg::MeshID, std::vector<int32_t>> element_material_map_;
+  int32_t outer_material_ {MATERIAL_VOID};
 };
-
-class XDGMeshCell : public Cell {
-
-  public:
-  XDGMeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx)
-  { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
-
-  virtual bool contains(
-    Position r, Direction u, int32_t on_surface) const override
-    {
-      int mesh_bin = model::meshes[mesh_]->get_bin(r);
-      return mesh_bin == elem_idx_;
-    };
-
-    virtual std::pair<double, int32_t> distance(
-      Position r, Direction u, int32_t on_surface, GeometryState* p) const override
-      {
-        // TODO: Make appropriate call for distance here
-        // const auto& mesh = model::meshes[mesh_];
-        // return mesh->distance_to_next_bin(r, u);
-        return {INFTY, -1};
-      }
-
-      virtual void to_hdf5_inner(hid_t group_id) const override {};
-
-      virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
-
-      protected:
-      int32_t mesh_;
-      int32_t elem_idx_;
-    };
 
   //==============================================================================
   // Non-member functions

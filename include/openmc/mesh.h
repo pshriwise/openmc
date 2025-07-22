@@ -781,7 +781,9 @@ public:
 
   static const std::string mesh_lib_type;
 
-    // Overridden Methods
+  const std::shared_ptr<xdg::XDG>& xdg_instance() const { return xdg_; }
+
+  // Overridden Methods
 
   //! Perform any preparation needed to support use in mesh filters
   void prepare_for_point_location() override;
