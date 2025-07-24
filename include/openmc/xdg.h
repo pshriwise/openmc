@@ -164,7 +164,7 @@ class XDGMeshUniverse : public Universe {
 
   public:
   // constructors
-  MeshUniverse() { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
+  XDGMeshUniverse() { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
 
   explicit XDGMeshUniverse(pugi::xml_node node);
 
@@ -173,6 +173,8 @@ class XDGMeshUniverse : public Universe {
   // contains mesh-generic code
   void create_cells(pugi::xml_node node);
 
+  // match a material name to an OpenMC material index
+  int32_t match_material(const std::string& material_name) const;
 
   void set_boundary_conditions();
 
@@ -185,11 +187,59 @@ class XDGMeshUniverse : public Universe {
   int32_t outer_material() const { return outer_material_; }
   int32_t& outer_material() { return outer_material_; }
 
+  const std::unordered_map<xdg::MeshID, std::vector<int32_t>>& element_material_map() const { return element_material_map_; }
+
   protected:
   int32_t mesh_;
   std::string name_;
   std::unordered_map<xdg::MeshID, std::vector<int32_t>> element_material_map_;
-  int32_t outer_material_ {MATERIAL_VOID};
+  int32_t outer_material_ {MATERIAL_INVALID};
+};
+
+class XDGMeshCell : public Cell {
+  public:
+  XDGMeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx)
+  { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
+
+  virtual bool contains(
+  Position r, Direction u, int32_t on_surface) const override
+  {
+    int mesh_bin = model::meshes[mesh_]->get_bin(r);
+    return mesh_bin == elem_idx_;
+  };
+
+  virtual std::pair<double, int32_t> distance(
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const override
+  {
+    auto result =xdg_ptr()->mesh_manager()->next_element(elem_idx_, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+    return {result.second, result.first};
+  }
+
+  virtual int32_t material(int32_t instance) const override
+  {
+    const auto& element_materials = mesh_univ()->element_material_map().at(elem_idx_);
+    return element_materials.size() > 1 ? element_materials[instance] : element_materials[0];
+  }
+
+  virtual double sqrtkT(int32_t instance) const override
+  {
+    return settings::temperature_default;
+  }
+
+  const XDGMeshUniverse* mesh_univ() const { return dynamic_cast<const XDGMeshUniverse*>(model::universes[universe_idx_].get()); }
+
+  const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_].get()); }
+
+  const xdg::XDG* xdg_ptr() const { return xdg_mesh()->xdg_instance().get(); }
+
+  virtual void to_hdf5_inner(hid_t group_id) const override {};
+
+  virtual BoundingBox bounding_box() const override { return BoundingBox {}; };
+
+  protected:
+  int32_t universe_idx_;
+  int32_t mesh_;
+  int32_t elem_idx_;
 };
 
   //==============================================================================
