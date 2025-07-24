@@ -635,24 +635,30 @@ XDGMeshUniverse::XDGMeshUniverse(pugi::xml_node node)
 
 int32_t XDGMeshUniverse::match_material(const std::string& material_name) const
 {
-  int32_t mat_id {MATERIAL_VOID};
+  int32_t mat_idx {MATERIAL_INVALID};
   if (material_name == "void" || material_name == "vacuum" || material_name == "graveyard") {
     return MATERIAL_VOID;
-  // attempt to assign material by name
-  } else if (mat_by_name_idx != -1) {
-    int32_t mat_by_name_idx = get_material_by_name(material_name);
-    write_message(fmt::format("Assigning material {} by name", material_name), 10);
-    return mat_by_name_idx;
-  // attempt to convert to an integer and assign by ID
-  } else {
-    try {
-      mat_id = std::stoi(material_name);
-    } catch (const std::invalid_argument&) {
-      fatal_error(fmt::format("Material with name/ID '{}' not found for volume (cell) {}",
-        material_name, id_));
-    }
   }
-  return mat_id;
+
+  // attempt to assign material by name
+  mat_idx = get_material_by_name(material_name);
+  if (mat_idx != MATERIAL_INVALID) {
+    write_message(fmt::format("Assigning material {} by name", material_name), 10);
+    return mat_idx;
+  }
+
+  // attempt to assign material by ID, treating the string as an integer
+  try {
+    int32_t mat_id = std::stoi(material_name);
+    if (model::material_map.find(mat_id) != model::material_map.end()) {
+      return model::material_map.at(mat_id);
+    }
+  } catch (const std::invalid_argument&) {
+    // continue to next step
+  }
+
+  fatal_error(fmt::format("Material with name/ID '{}' not found", material_name));
+  return MATERIAL_INVALID;
 }
 
 void XDGMeshUniverse::create_cells(pugi::xml_node node)
@@ -675,11 +681,11 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   }
 
   // loop over all volumes in the xdg instance
-  for (const auto& volume : xdg_instance->volumes()) {
-    const auto& material = xdg_instance->get_volume_property(volume, xdg::PropertyType::MATERIAL);
+  for (const auto& volume : xdg_instance->mesh_manager()->volumes()) {
+    const auto& material = xdg_instance->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL);
     int32_t mat_idx = match_material(material.value);
     // go over all elements in the volume and assign the material to the element
-    for (const auto& element : xdg_instance->get_volume_elements(volume)) {
+    for (const auto& element : xdg_instance->mesh_manager()->get_volume_elements(volume)) {
       element_material_map_[element].push_back(mat_idx);
     }
   } // end of volume loop
@@ -688,7 +694,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   int32_t outer_material = MATERIAL_VOID;
   if (check_for_node(node, "outer")) {
     // get id of outer material
-    outer_material() = match_material(get_node_value(node, "outer"));
+    outer_material_ = match_material(get_node_value(node, "outer"));
   }
 }
 
@@ -700,17 +706,17 @@ bool XDGMeshUniverse::find_cell(GeometryState& p) const
   int mesh_bin = mesh->get_bin(r);
 
   if (mesh_bin == C_NONE) {
-    if (outer() == C_NONE)
+    if (outer_material() == MATERIAL_INVALID)
       return false;
     p.lowest_coord().mesh_cell_index() = mesh_bin;
-    p.lowest_coord().cell = outer();
+    p.lowest_coord().cell = outer_material();
     return true;
   }
 
   p.lowest_coord().mesh_cell_index() = mesh_bin;
   p.lowest_coord().cell = cells_[mesh_bin];
 
-  
+
 
 
   return true;
@@ -747,7 +753,7 @@ void XDGMeshUniverse::next_cell(Particle& p) const
       10);
     p.wgt() = 0.0;
     next_mesh_idx = C_NONE;
-    next_cell_idx = outer_;
+    next_cell_idx = outer_material();
   }
 
   // reset the lattice_translation for the boundary crossing
@@ -763,8 +769,8 @@ void XDGMeshUniverse::next_cell(Particle& p) const
   Cell* cell_ptr = model::cells.at(next_cell_idx).get();
   // TODO: Support multiple cell instances
   p.cell_instance() = 0;
-  p.material() = cell->material_[0];
-  p.sqrtkT() = cell->sqrtkT_[0];
+  p.material() = cell->material(p.cell_instance());
+  p.sqrtkT() = cell->sqrtkT(p.cell_instance());
 }
 
 } // namespace openmc
