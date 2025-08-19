@@ -269,7 +269,7 @@ void Particle::event_advance()
     this->macro_xs().total / this->majorant() > 1 - settings::delta_threshold;
 
   // always surface track if the current cell has a surface boundary condition
-  if (model::cells[coord(0).cell]->surface_bc_) {
+  if (model::cells[coord(0).cell()]->surface_bc_) {
     delta_track = false;
   }
 
@@ -287,7 +287,7 @@ void Particle::event_advance()
   if (delta_tracking()) {
     event_delta_advance();
     event_calculate_xs();
-    this->boundary().distance == INFTY;
+    this->boundary().distance() == INFTY;
     return;
   }
 
@@ -353,14 +353,14 @@ int Particle::advance_to_boundary_from_void()
   // invert direction to find the nearest surface
   int intersected_surface = -1;
   for (auto c_i : uni->cells_) {
-    auto dist = model::cells.at(c_i)->distance(coord.r, -coord.u, 0, this);
+    auto dist = model::cells.at(c_i)->distance(coord.r(), -coord.u(), 0, this);
     if (dist.first < min_dist) {
       min_dist = dist.first;
       intersected_surface = dist.second;
     }
   }
 
-  double max_dist = (coord.r - r_last()).norm();
+  double max_dist = (coord.r() - r_last()).norm();
 
   if (max_dist > 1e10) {
     fatal_error(fmt::format("Particle {}: Distance to last collision is too large. This is likely "
@@ -380,12 +380,12 @@ int Particle::advance_to_boundary_from_void()
 
   // move the particle to the boundary
   for (auto& c : this->coord()) {
-    c.r += min_dist * -c.u;
+    c.r() += min_dist * -c.u();
   }
   delta_tracking() = false;
-  boundary().surface_index = intersected_surface;
-  boundary().coord_level = 0;
-  boundary().lattice_translation = {0, 0, 0};
+  boundary().surface() = intersected_surface;
+  boundary().coord_level() = 0;
+  boundary().lattice_translation() = {0, 0, 0};
   event_cross_surface();
 }
 
@@ -397,15 +397,15 @@ void Particle::trace_through_geom(double trace_dist)
     boundary() = distance_to_boundary(*this);
 
     // stop if we've gone far enough
-    if (distance_traveled + boundary().distance > trace_dist)
+    if (distance_traveled + boundary().distance() > trace_dist)
       break;
 
     // update distance
-    distance_traveled += boundary().distance;
+    distance_traveled += boundary().distance();
 
     // advance the particle
     for (auto& coord : coord()) {
-      coord.r += boundary().distance * coord.u;
+      coord.r() += boundary().distance() * coord.u();
     }
 
     // cross the surface
@@ -418,13 +418,13 @@ void Particle::trace_through_geom(double trace_dist)
   if (distance_traveled < trace_dist) {
     double remaining_distance = trace_dist - distance_traveled;
     for (auto& coord : coord()) {
-      coord.r += remaining_distance * coord.u;
+      coord.r() += remaining_distance * coord.u();
     }
   }
 
   // reset some information to make sure the particle is relocated
   // before the next collision event
-  coord(n_coord() - 1).cell = C_NONE;
+  coord(n_coord() - 1).cell() = C_NONE;
   n_coord() = 1;
   material() = C_NONE;
 }
@@ -452,7 +452,7 @@ void Particle::event_delta_advance()
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
+    coord(j).r() += distance * coord(j).u();
     coord(j).reset();
   }
 
@@ -486,8 +486,8 @@ void Particle::event_cross_surface()
     return;
 
   // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface_index;
-  n_coord() = boundary().coord_level;
+  surface() = boundary().surface_index();
+  n_coord() = boundary().coord_level();
 
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
@@ -535,7 +535,7 @@ bool Particle::will_collide()
   if (delta_tracking()) {
     return prn(current_seed()) < macro_xs().total / majorant();
   } else {
-    return collision_distance() <= boundary().distance;
+    return collision_distance() <= boundary().distance();
   }
 }
 
