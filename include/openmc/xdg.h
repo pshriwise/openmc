@@ -38,7 +38,7 @@ public:
 
   // Accessor methods
   xdg::MeshID xdg_id() const { return xdg_id_; }
-  const xdg::XDG* xdg_ptr() const { return xdg_ptr_.get(); }
+  const std::shared_ptr<xdg::XDG>& xdg_ptr() const { return xdg_ptr_; }
 
 private:
   std::shared_ptr<xdg::XDG> xdg_ptr_;      //!< Pointer to XDG instance
@@ -60,7 +60,7 @@ public:
 
 class XDGCell : public XDGGeometryObject, public Cell {
 public:
-  XDGCell(std::shared_ptr<xdg::XDG> xdg_ptr, xdg::MeshID xdg_id);
+  XDGCell(const std::shared_ptr<xdg::XDG>& xdg_ptr, xdg::MeshID xdg_id);
 
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
@@ -135,8 +135,13 @@ public:
   int32_t surf_idx_offset_; //!< An offset to the start of the surfaces in this
                             //!< universe in OpenMC's surface vector
 
+  std::string library() const { return mesh()->mesh_library(); }
+  std::string filename() const { return mesh()->filename(); }
+
   // Accessors
-  xdg::XDG* xdg_ptr() const { return xdg_instance_.get(); }
+  int32_t mesh_idx() const { return mesh_idx_; }
+  const XDGMesh* mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
+  const std::shared_ptr<xdg::XDG>& xdg_ptr() const { return mesh()->xdg_instance(); }
 
 private:
   void set_id();        //!< Deduce the universe id from model::universes
@@ -144,16 +149,13 @@ private:
   void init_metadata(); //!< Create and initialise dagmcMetaData pointer
   void init_geometry(); //!< Create cells and surfaces from XDG entities
 
-  std::string
-    filename_; //!< Name of the XDG file used to create this universe
-
   bool adjust_geometry_ids_; //!< Indicates whether or not to automatically
                              //!< generate new cell and surface IDs for the
                              //!< universe
   bool adjust_material_ids_; //!< Indicates whether or not to automatically
                              //!< generate new material IDs for the universe
 
-  std::string library_; //!< The library used to create the XDG instance
+  int32_t mesh_idx_; //!< The index of the mesh in the model::meshes vector
 
   // mappings from XDG IDs to OpenMC surface and cell indices
   std::unordered_map<xdg::MeshID, int32_t> surface_index_map_;
@@ -189,8 +191,13 @@ class XDGMeshUniverse : public Universe {
 
   const std::unordered_map<xdg::MeshID, std::vector<int32_t>>& element_material_map() const { return element_material_map_; }
 
+  // Accessors
+  int32_t mesh_idx() const { return mesh_idx_; }
+  const XDGMesh* mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
+  const std::shared_ptr<xdg::XDG>& xdg_instance() const { return mesh()->xdg_instance(); }
+
   protected:
-  int32_t mesh_;
+  int32_t mesh_idx_;
   std::string name_;
   std::unordered_map<xdg::MeshID, std::vector<int32_t>> element_material_map_;
   int32_t outer_material_ {MATERIAL_INVALID};
@@ -217,8 +224,9 @@ class XDGMeshCell : public Cell {
 
   virtual int32_t material(int32_t instance) const override
   {
-    const auto& element_materials = mesh_univ()->element_material_map().at(elem_idx_);
-    return element_materials.size() > 1 ? element_materials[instance] : element_materials[0];
+    return material_[0];
+    // const auto& element_materials = mesh_univ()->element_material_map().at(elem_idx_);
+    // return element_materials.size() > 1 ? element_materials[instance] : element_materials[0];
   }
 
   virtual double sqrtkT(int32_t instance) const override
@@ -250,6 +258,6 @@ class XDGMeshCell : public Cell {
 
 } // namespace openmc
 
-#endif // XDG
+#endif // OPENMC_XDG
 
 #endif // OPENMC_XDG_H

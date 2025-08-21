@@ -244,7 +244,7 @@ class Model:
         meshes = {}
         model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
         model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials, meshes)
 
         if root.find('tallies') is not None:
             model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)

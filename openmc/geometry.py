@@ -170,7 +170,7 @@ class Geometry:
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
     @classmethod
-    def from_xml_element(cls, elem, materials=None) -> Geometry:
+    def from_xml_element(cls, elem, materials=None, meshes=None) -> Geometry:
         """Generate geometry from an XML element
 
         Parameters
@@ -220,6 +220,13 @@ class Geometry:
         for e in elem.findall('dagmc_universe'):
             dag_univ = openmc.DAGMCUniverse.from_xml_element(e, mats)
             universes[dag_univ.id] = dag_univ
+
+        # Add any XDG universes
+        for e in elem.findall('xdg_universe'):
+            if meshes is None:
+                raise ValueError("XDG universes require a dictionary of meshes")
+            xdg_univ = openmc.XDGUniverse.from_xml_element(e, meshes)
+            universes[xdg_univ.id] = xdg_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
         # contain it (needed to determine which universe is the elem)

@@ -141,7 +141,7 @@ class DAGMCUniverse(openmc.UniverseBase):
     @property
     def library(self):
         return self._library
-
+    
     @library.setter
     def library(self, val):
         cv.check_value('XDG Library', val, ('moab', 'libmesh'))
