@@ -13,6 +13,10 @@
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
+#ifdef OPENMC_XDG
+#include "openmc/xdg.h"
+#endif
+
 namespace openmc {
 
 //==============================================================================
@@ -372,6 +376,21 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     const Position& r {coord.r()};
     const Direction& u {coord.u()};
     Cell& c {*model::cells[coord.cell()]};
+
+    #ifdef OPENMC_XDG
+    if (model::universes[coord.universe]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
+      const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[coord.universe].get());
+      auto mesh_dist = xdg_mesh_univ->mesh()->distance_to_bin_boundary(coord.mesh_cell_index(), r, u);
+
+      if (info.distance == INFINITY || (info.distance - mesh_dist.distance) / info.distance >= FP_REL_PRECISION) {
+        info.distance = mesh_dist.distance;
+        info.mesh_translation() = mesh_dist.next_ijk;
+        info.surface = 0;
+        info.coord_level = i + 1;
+      }
+      return info;
+    }
+    #endif
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p.surface(), &p);

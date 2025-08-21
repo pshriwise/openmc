@@ -48,13 +48,15 @@ XDGUniverse::XDGUniverse(pugi::xml_node node)
     fatal_error("Must specify the id of the XDG universe");
   }
 
-  if (check_for_node(node, "filename")) {
-    filename_ = get_node_value(node, "filename");
-    if (!starts_with(filename_, "/")) {
-      filename_ = dir_name(settings::path_input) + filename_;
+  // TODO: fix this to use the mesh itself
+  if (check_for_node(node, "mesh")) {
+    int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
+    const auto& mesh = model::meshes[model::mesh_map.at(mesh_id)];
+    const auto& xdg_mesh = dynamic_cast<XDGMesh*>(mesh.get());
+    if (xdg_mesh == nullptr) {
+      fatal_error("XDG universe must be associated with an XDG mesh");
     }
-  } else {
-    fatal_error("Must specify a file for the XDG universe");
+    mesh_idx_ = model::mesh_map.at(mesh_id);
   }
 
   adjust_geometry_ids_ = false;
@@ -67,34 +69,29 @@ XDGUniverse::XDGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
-  if (check_for_node(node, "library"))
-    library_ = get_node_value(node, "library");
-  else
-    library_ = "moab";
-
   initialize();
 }
 
-XDGUniverse::XDGUniverse(
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
-  : filename_(filename), adjust_geometry_ids_(auto_geom_ids),
-    adjust_material_ids_(auto_mat_ids)
-{
-  geom_type() = GeometryType::XDG_SURFACE_MESH;
-  set_id();
-  initialize();
-}
+// XDGUniverse::XDGUniverse(
+//   const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+//   : filename_(filename), adjust_geometry_ids_(auto_geom_ids),
+//     adjust_material_ids_(auto_mat_ids)
+// {
+//   geom_type() = GeometryType::XDG_SURFACE_MESH;
+//   set_id();
+//   initialize();
+// }
 
-XDGUniverse::XDGUniverse(std::shared_ptr<xdg::XDG> xdg_ptr,
-  const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
-  : xdg_instance_(xdg_ptr), filename_(filename),
-    adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
-{
-  geom_type() = GeometryType::XDG_SURFACE_MESH;
-  set_id();
-  init_metadata();
-  init_geometry();
-}
+// XDGUniverse::XDGUniverse(std::shared_ptr<xdg::XDG> xdg_ptr,
+//   const std::string& filename, bool auto_geom_ids, bool auto_mat_ids)
+//   : xdg_instance_(xdg_ptr), filename_(filename),
+//     adjust_geometry_ids_(auto_geom_ids), adjust_material_ids_(auto_mat_ids)
+// {
+//   geom_type() = GeometryType::XDG_SURFACE_MESH;
+//   set_id();
+//   init_metadata();
+//   init_geometry();
+// }
 
 void XDGUniverse::set_id()
 {
@@ -114,8 +111,8 @@ void XDGUniverse::initialize()
 {
   geom_type() = GeometryType::XDG_SURFACE_MESH;
 
-  init_xdg();
-  init_metadata();
+  // init_xdg();
+  // init_metadata();
   init_geometry();
 }
 
@@ -123,18 +120,18 @@ void XDGUniverse::init_xdg()
 {
   // create a new XDG instance
 
-  if (library_ == "moab")
+  if (library() == "moab")
     xdg_instance_ = xdg::XDG::create(xdg::MeshLibrary::MOAB);
-  else if (library_ == "libmesh")
+  else if (library() == "libmesh")
     xdg_instance_ = xdg::XDG::create(xdg::MeshLibrary::LIBMESH);
   else
-    fatal_error("Unknown XDG library specified: " + library_);
+    fatal_error("Unknown XDG library specified: " + library());
 
     // load the XDG geometry
-  if (!file_exists(filename_)) {
-    fatal_error("Geometry XDG file '" + filename_ + "' does not exist!");
+  if (!file_exists(filename())) {
+    fatal_error("Geometry XDG file '" + filename() + "' does not exist!");
   }
-  xdg_instance_->mesh_manager()->load_file(filename_);
+  xdg_instance_->mesh_manager()->load_file(filename());
   xdg_instance_->mesh_manager()->init();
   xdg_instance_->prepare_raytracer();
 }
@@ -155,7 +152,7 @@ void XDGUniverse::init_geometry()
   next_cell_id++;
 
   for (auto volume : xdg_ptr()->mesh_manager()->volumes()) {
-    auto c = std::make_unique<XDGCell>(xdg_instance_, volume);
+    auto c = std::make_unique<XDGCell>(xdg_ptr(), volume);
     c->id_ =     c->id_ = adjust_geometry_ids_ ? next_cell_id++ : volume;
     c->universe_ = this->id_;
 
@@ -235,7 +232,7 @@ void XDGUniverse::init_geometry()
       if (bc_value.empty() || bc_value == "transmit" ||
           bc_value == "transmission") {
         // set to transmission by default (nullptr)
-      } else if (bc_value == "vacuum") {
+      } else if (bc_value == "vacuum" || "xdg_boundary") {
         s->bc_ = make_unique<VacuumBC>();
       } else if (bc_value == "reflective" || bc_value == "reflect" ||
                 bc_value == "reflecting") {
@@ -365,7 +362,7 @@ void XDGUniverse::to_hdf5(hid_t universes_group) const
   write_string(group, "geom_type", "xdg", false);
 
   // Write other properties of the XDG Universe
-  write_string(group, "filename", filename_, false);
+  write_string(group, "filename", filename(), false);
   write_attribute(
     group, "auto_geom_ids", static_cast<int>(adjust_geometry_ids_));
   write_attribute(
@@ -442,7 +439,7 @@ void XDGUniverse::assign_material(
 // XDG Cell implementation
 //==============================================================================
 
-XDGCell::XDGCell(std::shared_ptr<xdg::XDG> xdg_ptr, xdg::MeshID xdg_id)
+XDGCell::XDGCell(const std::shared_ptr<xdg::XDG>& xdg_ptr, xdg::MeshID xdg_id)
   : Cell {}, XDGGeometryObject(xdg_ptr, xdg_id)
 {
   geom_type() = GeometryType::XDG_SURFACE_MESH;
@@ -569,10 +566,19 @@ Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
 
 void read_xdg_universes(pugi::xml_node node)
 {
-  for (pugi::xml_node dag_node : node.children("dagmc_universe")) {
-    model::universes.push_back(std::make_unique<XDGUniverse>(dag_node));
-    model::universe_map[model::universes.back()->id_] =
-      model::universes.size() - 1;
+  for (pugi::xml_node xdg_node : node.children("xdg_universe")) {
+    if (!check_for_node(xdg_node, "type")) {
+      fatal_error(fmt::format("XDG type is not specified for universe {}", xdg_node.attribute("id").as_int()));
+    }
+    std::string type = get_node_value(xdg_node, "type");
+    if (type == "surface_mesh") {
+      model::universes.push_back(std::make_unique<XDGUniverse>(xdg_node));
+    } else if (type == "volume_mesh") {
+      model::universes.push_back(std::make_unique<XDGMeshUniverse>(xdg_node));
+    } else {
+      fatal_error(fmt::format("Invalid XDG universe type: {}", type));
+    }
+    model::universe_map[model::universes.back()->id_] = model::universes.size() - 1;
   }
 }
 
@@ -625,7 +631,7 @@ XDGMeshUniverse::XDGMeshUniverse(pugi::xml_node node)
     if (model::mesh_map.find(mesh_id) == model::mesh_map.end()) {
       fatal_error(fmt::format("Mesh {} could not be found", mesh_id));
     }
-    mesh_ = model::mesh_map[mesh_id];
+    mesh_idx_ = model::mesh_map[mesh_id];
   } else {
     fatal_error(fmt::format("No mesh specified on mesh universe {}", id_));
   }
@@ -663,30 +669,49 @@ int32_t XDGMeshUniverse::match_material(const std::string& material_name) const
 
 void XDGMeshUniverse::create_cells(pugi::xml_node node)
 {
-  vector<std::string> cell_fills;
-  if (check_for_node(node, "fills")) {
-    cell_fills = get_node_array<std::string>(node, "fills");
-  }
+  // vector<std::string> cell_fills;
+  // if (check_for_node(node, "fills")) {
+  //   cell_fills = get_node_array<std::string>(node, "fills");
+  // }
 
-  const auto& mesh = model::meshes[mesh_];
-  const auto& xdg_mesh_ptr = dynamic_cast<XDGMesh*>(mesh.get());
-  const auto& xdg_instance = xdg_mesh_ptr->xdg_instance();
 
-  int n_bins = mesh->n_bins();
-  if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
-    fatal_error(
-      fmt::format("Invalid number of cell fills provided for structured mesh "
-                  "universe {}. Must be 1 or {}",
-        id_, n_bins));
+  // int n_bins = mesh->n_bins();
+  // if (cell_fills.size() != 1 && cell_fills.size() != n_bins) {
+  //   fatal_error(
+  //     fmt::format("Invalid number of cell fills provided for structured mesh "
+  //                 "universe {}. Must be 1 or {}",
+  //       id_, n_bins));
+  // }
+
+  int32_t next_cell_id = 0;
+  for (const auto& c : model::cells) {
+    if (c->id_ > next_cell_id)
+      next_cell_id = c->id_;
   }
+  next_cell_id++;
 
   // loop over all volumes in the xdg instance
-  for (const auto& volume : xdg_instance->mesh_manager()->volumes()) {
-    const auto& material = xdg_instance->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL);
+  for (const auto& volume : xdg_instance()->mesh_manager()->volumes()) {
+    const auto& material = xdg_instance()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL);
     int32_t mat_idx = match_material(material.value);
     // go over all elements in the volume and assign the material to the element
-    for (const auto& element : xdg_instance->mesh_manager()->get_volume_elements(volume)) {
+    for (const auto& element : xdg_instance()->mesh_manager()->get_volume_elements(volume)) {
       element_material_map_[element].push_back(mat_idx);
+      // create a cell for the element
+      model::cells.push_back(std::make_unique<XDGMeshCell>(mesh_idx_, element));
+      auto& c = model::cells.back();
+      c->id_ = next_cell_id++;
+      model::cell_map[model::cells.back()->id_] = model::cells.size() - 1;
+
+      c->universe_ = id_;
+      c->fill_ = C_NONE;
+      if (mat_idx != MATERIAL_VOID) {
+        c->material_.push_back(model::materials[mat_idx]->id_);
+      } else {
+        c->material_.push_back(MATERIAL_VOID);
+      }
+      c->sqrtkT_.push_back(K_BOLTZMANN * settings::temperature_default);
+      c->n_instances_ = 1;
     }
   } // end of volume loop
 
@@ -701,9 +726,8 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
 bool XDGMeshUniverse::find_cell(GeometryState& p) const
 {
   Position r {p.r_local()};
-  const auto& mesh = model::meshes[mesh_];
   bool in_mesh;
-  int mesh_bin = mesh->get_bin(r);
+  int mesh_bin = mesh()->get_bin(r);
 
   if (mesh_bin == C_NONE) {
     if (outer_material() == MATERIAL_INVALID)
@@ -716,20 +740,16 @@ bool XDGMeshUniverse::find_cell(GeometryState& p) const
   p.lowest_coord().mesh_cell_index() = mesh_bin;
   p.lowest_coord().cell = cells_[mesh_bin];
 
-
-
-
   return true;
 }
 
 void XDGMeshUniverse::next_cell(Particle& p) const
 {
   auto& coord = p.lowest_coord();
-  const auto mesh = dynamic_cast<XDGMesh*>(model::meshes[mesh_].get());
 
   int32_t next_mesh_idx = p.boundary().mesh_translation(0);
   int32_t next_cell_idx {C_NONE};
-  if (mesh->bin_is_valid(next_mesh_idx)) {
+  if (mesh()->bin_is_valid(next_mesh_idx)) {
 
     if (p.lowest_coord().mesh_cell_index() == C_NONE) {
       write_message(

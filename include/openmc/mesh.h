@@ -46,6 +46,13 @@ namespace openmc {
 
 enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
+struct NextMeshCell
+{
+  double distance {INFTY};
+  int face_idx {-1};
+  std::array<int, 3> next_ijk;
+};
+
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -725,6 +732,9 @@ public:
   //! Get the library used for this unstructured mesh
   virtual std::string library() const = 0;
 
+  //! Get the mesh filename
+  virtual std::string filename() const { return filename_; }
+
   // Data members
   bool output_ {
     true}; //!< Write tallies onto the unstructured mesh at the end of a run
@@ -800,6 +810,8 @@ public:
     return bin >= 0 && bin < n_bins();
   }
 
+  xdg::MeshID bin_to_mesh_id(int bin) const;
+
   int n_bins() const override;
 
   int n_surface_bins() const override;
@@ -808,6 +820,8 @@ public:
     Position plot_ll, Position plot_ur) const override;
 
   std::string library() const override;
+
+  std::string mesh_library() const;
 
   //! Add a score to the mesh instance
   void add_score(const std::string& score) override {};
@@ -835,6 +849,12 @@ public:
   //! \param[in] bin Bin to return the volume for
   //! \return Volume of the bin
   double volume(int bin) const override;
+
+  //! Get the distance to the nearest boundary for a given position and direction
+  //! \param[in] r Position to check
+  //! \param[in] u Direction to check
+  //! \return Distance to the nearest boundary
+  NextMeshCell distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const;
 
 private:
   void initialize() override;

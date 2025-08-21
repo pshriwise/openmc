@@ -2582,6 +2582,14 @@ std::string XDGMesh::library() const {
   return mesh_lib_type;
 }
 
+std::string XDGMesh::mesh_library() const {
+  if (mesh_library_ == xdg::MeshLibrary::LIBMESH) {
+    return "libmesh";
+  } else if (mesh_library_ == xdg::MeshLibrary::MOAB) {
+    return "moab";
+  }
+}
+
 void XDGMesh::write(const std::string& base_filename) const
 {
   warning("XDGMesh mesh write from C++ not implemented");
@@ -2624,6 +2632,18 @@ double XDGMesh::volume(int bin) const
   // where v0,v1,v2,v3 are the vertex positions and × is cross product
   // TODO: move the volume call into XDGMesh
   return 1.0 / 6.0 * ((v[1] - v[0]).cross(v[2] - v[0])).dot(v[3] - v[0]);
+}
+
+xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
+{
+  return bin;
+}
+
+NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const
+{
+  auto mesh_id = bin_to_mesh_id(bin);
+  auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+  return {dist.second, -1, {dist.first, 0, 0}};
 }
 
 #endif

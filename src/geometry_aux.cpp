@@ -16,6 +16,7 @@
 #include "openmc/geometry.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/mesh.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
@@ -55,6 +56,7 @@ void read_geometry_xml()
 void read_geometry_xml(pugi::xml_node root)
 {
   // Read surfaces, cells, lattice
+  read_meshes(root);
   read_surfaces(root);
   read_cells(root);
   read_lattices(root);
@@ -69,10 +71,10 @@ void read_geometry_xml(pugi::xml_node root)
     }
   }
 
-  if (settings::run_mode != RunMode::PLOTTING &&
-      settings::run_mode != RunMode::VOLUME && !boundary_exists) {
-    fatal_error("No boundary conditions were applied to any surfaces!");
-  }
+  // if (settings::run_mode != RunMode::PLOTTING &&
+  //     settings::run_mode != RunMode::VOLUME && !boundary_exists) {
+  //   fatal_error("No boundary conditions were applied to any surfaces!");
+  // }
 
   // Allocate universes, universe cell arrays, and assign base universe
   model::root_universe = find_root_universe();
