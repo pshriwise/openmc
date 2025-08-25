@@ -108,11 +108,11 @@ public:
   bool& rotated() { return rotated_; }
   const bool& rotated() const { return rotated_; }
 
-  int& mesh_cell_index() { return lattice_or_mesh_bin_; }
-  int mesh_cell_index() const { return lattice_or_mesh_bin_; }
+  int& mesh_cell_index() { return mesh_bin_; }
+  int mesh_cell_index() const { return mesh_bin_; }
 
-  int& lattice() { return lattice_or_mesh_bin_; }
-  int lattice() const { return lattice_or_mesh_bin_; }
+  int& lattice() { return lattice_idx_; }
+  int lattice() const { return lattice_idx_; }
 
   array<int, 3>& mesh_index() { return lattice_or_mesh_idx_; }
   array<int, 3> mesh_index() const { return lattice_or_mesh_idx_; }
@@ -129,8 +129,10 @@ private:
   bool rotated_ {false}; //!< Is the level rotated?
 
   // here we use these attributes for both lattice and mesh universe indices as-needed
-  int lattice_or_mesh_bin_ {-1};
+  int lattice_idx_ {-1};
+  int mesh_bin_ {-1};
   array<int, 3> lattice_or_mesh_idx_ {{-1, -1, -1}};
+
 };
 
 //==============================================================================
