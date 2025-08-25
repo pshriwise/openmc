@@ -2201,7 +2201,7 @@ const std::string XDGMesh::mesh_lib_type = "xdg";
 XDGMesh::XDGMesh(pugi::xml_node node) : UnstructuredMesh(node) {
   std::string mesh_lib = get_node_value(node, "library", true, true);
   if (mesh_lib == "moab") {
-    mesh_library_ = xdg::MeshLibrary::LIBMESH;
+    mesh_library_ = xdg::MeshLibrary::MOAB;
   } else if (mesh_lib == "libmesh") {
     mesh_library_ = xdg::MeshLibrary::LIBMESH;
   }
@@ -2264,12 +2264,12 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 
 int XDGMesh::get_bin(Position r) const
 {
-  xdg::Position p {r.z, r.y, r.z};
+  xdg::Position p {r.x, r.y, r.z};
   return xdg_->find_element(p);
 }
 
 int XDGMesh::n_bins() const {
-  return 10; //xdg_->mesh_manager()->num_volume_elements();
+  return xdg_->mesh_manager()->num_volume_elements();
 }
 
 int XDGMesh::n_surface_bins() const {
