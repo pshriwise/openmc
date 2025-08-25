@@ -264,6 +264,8 @@ class MeshBase(IDManagerMixin, ABC):
             an openmc mesh object
 
         """
+        from .xdg import XDGMesh
+
         mesh_type = get_text(elem, 'type')
 
         if mesh_type == 'regular' or mesh_type is None:
@@ -275,7 +277,7 @@ class MeshBase(IDManagerMixin, ABC):
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
-            mesh = UnstructuredMesh.from_xml_element(elem)
+            mesh = XDGMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
