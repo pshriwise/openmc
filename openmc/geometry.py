@@ -9,6 +9,7 @@ import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml
+from .mesh import _read_meshes
 from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
 
@@ -191,6 +192,8 @@ class Geometry:
         if materials is not None:
             mats.update({str(m.id): m for m in materials})
         mats['void'] = None
+
+        meshes.update(_read_meshes(elem))
 
         # Helper function for keeping a cache of Universe instances
         universes = {}
