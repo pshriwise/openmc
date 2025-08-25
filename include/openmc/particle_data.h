@@ -95,14 +95,15 @@ public:
   int universe {-1};
 
   // here we use these attributes for both lattice and mesh universe indices as-needed
-  int lattice_or_mesh_bin {-1};
+  int lattice_idx {-1};
+  int mesh_bin {-1};
   array<int, 3> lattice_or_mesh_idx {{-1, -1, -1}};
 
-  int& mesh_cell_index() { return lattice_or_mesh_bin; }
-  int mesh_cell_index() const { return lattice_or_mesh_bin; }
+  int& mesh_cell_index() { return mesh_bin; }
+  int mesh_cell_index() const { return mesh_bin; }
 
-  int& lattice() { return lattice_or_mesh_bin; }
-  int lattice() const { return lattice_or_mesh_bin; }
+  int& lattice() { return lattice_idx; }
+  int lattice() const { return lattice_idx; }
 
   array<int, 3>& mesh_index() { return lattice_or_mesh_idx; }
   array<int, 3> mesh_index() const { return lattice_or_mesh_idx; }
