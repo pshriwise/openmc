@@ -1317,7 +1317,7 @@ int32_t get_material_by_name(const std::string& mat_name)
       return i;
     }
   }
-  return -1;
+  return MATERIAL_INVALID;
 }
 
 void read_materials_xml()
