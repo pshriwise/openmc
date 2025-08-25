@@ -119,7 +119,6 @@ void XDGUniverse::initialize()
 void XDGUniverse::init_xdg()
 {
   // create a new XDG instance
-
   if (library() == "moab")
     xdg_instance_ = xdg::XDG::create(xdg::MeshLibrary::MOAB);
   else if (library() == "libmesh")
@@ -710,7 +709,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
       } else {
         c->material_.push_back(MATERIAL_VOID);
       }
-      c->sqrtkT_.push_back(K_BOLTZMANN * settings::temperature_default);
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
       c->n_instances_ = 1;
     }
   } // end of volume loop
@@ -771,7 +770,9 @@ void XDGMeshUniverse::next_cell(Particle& p) const
                   "{} \n\tDirection: {} {} {}",
         p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
       10);
-    p.wgt() = 0.0;
+      // treat mesh exit as vacuum boundary for now
+      p.wgt() = 0.0;
+      return;
     next_mesh_idx = C_NONE;
     next_cell_idx = outer_material();
   }
