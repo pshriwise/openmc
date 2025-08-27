@@ -11,7 +11,7 @@ import openmc
 import openmc.checkvalue as cv
 from ._xml import get_text
 from .checkvalue import check_type, check_value, PathLike
-from .mesh import MeshBase, _check_for_mesh
+from .mesh import MeshBase
 from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
 from .utility_funcs import input_path
