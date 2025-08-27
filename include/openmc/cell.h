@@ -293,7 +293,7 @@ public:
   //! taking into account presence of distribcell temperature
   //! \param[in] instance of the cell
   //! \return temperature index
-  virtual double sqrtkT(int32_t instance) const
+  double sqrtkT(int32_t instance) const
   {
     // If distributed materials are used, then each instance has its own
     // temperature definition. If distributed materials are not used, then

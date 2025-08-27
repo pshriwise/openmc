@@ -229,11 +229,6 @@ class XDGMeshCell : public Cell {
     // return element_materials.size() > 1 ? element_materials[instance] : element_materials[0];
   }
 
-  virtual double sqrtkT(int32_t instance) const override
-  {
-    return settings::temperature_default;
-  }
-
   const XDGMeshUniverse* mesh_univ() const { return dynamic_cast<const XDGMeshUniverse*>(model::universes[universe_idx_].get()); }
 
   const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_].get()); }
