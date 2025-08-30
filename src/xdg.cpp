@@ -729,7 +729,11 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   model::cell_map[model::cells.back()->id_] = model::cells.size() - 1;
   c->universe_ = id_;
   c->fill_ = C_NONE;
-  c->material_.push_back(model::materials[outer_material_]->id_);
+  if (outer_material_ != MATERIAL_VOID) {
+    c->material_.push_back(model::materials[outer_material_]->id_);
+  } else {
+    c->material_.push_back(MATERIAL_VOID);
+  }
   c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
   c->n_instances_ = 1;
 }
