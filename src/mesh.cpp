@@ -2346,6 +2346,16 @@ xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
 
 NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const
 {
+  if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
+    auto ipc = xdg_->mesh_manager()->implicit_complement();
+    auto ipc_elem = xdg_->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+    if (ipc_elem.second == C_NONE) {
+      return {INFTY, -1, {-1, 0, 0}};
+    }
+    auto new_r = r + u * (ipc_elem.first + TINY_BIT);
+    auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
+    return {ipc_elem.first, -1, {next_element, 0, 0}};
+  }
   auto mesh_id = bin_to_mesh_id(bin);
   auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
   return {dist.second, -1, {dist.first, 0, 0}};

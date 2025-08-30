@@ -31,9 +31,11 @@ def model():
     model.settings.source = source
 
     # geometry
-    dag_univ = openmc.DAGMCUniverse(Path("pincell.h5m"))
+    xdg_mesh = openmc.XDGMesh(Path("pincell.h5m"), library="moab")
+    xdg_univ = openmc.XDGMeshUniverse(xdg_mesh)
+    xdg_univ.type = 'surface_mesh'
 
-    model.geometry = openmc.Geometry(dag_univ)
+    model.geometry = openmc.Geometry(xdg_univ)
 
     # tally
     tally = openmc.Tally()

@@ -200,7 +200,7 @@ class XDGMeshUniverse : public Universe {
   int32_t mesh_idx_;
   std::string name_;
   std::unordered_map<xdg::MeshID, std::vector<int32_t>> element_material_map_;
-  int32_t outer_material_ {MATERIAL_INVALID};
+  int32_t outer_material_ {MATERIAL_VOID};
 };
 
 class XDGMeshCell : public Cell {
@@ -218,6 +218,20 @@ class XDGMeshCell : public Cell {
   virtual std::pair<double, int32_t> distance(
   Position r, Direction u, int32_t on_surface, GeometryState* p) const override
   {
+    // if this element is the background, determine
+    // if the particle might re-enter the mesh
+    if (elem_idx_ == C_NONE) {
+      auto ipc = xdg_ptr()->mesh_manager()->implicit_complement();
+      auto ipc_elem = xdg_ptr()->ray_fire(ipc, {r.x, r.y, r.z}, {u.x, u.y, u.z});
+      if (ipc_elem.first == C_NONE) {
+        return {INFTY, elem_idx_};
+      }
+      // if the particle will re-enter the mesh, return the distance to the surface
+      // of the implicit complement
+      auto new_r = r + u * (ipc_elem.second + TINY_BIT);
+      auto next_element = xdg_ptr()->find_element({new_r.x, new_r.y, new_r.z});
+      return {ipc_elem.second, next_element};
+    }
     auto result =xdg_ptr()->mesh_manager()->next_element(elem_idx_, {r.x, r.y, r.z}, {u.x, u.y, u.z});
     return {result.second, result.first};
   }
