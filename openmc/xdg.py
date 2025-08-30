@@ -183,7 +183,7 @@ class XDGUniverse(openmc.UniverseBase):
 
     @property
     def bounding_box(self):
-        raise NotImplementedError("Bounding box is not implemented for XDG")
+        return BoundingBox.infinite()
 
     @property
     def filename(self):
