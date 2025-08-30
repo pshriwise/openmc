@@ -715,11 +715,23 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   } // end of volume loop
 
   // create a cell for the exterior of the mesh
-  int32_t outer_material = MATERIAL_VOID;
-  if (check_for_node(node, "outer")) {
+  if (check_for_node(node, "background_material")) {
     // get id of outer material
-    outer_material_ = match_material(get_node_value(node, "outer"));
+    outer_material_ = match_material(get_node_value(node, "background_material"));
+    if (outer_material_ == MATERIAL_INVALID) {
+      outer_material_ = MATERIAL_VOID;
+    }
   }
+  // create a cell for the exterior of the mesh
+  model::cells.push_back(std::make_unique<XDGMeshCell>(mesh_idx_, C_NONE));
+  auto& c = model::cells.back();
+  c->id_ = next_cell_id++;
+  model::cell_map[model::cells.back()->id_] = model::cells.size() - 1;
+  c->universe_ = id_;
+  c->fill_ = C_NONE;
+  c->material_.push_back(model::materials[outer_material_]->id_);
+  c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
+  c->n_instances_ = 1;
 }
 
 bool XDGMeshUniverse::find_cell(GeometryState& p) const
@@ -731,8 +743,8 @@ bool XDGMeshUniverse::find_cell(GeometryState& p) const
   if (mesh_bin == C_NONE) {
     if (outer_material() == MATERIAL_INVALID)
       return false;
-    p.lowest_coord().mesh_cell_index() = mesh_bin;
-    p.lowest_coord().cell = outer_material();
+    p.lowest_coord().mesh_cell_index() = C_NONE;
+    p.lowest_coord().cell = cells_[cells_.size() - 1];
     return true;
   }
 
@@ -771,10 +783,10 @@ void XDGMeshUniverse::next_cell(Particle& p) const
         p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
       10);
       // treat mesh exit as vacuum boundary for now
-      p.wgt() = 0.0;
-      return;
+      // p.wgt() = 0.0;
+      // return;
     next_mesh_idx = C_NONE;
-    next_cell_idx = outer_material();
+    next_cell_idx = cells_[cells_.size() - 1];
   }
 
   // reset the lattice_translation for the boundary crossing

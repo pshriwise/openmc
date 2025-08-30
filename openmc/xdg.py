@@ -171,6 +171,7 @@ class XDGUniverse(openmc.UniverseBase):
         self.mesh = mesh
         self.auto_geom_ids = auto_geom_ids
         self._type = 'surface_mesh'
+        self._background_material = None
 
     def __repr__(self):
         string = super().__repr__()
@@ -263,6 +264,15 @@ class XDGUniverse(openmc.UniverseBase):
     def material_names(self):
         raise NotImplementedError("Material names is not implemented for XDG")
 
+    @property
+    def background_material(self):
+        return self._background_material
+
+    @background_material.setter
+    def background_material(self, val):
+        cv.check_type('XDG background material', val, openmc.Material)
+        self._background_material = val
+
     def _n_geom_elements(self, geom_type):
         """
         Helper function for retrieving the number geometric entities in a DAGMC
@@ -308,6 +318,9 @@ class XDGUniverse(openmc.UniverseBase):
         xdg_element.set('mesh', str(self.mesh.id))
 
         xdg_element.set('type', self._type)
+
+        if self.background_material is not None:
+            xdg_element.set('background_material', str(self.background_material.id))
 
         # add mesh element
         xml_element.append(xdg_element)
@@ -438,6 +451,9 @@ class XDGUniverse(openmc.UniverseBase):
 
         if library := elem.get('library'):
             out.library = library
+
+        if background_material := elem.get('background_material'):
+            out.background_material = background_material
 
         return out
 
