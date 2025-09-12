@@ -192,7 +192,8 @@ class Geometry:
             mats.update({str(m.id): m for m in materials})
         mats['void'] = None
 
-        meshes.update(_read_meshes(elem))
+        if meshes is not None:
+            meshes.update(_read_meshes(elem))
 
         # Helper function for keeping a cache of Universe instances
         universes = {}
@@ -274,7 +275,8 @@ class Geometry:
     def from_xml(
         cls,
         path: PathLike = 'geometry.xml',
-        materials: PathLike | 'openmc.Materials' | None = 'materials.xml'
+        materials: PathLike | 'openmc.Materials' | None = 'materials.xml',
+        meshes: dict | None = None
     ) -> Geometry:
         """Generate geometry from XML file
 
@@ -285,6 +287,10 @@ class Geometry:
         materials : openmc.Materials or PathLike
             Materials used to assign to cells. If PathLike, an attempt is made
             to generate materials from the provided xml file.
+        meshes : dict or None
+            A dictionary with mesh IDs as keys and mesh instances as values that
+            have already been read from XML. Pre-existing meshes are used
+            and new meshes are added to when creating tally objects.
 
         Returns
         -------
@@ -303,8 +309,10 @@ class Geometry:
         parser = ET.XMLParser(huge_tree=True)
         tree = ET.parse(path, parser=parser)
         root = tree.getroot()
-
-        return cls.from_xml_element(root, materials)
+        if meshes is None:
+            meshes = {}
+        meshes.update(_read_meshes(root))
+        return cls.from_xml_element(root, materials, meshes)
 
     def find(self, point) -> list:
         """Find cells/universes/lattices which contain a given point
