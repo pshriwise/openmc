@@ -102,7 +102,7 @@ class XDGMesh(openmc.MeshBase):
 
         """
         element = super().to_xml_element()
-        element.set("type", "unstructured")
+        element.set("type", "xdg")
         element.set("library", self._library)
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
