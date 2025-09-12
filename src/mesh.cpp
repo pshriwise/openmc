@@ -313,12 +313,12 @@ Position StructuredMesh::sample_element(
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 {
   // check the mesh type
-  if (check_for_node(node, "type")) {
-    auto temp = get_node_value(node, "type", true, true);
-    if (temp != mesh_type) {
-      fatal_error(fmt::format("Invalid mesh type: {}", temp));
-    }
-  }
+  // if (check_for_node(node, "type")) {
+  //   auto temp = get_node_value(node, "type", true, true);
+  //   if (temp != mesh_type) {
+  //     fatal_error(fmt::format("Invalid mesh type: {}", temp));
+  //   }
+  // }
 
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
@@ -2242,7 +2242,8 @@ void XDGMesh::prepare_for_point_location() {
 }
 
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const {
-  auto vertices = xdg_->mesh_manager()->element_vertices(bin);
+  // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
+  auto vertices = xdg_->mesh_manager()->element_vertices(bin + 1);
   return this->sample_tet<xdg::Vertex>(vertices, seed);
 }
 
@@ -3454,8 +3455,16 @@ void read_meshes(pugi::xml_node root)
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
 #ifdef OPENMC_XDG
-    } else if (mesh_type == UnstructuredMesh::mesh_type) {
+    } else if (mesh_type == "xdg") {
       model::meshes.push_back(make_unique<XDGMesh>(node));
+#endif
+#ifdef OPENMC_DAGMC_ENABLED
+    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == "moab") {
+      model::meshes.push_back(make_unique<MOABMesh>(node));
+#endif
+#ifdef OPENMC_LIBMESH_ENABLED
+    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == "libmesh") {
+      model::meshes.push_back(make_unique<LibMesh>(node));
 #endif
     } else if (mesh_type == UnstructuredMesh::mesh_type) {
       fatal_error("Unstructured mesh support is not enabled or the mesh "
