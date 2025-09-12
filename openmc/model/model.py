@@ -217,9 +217,10 @@ class Model:
             Model created from XML files
 
         """
+        meshes = {}
         materials = openmc.Materials.from_xml(materials)
-        geometry = openmc.Geometry.from_xml(geometry, materials)
-        settings = openmc.Settings.from_xml(settings)
+        geometry = openmc.Geometry.from_xml(geometry, materials, meshes)
+        settings = openmc.Settings.from_xml(settings, meshes)
         tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
