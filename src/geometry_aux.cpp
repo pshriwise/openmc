@@ -428,6 +428,10 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
     auto target_univ_id = target_univ_ids[map];
     std::unordered_map<int32_t, int32_t> univ_count_memo;
     for (const auto& univ : model::universes) {
+      // all XDG universe cells are material-filled cells
+      if (univ->geom_type() == GeometryType::XDG_VOLUME_MESH)
+        continue;
+
       int32_t offset = 0;
       for (int32_t cell_indx : univ->cells_) {
         Cell& c = *model::cells[cell_indx];
