@@ -276,8 +276,10 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
-        elif mesh_type == 'unstructured':
+        elif mesh_type == 'xdg':
             mesh = XDGMesh.from_xml_element(elem)
+        elif mesh_type == 'unstructured':
+            mesh = UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
