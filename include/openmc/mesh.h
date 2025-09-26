@@ -851,6 +851,11 @@ public:
   double volume(int bin) const override;
 
   //! Get the distance to the nearest boundary for a given position and direction
+  //! \param[in] g GeometryState object containing position and direction
+  //! \return NextMeshCell struct containing distance, face index, and next indices
+  NextMeshCell distance_to_bin_boundary(GeometryState& g) const;
+
+  //! Get the distance to the nearest boundary for a given position and direction
   //! \param[in] r Position to check
   //! \param[in] u Direction to check
   //! \return Distance to the nearest boundary
