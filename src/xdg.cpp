@@ -689,6 +689,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   }
   next_cell_id++;
 
+  cells_.resize(xdg_instance()->mesh_manager()->num_volume_elements(), C_NONE);
   // loop over all volumes in the xdg instance
   for (const auto& volume : xdg_instance()->mesh_manager()->volumes()) {
     const auto& material = xdg_instance()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL);
@@ -712,6 +713,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
       }
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
       c->n_instances_ = 1;
+      cells_[mesh()->mesh_id_to_bin(element)] = model::cell_map[c->id_];
     }
   } // end of volume loop
 
