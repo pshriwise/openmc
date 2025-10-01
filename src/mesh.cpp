@@ -2561,7 +2561,7 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
 int XDGMesh::get_bin(Position r) const
 {
   xdg::Position p {r.x, r.y, r.z};
-  return xdg_->find_element(p);
+  return mesh_id_to_bin(xdg_->find_element(p));
 }
 
 int XDGMesh::n_bins() const {
@@ -2637,7 +2637,14 @@ double XDGMesh::volume(int bin) const
 
 xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
 {
-  return bin;
+  // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
+  return bin + 1;
+}
+
+int32_t XDGMesh::mesh_id_to_bin(xdg::MeshID id) const
+{
+  // MeshIDs are 1-indexed, so we subtract 1 to get the bin, which is 0-indexed
+  return id - 1;
 }
 
 NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const

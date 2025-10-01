@@ -1161,9 +1161,11 @@ void populate_universes()
       model::universes.back()->cells_.push_back(index_cell);
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
+      Universe* univ = model::universes[it->second].get();
+      // DAGMC and XDG universes need to populate and manage their own cells
+      if (univ->geom_type() == GeometryType::XDG_VOLUME_MESH) continue;
 #ifdef OPENMC_DAGMC_ENABLED
       // Skip implicit complement cells for now
-      Universe* univ = model::universes[it->second].get();
       DAGUniverse* dag_univ = dynamic_cast<DAGUniverse*>(univ);
       if (dag_univ && (dag_univ->implicit_complement_idx() == index_cell)) {
         implicit_comp_cells[it->second] = index_cell;

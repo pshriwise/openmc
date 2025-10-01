@@ -812,6 +812,8 @@ public:
 
   xdg::MeshID bin_to_mesh_id(int bin) const;
 
+  int mesh_id_to_bin(xdg::MeshID id) const;
+
   int n_bins() const override;
 
   int n_surface_bins() const override;
