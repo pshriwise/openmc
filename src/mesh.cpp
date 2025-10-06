@@ -2644,7 +2644,7 @@ xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
 int32_t XDGMesh::mesh_id_to_bin(xdg::MeshID id) const
 {
   // MeshIDs are 1-indexed, so we subtract 1 to get the bin, which is 0-indexed
-  return id - 1;
+  return std::max(-1, id - 1);
 }
 
 NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
@@ -2665,7 +2665,7 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
   }
   auto mesh_id = bin_to_mesh_id(bin);
   auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
-  return {dist.second, -1, {dist.first, 0, 0}};
+  return {dist.second, -1, {mesh_id_to_bin(dist.first), 0, 0}};
 }
 
 
