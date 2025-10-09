@@ -67,14 +67,14 @@
       <lower_left>-10.0 -10.0 -10.0</lower_left>
       <upper_right>10.0 10.0 10.0</upper_right>
     </mesh>
-    <mesh id="2" library="moab" options="MAX_DEPTH=15;PLANE_SET=2" type="unstructured">
+    <mesh id="3" library="moab" type="xdg">
       <filename>test_mesh_tets.e</filename>
     </mesh>
     <filter id="1" type="mesh">
       <bins>1</bins>
     </filter>
     <filter id="2" type="mesh">
-      <bins>2</bins>
+      <bins>3</bins>
     </filter>
     <tally id="1" name="regular mesh tally">
       <filters>1</filters>
