@@ -135,13 +135,14 @@ public:
   int32_t surf_idx_offset_; //!< An offset to the start of the surfaces in this
                             //!< universe in OpenMC's surface vector
 
-  std::string library() const { return mesh()->mesh_library(); }
-  std::string filename() const { return mesh()->filename(); }
+  std::string library() const { return xdg_mesh()->mesh_library(); }
+  std::string filename() const { return xdg_mesh()->filename(); }
 
   // Accessors
   int32_t mesh_idx() const { return mesh_idx_; }
-  const XDGMesh* mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
-  const std::shared_ptr<xdg::XDG>& xdg_ptr() const { return mesh()->xdg_instance(); }
+  const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
+  const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
+  const std::shared_ptr<xdg::XDG>& xdg_ptr() const { return xdg_mesh()->xdg_instance(); }
 
 private:
   void set_id();        //!< Deduce the universe id from model::universes

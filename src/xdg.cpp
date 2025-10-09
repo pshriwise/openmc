@@ -110,10 +110,8 @@ void XDGUniverse::set_id()
 void XDGUniverse::initialize()
 {
   geom_type() = GeometryType::XDG_SURFACE_MESH;
-
-  // init_xdg();
-  // init_metadata();
   init_geometry();
+  mesh()->prepare_for_point_location();
 }
 
 void XDGUniverse::init_xdg()
