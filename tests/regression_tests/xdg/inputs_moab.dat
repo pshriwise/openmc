@@ -13,7 +13,10 @@
     </material>
   </materials>
   <geometry>
-    <dagmc_universe filename="pincell.h5m" id="1" library="moab"/>
+    <mesh id="1" library="moab" type="xdg">
+      <filename>pincell.h5m</filename>
+    </mesh>
+    <xdg_universe id="1" mesh="1" type="surface_mesh"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

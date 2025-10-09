@@ -32,7 +32,7 @@ def model():
 
     # geometry
     xdg_mesh = openmc.XDGMesh(Path("pincell.h5m"), library="moab")
-    xdg_univ = openmc.XDGMeshUniverse(xdg_mesh)
+    xdg_univ = openmc.XDGUniverse(xdg_mesh)
     xdg_univ.type = 'surface_mesh'
 
     model.geometry = openmc.Geometry(xdg_univ)
