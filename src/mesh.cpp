@@ -2529,7 +2529,6 @@ void XDGMesh::initialize() {
   xdg_->mesh_manager()->load_file(filename_);
   xdg_->mesh_manager()->init();
   xdg_->mesh_manager()->parse_metadata();
-  xdg_->prepare_raytracer();
 }
 
 void XDGMesh::prepare_for_point_location() {
@@ -2553,7 +2552,7 @@ void XDGMesh::bins_crossed(Position r0, Position r1, const Direction& u,
   // remove elements with lengths of zero
   track_segments.erase(std::remove_if(track_segments.begin(), track_segments.end(), [](const std::pair<xdg::MeshID, double>& p) {return p.second == 0.0;}), track_segments.end());
   for (const auto& track_segment : track_segments ) {
-    bins.push_back(track_segment.first);
+    bins.push_back(mesh_id_to_bin(track_segment.first));
     lengths.push_back(track_segment.second * length_rcp);
   }
 }
