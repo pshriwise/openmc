@@ -655,7 +655,7 @@ void UnstructuredMesh::determine_bounds()
 
 template<typename V>
 Position UnstructuredMesh::sample_tet(
-  gsl::span<V> coords, uint64_t* seed) const
+span<V> coords, uint64_t* seed) const
 {
   // Uniform distribution
   double s = prn(seed);
@@ -2650,7 +2650,7 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
 {
   const auto& coord = g.lowest_coord();
   int bin = coord.mesh_cell_index();
-  Position r {coord.r.x, coord.r.y, coord.r.z};
+  Position r {g.r().x, g.r().y, g.r().z};
   Direction u {g.u().x, g.u().y, g.u().z};
   if (bin == C_NONE || bin == xdg_->mesh_manager()->implicit_complement()) {
     auto ipc = xdg_->mesh_manager()->implicit_complement();
@@ -2666,7 +2666,6 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
   auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
   return {dist.second, -1, {mesh_id_to_bin(dist.first), 0, 0}};
 }
-
 
 NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const Direction& u) const
 {
@@ -3016,7 +3015,7 @@ Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
   }
 
   // Samples position within tet using Barycentric stuff
-  return this->sample_tet<moab::CartVect>(p, seed);
+  return this->sample_tet<moab::CartVect>({p, 4}, seed);
 }
 
 double MOABMesh::tet_volume(moab::EntityHandle tet) const
@@ -3495,7 +3494,7 @@ Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
     tet_verts[i] = {node_ref(0), node_ref(1), node_ref(2)};
   }
   // Samples position within tet using Barycentric coordinates
-  return this->sample_tet<Position>(tet_verts, seed);
+  return this->sample_tet<Position>({tet_verts.begin(), tet_verts.end()}, seed);
 }
 
 Position LibMesh::centroid(int bin) const
@@ -3807,6 +3806,7 @@ void read_meshes(pugi::xml_node root)
     } else if (mesh_type == UnstructuredMesh::mesh_type &&
                mesh_lib == LibMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<LibMesh>(node));
+#endif
 #ifdef OPENMC_XDG
     } else if (mesh_type == "xdg") {
       model::meshes.push_back(make_unique<XDGMesh>(node));

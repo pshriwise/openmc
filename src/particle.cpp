@@ -298,8 +298,8 @@ void Particle::event_cross_surface()
   n_coord() = boundary().coord_level();
 
   #ifdef OPENMC_XDG
-  if (model::universes[lowest_coord().universe]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
-    const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[lowest_coord().universe].get());
+  if (model::universes[lowest_coord().universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
+    const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[lowest_coord().universe()].get());
     xdg_mesh_univ->next_cell(*this);
     return;
   }
@@ -607,12 +607,12 @@ void Particle::cross_surface(const Surface& surf)
   // in XDG, we know what the next cell should be
   if (surf.geom_type() == GeometryType::XDG_SURFACE_MESH) {
     int32_t i_cell =
-      xdg_next_cell(surface_index(), cell_last(n_coord() - 1), lowest_coord().universe);
+      xdg_next_cell(surface_index(), cell_last(n_coord() - 1), lowest_coord().universe());
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
     // set new cell value
-    lowest_coord().cell = i_cell;
+    lowest_coord().cell() = i_cell;
     auto& cell = model::cells[i_cell];
 
     cell_instance() = 0;

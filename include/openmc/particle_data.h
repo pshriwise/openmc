@@ -232,7 +232,7 @@ public:
     distance_ = INFINITY;
     surface_ = SURFACE_NONE;
     coord_level_ = 0;
-    lattice_translation_ = {0, 0, 0};
+    mesh_or_lattice_translation_ = {0, 0, 0};
   }
   double& distance() { return distance_; }
   const double& distance() const { return distance_; }
@@ -243,7 +243,7 @@ public:
   int coord_level() const { return coord_level_; }
   int& coord_level() { return coord_level_; }
 
-  array<int, 3>& lattice_translation() { return lattice_translation_; }
+  array<int, 3>& lattice_translation() { return mesh_or_lattice_translation_; }
   const array<int, 3>& lattice_translation() const
   {
     return mesh_or_lattice_translation_;

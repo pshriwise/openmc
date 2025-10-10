@@ -49,6 +49,8 @@ class XDGSurface : public XDGGeometryObject, public Surface {
 public:
   XDGSurface(std::shared_ptr<xdg::XDG> dag_ptr, xdg::MeshID xdg_id);
 
+  GeometryType geom_type() const override { return GeometryType::XDG_SURFACE_MESH; }
+
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
 
@@ -61,6 +63,8 @@ public:
 class XDGCell : public XDGGeometryObject, public Cell {
 public:
   XDGCell(const std::shared_ptr<xdg::XDG>& xdg_ptr, xdg::MeshID xdg_id);
+
+  GeometryType geom_type() const override { return GeometryType::XDG_SURFACE_MESH; }
 
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
@@ -76,6 +80,8 @@ class XDGUniverse : public Universe {
 
 public:
   explicit XDGUniverse(pugi::xml_node node);
+
+  GeometryType geom_type() const override { return GeometryType::XDG_SURFACE_MESH; }
 
   //! Create a new XDG universe
   //! \param[in] filename Name of the XDG file
@@ -167,7 +173,9 @@ class XDGMeshUniverse : public Universe {
 
   public:
   // constructors
-  XDGMeshUniverse() { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
+  XDGMeshUniverse() = default;
+
+  GeometryType geom_type() const override { return GeometryType::XDG_VOLUME_MESH; }
 
   explicit XDGMeshUniverse(pugi::xml_node node);
 
@@ -208,7 +216,9 @@ class XDGMeshUniverse : public Universe {
 class XDGMeshCell : public Cell {
   public:
   XDGMeshCell(int32_t mesh, int32_t element_idx) : mesh_(mesh), elem_idx_(element_idx)
-  { geom_type_ = GeometryType::XDG_VOLUME_MESH; }
+  {}
+
+  GeometryType geom_type() const override { return GeometryType::XDG_VOLUME_MESH; }
 
   virtual bool contains(
   Position r, Direction u, int32_t on_surface) const override

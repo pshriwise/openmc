@@ -762,7 +762,7 @@ protected:
   //! \param[in] seed Random number generation seed
   //! \return Sampled position within the tetrahedron
   template<typename V>
-  Position sample_tet(gsl::span<V> coords, uint64_t* seed) const;
+  Position sample_tet(span<V> coords, uint64_t* seed) const;
 
   // Data members
   double length_multiplier_ {

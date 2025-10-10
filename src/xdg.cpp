@@ -109,7 +109,6 @@ void XDGUniverse::set_id()
 
 void XDGUniverse::initialize()
 {
-  geom_type() = GeometryType::XDG_SURFACE_MESH;
   init_geometry();
   mesh()->prepare_for_point_location();
 }
@@ -344,7 +343,7 @@ bool XDGUniverse::find_cell(GeometryState& p) const
   // cells, place it in the implicit complement
   bool found = Universe::find_cell(p);
   if (!found && model::universe_map[this->id_] != model::root_universe) {
-    p.lowest_coord().cell = implicit_complement_idx();
+    p.lowest_coord().cell() = implicit_complement_idx();
     found = true;
   }
   return found;
@@ -439,7 +438,6 @@ void XDGUniverse::assign_material(
 XDGCell::XDGCell(const std::shared_ptr<xdg::XDG>& xdg_ptr, xdg::MeshID xdg_id)
   : Cell {}, XDGGeometryObject(xdg_ptr, xdg_id)
 {
-  geom_type() = GeometryType::XDG_SURFACE_MESH;
   // TODO: Allow XDG cells to be filled with other geometry
   fill_ = C_NONE;
 };
@@ -457,7 +455,7 @@ std::pair<double, int32_t> XDGCell::distance(
     p->xdg_prev_elements().clear();
   }
 
-  const auto& univ = model::universes[p->lowest_coord().universe];
+  const auto& univ = model::universes[p->lowest_coord().universe()];
 
   XDGUniverse* xdg_univ = static_cast<XDGUniverse*>(univ.get());
   if (!xdg_univ)
@@ -524,9 +522,7 @@ BoundingBox XDGCell::bounding_box() const
 
 XDGSurface::XDGSurface(std::shared_ptr<xdg::XDG> xdg_ptr, int32_t xdg_id)
   : Surface {}, XDGGeometryObject(xdg_ptr, xdg_id)
-{
-  geom_type() = GeometryType::XDG_SURFACE_MESH;
-}
+{}
 
 double XDGSurface::evaluate(Position r) const
 {
@@ -549,7 +545,6 @@ Direction XDGSurface::normal(Position r) const
 
 Direction XDGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
-  Expects(p);
   p->xdg_prev_elements() = {p->xdg_prev_elements().back()};
   double pnt[3] = {r.x, r.y, r.z};
   xdg::Direction normal = xdg_ptr()->surface_normal(xdg_id(), pnt, &p->xdg_prev_elements());
@@ -610,8 +605,6 @@ int32_t xdg_next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
 
 XDGMeshUniverse::XDGMeshUniverse(pugi::xml_node node)
 {
-   geom_type_ = GeometryType::XDG_VOLUME_MESH;
-
   if (check_for_node(node, "id")) {
     id_ = std::stoi(get_node_value(node, "id"));
   } else {
@@ -711,7 +704,6 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
         c->material_.push_back(MATERIAL_VOID);
       }
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
-      c->n_instances_ = 1;
       cells_[xdg_mesh()->mesh_id_to_bin(element)] = model::cell_map[c->id_];
     }
   } // end of volume loop
@@ -737,7 +729,6 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
     c->material_.push_back(MATERIAL_VOID);
   }
   c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
-  c->n_instances_ = 1;
 }
 
 bool XDGMeshUniverse::find_cell(GeometryState& p) const
@@ -750,12 +741,12 @@ bool XDGMeshUniverse::find_cell(GeometryState& p) const
     if (outer_material() == MATERIAL_INVALID)
       return false;
     p.lowest_coord().mesh_cell_index() = C_NONE;
-    p.lowest_coord().cell = cells_[cells_.size() - 1];
+    p.lowest_coord().cell() = cells_[cells_.size() - 1];
     return true;
   }
 
   p.lowest_coord().mesh_cell_index() = mesh_bin;
-  p.lowest_coord().cell = cells_[mesh_bin];
+  p.lowest_coord().cell() = cells_[mesh_bin];
 
   return true;
 }
@@ -802,7 +793,7 @@ void XDGMeshUniverse::next_cell(Particle& p) const
   p.sqrtkT_last() = p.sqrtkT();
   // set previous bin
   coord.mesh_cell_index() = next_mesh_idx;
-  coord.cell = next_cell_idx;
+  coord.cell() = next_cell_idx;
   coord.mesh_index() = p.boundary().mesh_translation();
   const auto& cell = model::cells.at(next_cell_idx);
   Cell* cell_ptr = model::cells.at(next_cell_idx).get();
