@@ -2303,3 +2303,32 @@ class EnergyFunctionFilter(Filter):
             {self.short_name.lower(): filter_bins})])
 
         return df
+
+
+class UniverseCellFilter(WithIDFilter):
+    """Bins tally events for all cells in a given universe.
+    This filter provides a separate score for each cell in the provided
+    universes. Note that only one universe can be specified in this filter.
+
+    Parameters
+    ----------
+    bins : openmc.UniverseBase, Integral, or Iterable thereof
+        The universe(s) to tally. Either an openmc.Universe, an Integral
+        universe ID number, or an iterable of either can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        An iterable with one or more elements---the IDs of the Universe(s).
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    expected_type = (UniverseBase, Integral)
+
+

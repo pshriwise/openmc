@@ -34,6 +34,7 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
 #include "openmc/tallies/filter_universe.h"
+#include "openmc/tallies/filter_universe_cell.h"
 #include "openmc/tallies/filter_zernike.h"
 #include "openmc/xml_interface.h"
 
@@ -150,6 +151,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<TimeFilter>(id);
   } else if (type == "universe") {
     return Filter::create<UniverseFilter>(id);
+  } else if (type == "universecell") {
+    return Filter::create<UniverseCellFilter>(id);
   } else if (type == "zernike") {
     return Filter::create<ZernikeFilter>(id);
   } else if (type == "zernikeradial") {

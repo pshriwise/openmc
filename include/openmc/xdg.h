@@ -194,8 +194,9 @@ class XDGMeshUniverse : public Universe {
 
   // Accessors
   int32_t mesh_idx() const { return mesh_idx_; }
-  const XDGMesh* mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
-  const std::shared_ptr<xdg::XDG>& xdg_instance() const { return mesh()->xdg_instance(); }
+  const std::unique_ptr<Mesh>& mesh() const { return model::meshes[mesh_idx_]; }
+  const XDGMesh* xdg_mesh() const { return dynamic_cast<const XDGMesh*>(model::meshes[mesh_idx_].get()); }
+  const std::shared_ptr<xdg::XDG>& xdg_instance() const { return xdg_mesh()->xdg_instance(); }
 
   protected:
   int32_t mesh_idx_;
