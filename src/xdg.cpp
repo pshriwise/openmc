@@ -634,6 +634,7 @@ XDGMeshUniverse::XDGMeshUniverse(pugi::xml_node node)
   }
 
   create_cells(node);
+  mesh()->prepare_for_point_location();
 }
 
 int32_t XDGMeshUniverse::match_material(const std::string& material_name) const
@@ -711,7 +712,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
       }
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
       c->n_instances_ = 1;
-      cells_[mesh()->mesh_id_to_bin(element)] = model::cell_map[c->id_];
+      cells_[xdg_mesh()->mesh_id_to_bin(element)] = model::cell_map[c->id_];
     }
   } // end of volume loop
 
@@ -765,7 +766,7 @@ void XDGMeshUniverse::next_cell(Particle& p) const
 
   int32_t next_mesh_idx = p.boundary().mesh_translation(0);
   int32_t next_cell_idx {C_NONE};
-  if (mesh()->bin_is_valid(next_mesh_idx)) {
+  if (xdg_mesh()->bin_is_valid(next_mesh_idx)) {
 
     if (p.lowest_coord().mesh_cell_index() == C_NONE) {
       write_message(

@@ -2523,9 +2523,6 @@ class WeightFilter(RealFilter):
     ----------
     Values : Iterable of float
         A list or iterable of the weight boundaries, as float values.
-    filter_id : int
-        Unique identifier for the filter
-
     Attributes
     ----------
     id : int
@@ -2537,3 +2534,30 @@ class WeightFilter(RealFilter):
     values : numpy.ndarray
         Array of weight boundaries
     """
+
+
+class UniverseCellFilter(WithIDFilter):
+    """Bins tally events for all cells in a given universe.
+    This filter provides a separate score for each cell in the provided
+    universes. Note that only one universe can be specified in this filter.
+
+    Parameters
+    ----------
+    bins : openmc.UniverseBase, Integral, or Iterable thereof
+        The universe(s) to tally. Either an openmc.Universe, an Integral
+        universe ID number, or an iterable of either can be used.
+    filter_id : int
+        Unique identifier for the filter
+
+    bins : Iterable of Integral
+        An iterable with one or more elements---the IDs of the Universe(s).
+    id : int
+        Unique identifier for the filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    expected_type = (UniverseBase, Integral)
+
+

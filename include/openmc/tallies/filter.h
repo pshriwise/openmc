@@ -45,6 +45,7 @@ enum class FilterType {
   SURFACE,
   TIME,
   UNIVERSE,
+  UNIVERSE_CELL,
   WEIGHT,
   ZERNIKE,
   ZERNIKE_RADIAL
