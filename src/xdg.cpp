@@ -694,6 +694,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
     const auto& material = xdg_instance()->mesh_manager()->get_volume_property(volume, xdg::PropertyType::MATERIAL);
     std::string mat_str = material.value;
     int32_t mat_idx = match_material(to_lower(mat_str));
+
     // go over all elements in the volume and assign the material to the element
     for (const auto& element : xdg_instance()->mesh_manager()->get_volume_elements(volume)) {
       element_material_map_[element].push_back(mat_idx);
@@ -738,6 +739,7 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   }
   c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
   c->n_instances_ = 1;
+  cells_.push_back(model::cell_map[c->id_]);
 }
 
 bool XDGMeshUniverse::find_cell(GeometryState& p) const
