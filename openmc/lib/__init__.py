@@ -38,8 +38,10 @@ else:
 
 
 def _dagmc_enabled():
-    return True
     return c_bool.in_dll(_dll, "DAGMC_ENABLED").value
+
+def _xdg_enabled():
+    return c_bool.in_dll(_dll, "XDG_ENABLED").value
 
 def _ncrystal_enabled():
     return c_bool.in_dll(_dll, "NCRYSTAL_ENABLED").value
