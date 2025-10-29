@@ -13,7 +13,7 @@
 
 #include <fmt/core.h>
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 #include "xdg/xdg.h"
 #endif
 
@@ -24,7 +24,7 @@
 
 namespace openmc {
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 const bool XDG_ENABLED = true;
 #else
 const bool XDG_ENABLED = false;
@@ -32,7 +32,7 @@ const bool XDG_ENABLED = false;
 
 } // namespace openmc
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 
 namespace openmc {
 

@@ -739,7 +739,7 @@ private:
   virtual void initialize() = 0;
 };
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 
 class XDGMesh : public UnstructuredMesh{
 

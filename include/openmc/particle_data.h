@@ -12,7 +12,7 @@
 #include "DagMC.hpp"
 #endif
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 #include "xdg/xdg.h"
 #endif
 
@@ -359,7 +359,7 @@ moab::DagMC::RayHistory& history() { return history_; }
 #endif
 
 // XDG state variables
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
   std::vector<xdg::MeshID>& xdg_prev_elements() { return xdg_prev_elements_; }
 #endif
 
@@ -408,7 +408,7 @@ moab::DagMC::RayHistory history_;
 #endif
 
 // XDG state variables
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
   std::vector<xdg::MeshID> xdg_prev_elements_;
 #endif
 };

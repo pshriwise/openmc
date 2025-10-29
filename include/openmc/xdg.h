@@ -19,7 +19,7 @@ void read_xdg_mesh_universes(pugi::xml_node node);
 
 } // namespace openmc
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 
 #include "xdg/xdg.h"
 
@@ -269,6 +269,6 @@ class XDGMeshCell : public Cell {
 
 } // namespace openmc
 
-#endif // OPENMC_XDG
+#endif // OPENMC_XDG_ENABLED
 
 #endif // OPENMC_XDG_H
