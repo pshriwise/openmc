@@ -311,6 +311,7 @@ void print_build_info()
   std::string phdf5(n);
   std::string dagmc(n);
   std::string libmesh(n);
+  std::string xdg(n);
   std::string png(n);
   std::string profiling(n);
   std::string coverage(n);
@@ -327,7 +328,10 @@ void print_build_info()
   dagmc = y;
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
-  libmesh = y;
+libmesh = y;
+#endif
+#ifdef OPENMC_XDG_ENABLED
+  xdg = y;
 #endif
 #ifdef OPENMC_MCPL
   mcpl = y;
@@ -358,6 +362,7 @@ void print_build_info()
     fmt::print("PNG support:           {}\n", png);
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("XDG support:           {}\n", xdg);
     fmt::print("MCPL support:          {}\n", mcpl);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);

@@ -36,7 +36,7 @@
 #include "DagMC.hpp"
 #endif
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 #include "openmc/xdg.h"
 #endif
 
@@ -297,7 +297,7 @@ void Particle::event_cross_surface()
   surface() = boundary().surface();
   n_coord() = boundary().coord_level();
 
-  #ifdef OPENMC_XDG
+  #ifdef OPENMC_XDG_ENABLED
   if (model::universes[lowest_coord().universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
     const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[lowest_coord().universe()].get());
     xdg_mesh_univ->next_cell(*this);
@@ -563,7 +563,7 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
   if (surf.geom_type() == GeometryType::CSG)
     xdg_prev_elements().clear();
 #endif
@@ -603,7 +603,7 @@ void Particle::cross_surface(const Surface& surf)
   }
 #endif
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
   // in XDG, we know what the next cell should be
   if (surf.geom_type() == GeometryType::XDG_SURFACE_MESH) {
     int32_t i_cell =

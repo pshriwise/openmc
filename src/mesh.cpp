@@ -87,7 +87,7 @@ const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
 } // namespace settings
 #endif
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 #include "xdg/xdg.h"
 #endif
 
@@ -2506,7 +2506,7 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
 
 const std::string XDGMesh::mesh_lib_type = "xdg";
 
@@ -3810,26 +3810,16 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(make_unique<CylindricalMesh>(node));
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
-#ifdef OPENMC_DAGMC_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == MOABMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<MOABMesh>(node));
-#endif
-#ifdef OPENMC_LIBMESH_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == LibMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<LibMesh>(node));
-#endif
-#ifdef OPENMC_XDG
+#ifdef OPENMC_XDG_ENABLED
     } else if (mesh_type == "xdg") {
       model::meshes.push_back(make_unique<XDGMesh>(node));
 #endif
 #ifdef OPENMC_DAGMC_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == "moab") {
+    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == MOABMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
 #ifdef OPENMC_LIBMESH_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == "libmesh") {
+    } else if (mesh_type == UnstructuredMesh::mesh_type && mesh_lib == LibMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<LibMesh>(node));
 #endif
     } else if (mesh_type == UnstructuredMesh::mesh_type) {
