@@ -42,6 +42,11 @@ _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
 _dll.openmc_mesh_get_volumes.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_mesh_get_volumes.restype = c_int
 _dll.openmc_mesh_get_volumes.errcheck = _error_handler
+_dll.openmc_mesh_bins_crossed.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double), POINTER(c_double),
+    POINTER(c_int), POINTER(c_int), POINTER(c_double)]
+_dll.openmc_mesh_bins_crossed.restype = c_int
+_dll.openmc_mesh_bins_crossed.errcheck = _error_handler
 _dll.openmc_mesh_bounding_box.argtypes = [
     c_int32, POINTER(c_double), POINTER(c_double)]
 _dll.openmc_mesh_bounding_box.restype = c_int
@@ -260,6 +265,71 @@ class Mesh(_FortranObjectWithID):
                 break
 
         return MeshMaterialVolumes(materials, volumes)
+
+    def bins_crossed(
+            self,
+            r0: Sequence[float],
+            r1: Sequence[float],
+            u: Sequence[float]
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get bins and track lengths crossed by a ray.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        r0 : iterable of float
+            Starting position of the ray. Should have length 3.
+        r1 : iterable of float
+            Ending position of the ray. Should have length 3.
+        u : iterable of float
+            Direction vector of the ray. Should have length 3.
+
+        Returns
+        -------
+        bins : numpy.ndarray
+            Array of mesh bin indices crossed by the ray
+        lengths : numpy.ndarray
+            Array of track lengths in each bin
+
+        """
+        # Convert inputs to numpy arrays
+        r0_arr = np.asarray(r0, dtype=np.float64)
+        r1_arr = np.asarray(r1, dtype=np.float64)
+        u_arr = np.asarray(u, dtype=np.float64)
+
+        # First call to get the number of crossings
+        n_crossings = c_int()
+        _dll.openmc_mesh_bins_crossed(
+            self._index,
+            r0_arr.ctypes.data_as(POINTER(c_double)),
+            r1_arr.ctypes.data_as(POINTER(c_double)),
+            u_arr.ctypes.data_as(POINTER(c_double)),
+            n_crossings,
+            None,
+            None
+        )
+
+        # If there are crossings, allocate arrays and get the data
+        n = n_crossings.value
+        if n > 0:
+            bins = np.empty(n, dtype=np.int32)
+            lengths = np.empty(n, dtype=np.float64)
+            
+            _dll.openmc_mesh_bins_crossed(
+                self._index,
+                r0_arr.ctypes.data_as(POINTER(c_double)),
+                r1_arr.ctypes.data_as(POINTER(c_double)),
+                u_arr.ctypes.data_as(POINTER(c_double)),
+                n_crossings,
+                bins.ctypes.data_as(POINTER(c_int)),
+                lengths.ctypes.data_as(POINTER(c_double))
+            )
+        else:
+            bins = np.array([], dtype=np.int32)
+            lengths = np.array([], dtype=np.float64)
+
+        return bins, lengths
 
     def get_plot_bins(
             self,

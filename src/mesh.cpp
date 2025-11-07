@@ -2405,6 +2405,42 @@ extern "C" int openmc_mesh_get_volumes(int32_t index, double* volumes)
   return 0;
 }
 
+//! Get bins and track lengths crossed by a ray
+extern "C" int openmc_mesh_bins_crossed(int32_t index, const double r0[3],
+  const double r1[3], const double u[3], int* n_crossings, int* bins,
+  double* lengths)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  // Create Position and Direction objects from input arrays
+  Position pos0(r0);
+  Position pos1(r1);
+  Direction dir(u);
+
+  // Call bins_crossed method
+  vector<int> bin_vec;
+  vector<double> length_vec;
+
+  try {
+    model::meshes[index]->bins_crossed(pos0, pos1, dir, bin_vec, length_vec);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_GEOMETRY;
+  }
+
+  // Set the number of crossings
+  *n_crossings = bin_vec.size();
+
+  // Copy bins and lengths to output arrays if provided
+  if (bins != nullptr && lengths != nullptr) {
+    std::copy(bin_vec.begin(), bin_vec.end(), bins);
+    std::copy(length_vec.begin(), length_vec.end(), lengths);
+  }
+
+  return 0;
+}
+
 //! Get the bounding box of a mesh
 extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
 {
