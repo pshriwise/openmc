@@ -730,7 +730,6 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
     c->material_.push_back(MATERIAL_VOID);
   }
   c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
-  c->n_instances_ = 1;
   cells_.push_back(model::cell_map[c->id_]);
 }
 

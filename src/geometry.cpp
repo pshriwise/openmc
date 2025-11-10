@@ -378,7 +378,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     Cell& c {*model::cells[coord.cell()]};
 
     #ifdef OPENMC_XDG_ENABLED
-    if (model::universes[coord.universe]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
+    if (model::universes[coord.universe()]->geom_type() == GeometryType::XDG_VOLUME_MESH) {
       const auto* xdg_mesh_univ = dynamic_cast<const XDGMeshUniverse*>(model::universes[coord.universe()].get());
       auto mesh_dist = xdg_mesh_univ->xdg_mesh()->distance_to_bin_boundary(p);
 
