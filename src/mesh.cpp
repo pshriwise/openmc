@@ -718,13 +718,30 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
   xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
   write_dataset(mesh_group, "vertices", vertices);
 
+  for (int i = 0; i < this->n_vertices(); ++i) {
+    auto v = this->vertex(i);
+    vertices(i, 0) = v.x;
+    vertices(i, 1) = v.y;
+    vertices(i, 2) = v.z;
+  }
+
   int num_elem_skipped = 0;
 
-  // write element types and connectivity
-  vector<double> volumes(this->n_bins());
+
   xt::xtensor<int, 2> connectivity({static_cast<size_t>(this->n_bins()), 8});
   xt::xtensor<int, 2> elem_types({static_cast<size_t>(this->n_bins()), 1});
 
+  // write element types and connectivity
+  vector<double> volumes(this->n_bins());
+  for (int i = 0; i < this->n_bins(); ++i) {
+    volumes[i] = this->volume(i);
+    auto conn = this->connectivity(i);
+    elem_types(i, 0) = static_cast<int>(ElementType::LINEAR_TET);
+    // assume that these are tets for now
+    for (int j = 0; j < 4; ++j) {
+      connectivity(i, j) = conn[j];
+    }
+  }
   // warn users that some elements were skipped
   if (num_elem_skipped > 0) {
     warning(fmt::format("The connectivity of {} elements "
@@ -2611,27 +2628,23 @@ Position XDGMesh::centroid(int bin) const
 
 int XDGMesh::n_vertices() const
 {
-  return 10;// xdg_->mesh_manager()->num_vertices();
+  return xdg_->mesh_manager()->num_vertices();
 }
 
 Position XDGMesh::vertex(int id) const
 {
-  return {0, 0, 0};
+  auto v = xdg_->mesh_manager()->vertex_coordinates(id+1);
+  return {v[0], v[1], v[2]};
 }
 
 std::vector<int> XDGMesh::connectivity(int id) const
 {
-  return {1, 1, 1, 1};
+  return xdg_->mesh_manager()->connectivity(id+1);
 }
 
 double XDGMesh::volume(int bin) const
 {
-  auto v = xdg_->mesh_manager()->element_vertices(bin);
-
-  // For a linear tet, volume is 1/6 * |((v1-v0) × (v2-v0)) · (v3-v0)|
-  // where v0,v1,v2,v3 are the vertex positions and × is cross product
-  // TODO: move the volume call into XDGMesh
-  return 1.0 / 6.0 * ((v[1] - v[0]).cross(v[2] - v[0])).dot(v[3] - v[0]);
+ return xdg_->mesh_manager()->element_volume(bin+1);
 }
 
 xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
