@@ -776,16 +776,27 @@ void XDGMeshUniverse::next_cell(Particle& p) const
 
     next_cell_idx = cells_[next_mesh_idx];
   } else {
-    write_message(
-      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
-                  "{} \n\tDirection: {} {} {}",
-        p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
-      10);
-      // treat mesh exit as vacuum boundary for now
-      // p.wgt() = 0.0;
-      // return;
-    next_mesh_idx = C_NONE;
-    next_cell_idx = cells_[cells_.size() - 1];
+
+    // if we're about to move out of the mesh,
+    // check just ahead of the current position to
+    // see if the particle is in an overlap or
+    // at the juncture of coincident surfaces
+    int mesh_bin = mesh()->get_bin(p.r_local() + TINY_BIT * p.u());
+    if (mesh_bin != C_NONE) {
+      next_mesh_idx = mesh_bin;
+      next_cell_idx = cells_[next_mesh_idx];
+    } else {
+      write_message(
+        fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
+                    "{} \n\tDirection: {} {} {}",
+          p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
+        10);
+        // treat mesh exit as vacuum boundary for now
+        // p.wgt() = 0.0;
+        // return;
+      next_mesh_idx = C_NONE;
+      next_cell_idx = cells_[cells_.size() - 1];
+    }
   }
 
   // reset the lattice_translation for the boundary crossing
