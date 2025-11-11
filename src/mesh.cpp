@@ -716,7 +716,6 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 
   // write vertex coordinates
   xt::xtensor<double, 2> vertices({static_cast<size_t>(this->n_vertices()), 3});
-  write_dataset(mesh_group, "vertices", vertices);
 
   for (int i = 0; i < this->n_vertices(); ++i) {
     auto v = this->vertex(i);
@@ -724,11 +723,12 @@ void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
     vertices(i, 1) = v.y;
     vertices(i, 2) = v.z;
   }
+  write_dataset(mesh_group, "vertices", vertices);
 
   int num_elem_skipped = 0;
 
-
   xt::xtensor<int, 2> connectivity({static_cast<size_t>(this->n_bins()), 8});
+  connectivity.fill(-1); // fill with -1 for unused entries
   xt::xtensor<int, 2> elem_types({static_cast<size_t>(this->n_bins()), 1});
 
   // write element types and connectivity
@@ -2614,7 +2614,7 @@ void XDGMesh::write(const std::string& base_filename) const
 
 Position XDGMesh::centroid(int bin) const
 {
-  auto element_vertices = xdg_->mesh_manager()->element_vertices(bin);
+  auto element_vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
 
   xdg::Vertex centroid {0.0, 0.0, 0.0};
   for (const auto& v : element_vertices) {
