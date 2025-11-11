@@ -224,7 +224,7 @@ class XDGMeshCell : public Cell {
   Position r, Direction u, int32_t on_surface) const override
   {
     int mesh_bin = model::meshes[mesh_]->get_bin(r);
-    return mesh_bin == elem_idx_;
+    return mesh_bin == elem_idx_-1;
   };
 
   virtual std::pair<double, int32_t> distance(
