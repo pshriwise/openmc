@@ -2673,7 +2673,7 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
     }
     auto new_r = r + u * (ipc_elem.first + TINY_BIT);
     auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
-    return {ipc_elem.first, -1, {next_element, 0, 0}};
+    return {ipc_elem.first, -1, {mesh_id_to_bin(next_element), 0, 0}};
   }
   auto mesh_id = bin_to_mesh_id(bin);
   auto dist = xdg_->next_element(mesh_id, {r.x, r.y, r.z}, {u.x, u.y, u.z});
