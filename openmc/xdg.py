@@ -170,6 +170,7 @@ class XDGUniverse(openmc.UniverseBase):
         # Initialize class attributes
         self.mesh = mesh
         self.auto_geom_ids = auto_geom_ids
+        self.filename = mesh.filename
         self._type = 'surface_mesh'
         self._background_material = None
 
@@ -183,7 +184,11 @@ class XDGUniverse(openmc.UniverseBase):
 
     @property
     def bounding_box(self):
-        return BoundingBox.infinite()
+        with h5py.File(self.filename) as xdg_file:
+            coords = xdg_file['tstt']['nodes']['coordinates'][()]
+            lower_left_corner = coords.min(axis=0)
+            upper_right_corner = coords.max(axis=0)
+            return openmc.BoundingBox(lower_left_corner, upper_right_corner)
 
     @property
     def filename(self):
@@ -368,7 +373,42 @@ class XDGUniverse(openmc.UniverseBase):
         openmc.Region
             Region instance
         """
-        raise NotImplementedError("Bounded region is not implemented for XDG")
+        check_type('boundary type', boundary_type, str)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
+        check_type('starting surface id', starting_id, Integral)
+        check_type('bounded type', bounded_type, str)
+        check_value('bounded type', bounded_type, ('box', 'sphere'))
+
+        bbox = self.bounding_box.expand(padding_distance, True)
+
+        if bounded_type == 'sphere':
+            radius = np.linalg.norm(bbox.upper_right - bbox.center)
+            bounding_surface = openmc.Sphere(
+                surface_id=starting_id,
+                x0=bbox.center[0],
+                y0=bbox.center[1],
+                z0=bbox.center[2],
+                boundary_type=boundary_type,
+                r=radius,
+            )
+
+            return -bounding_surface
+        
+        if bounded_type == 'box':
+            # defines plane surfaces for all six faces of the bounding box
+            lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
+            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
+            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
+            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
+            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
+            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
+
+            region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
+
+            for surface in region.get_surfaces().values():
+                surface.boundary_type = boundary_type
+
+            return region
 
     def bounded_universe(self, bounding_cell_id=10000, **kwargs):
         """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
@@ -387,7 +427,9 @@ class XDGUniverse(openmc.UniverseBase):
         openmc.Universe
             Universe instance
         """
-        raise NotImplementedError("Bounded universe is not implemented for XDG")
+        bounding_cell = openmc.Cell(
+            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+        return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
     def from_hdf5(cls, group):
