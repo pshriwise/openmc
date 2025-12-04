@@ -2456,7 +2456,6 @@ class UnstructuredMesh(MeshBase):
         self._conectivity = None
         self._vertices = None
         self.library = library
-        self._output = False
         self.length_multiplier = length_multiplier
         self.options = options
         self._has_statepoint_data = False
@@ -2498,14 +2497,27 @@ class UnstructuredMesh(MeshBase):
         cv.check_type("Unstructured mesh size", size, Integral)
         self._size = size
 
+    def _output_deprecation(func):
+        @wraps(func)
+        def wrapper(self: UnstructuredMesh, *args, **kwargs):
+            warnings.warn(
+                "The executable 'output' capability has been removed for unstructured meshes. "
+                "Please access mesh tally data through statepoint files. See MeshBase.write_data_to_vtk "
+                "for exporting mesh data to VTK format.",
+                DeprecationWarning,
+            )
+            return func(self, *args, **kwargs)
+        return wrapper
+
     @property
+    @_output_deprecation
     def output(self):
-        return self._output
+        pass
 
     @output.setter
+    @_output_deprecation
     def output(self, val: bool):
-        cv.check_type("Unstructured mesh output value", val, bool)
-        self._output = val
+        pass
 
     @property
     @require_statepoint_data
