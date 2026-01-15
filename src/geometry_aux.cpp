@@ -245,23 +245,31 @@ void get_temperatures(
           cell_temps.push_back(sqrtkT * sqrtkT / K_BOLTZMANN);
       }
 
+      std::unordered_set<double> nuclide_temp_set;
       const auto& mat {model::materials[i_material]};
       for (const auto& i_nuc : mat->nuclide_) {
+        nuclide_temp_set.clear();
         for (double temperature : cell_temps) {
           // Add temperature if it hasn't already been added
-          if (!contains(nuc_temps[i_nuc], temperature))
+          if (!nuclide_temp_set.count(temperature)) {
             nuc_temps[i_nuc].push_back(temperature);
+            nuclide_temp_set.insert(temperature);
+          }
         }
       }
 
+      std::unordered_set<double> thermal_temps_set;
       for (const auto& table : mat->thermal_tables_) {
         // Get index in data::thermal_scatt array
         int i_sab = table.index_table;
+        thermal_temps_set.clear();
 
         for (double temperature : cell_temps) {
-          // Add temperature if it hasn't already been added
-          if (!contains(thermal_temps[i_sab], temperature))
+          // Add temperaure if it hasn't already been added
+          if (!thermal_temps_set.count(temperature)) {
             thermal_temps[i_sab].push_back(temperature);
+            thermal_temps_set.insert(temperature);
+          }
         }
       }
     }
