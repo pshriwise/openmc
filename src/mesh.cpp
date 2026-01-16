@@ -2554,7 +2554,7 @@ void XDGMesh::prepare_for_point_location() {
 
 Position XDGMesh::sample_element(int32_t bin, uint64_t* seed) const {
   // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
-  auto vertices = xdg_->mesh_manager()->element_vertices(bin + 1);
+  auto vertices = xdg_->mesh_manager()->element_vertices(bin_to_mesh_id(bin));
   return this->sample_tet<xdg::Vertex>(vertices, seed);
 }
 
@@ -2633,30 +2633,32 @@ int XDGMesh::n_vertices() const
 
 Position XDGMesh::vertex(int id) const
 {
-  auto v = xdg_->mesh_manager()->vertex_coordinates(id+1);
+  auto v = xdg_->mesh_manager()->vertex_coordinates(bin_to_mesh_id(id));
   return {v[0], v[1], v[2]};
 }
 
 std::vector<int> XDGMesh::connectivity(int id) const
 {
-  return xdg_->mesh_manager()->connectivity(id+1);
+  return xdg_->mesh_manager()->connectivity(bin_to_mesh_id(id));
 }
 
 double XDGMesh::volume(int bin) const
 {
- return xdg_->mesh_manager()->element_volume(bin+1);
+  return xdg_->mesh_manager()->element_volume(bin_to_mesh_id(bin));
 }
 
 xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
 {
   // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
-  return bin + 1;
+  return xdg_->mesh_manager()->element_id(bin);
 }
 
 int32_t XDGMesh::mesh_id_to_bin(xdg::MeshID id) const
 {
   // MeshIDs are 1-indexed, so we subtract 1 to get the bin, which is 0-indexed
-  return std::max(-1, id - 1);
+  if (id < 0) return -1;
+  return xdg_->mesh_manager()->element_index(id);
+  //  return std::max(-1, id - 1);
 }
 
 NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
