@@ -705,7 +705,8 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
         c->material_.push_back(MATERIAL_VOID);
       }
       c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
-      cells_[xdg_mesh()->mesh_id_to_bin(element)] = model::cell_map[c->id_];
+      int32_t element_idx = xdg_mesh()->mesh_id_to_bin(element);
+      cells_[element_idx] = model::cell_map[c->id_];
     }
   } // end of volume loop
 
@@ -721,7 +722,10 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
   model::cells.push_back(std::make_unique<XDGMeshCell>(mesh_idx_, C_NONE));
   auto& c = model::cells.back();
   c->id_ = next_cell_id++;
-  model::cell_map[model::cells.back()->id_] = model::cells.size() - 1;
+  model::cell_map[c->id_] = model::cells.size() - 1;
+  cells_.push_back(model::cell_map[c->id_]);
+
+  // set exterior cell properties
   c->universe_ = id_;
   c->fill_ = C_NONE;
   if (outer_material_ != MATERIAL_VOID) {
@@ -730,7 +734,6 @@ void XDGMeshUniverse::create_cells(pugi::xml_node node)
     c->material_.push_back(MATERIAL_VOID);
   }
   c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * settings::temperature_default));
-  cells_.push_back(model::cell_map[c->id_]);
 }
 
 bool XDGMeshUniverse::find_cell(GeometryState& p) const
