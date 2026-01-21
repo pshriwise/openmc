@@ -74,9 +74,9 @@ def test_missing_material_name(model):
 @pytest.mark.parametrize("library,filename", [('moab', 'pincell.h5m'), ('libmesh', 'pincell-implicit.exo')])
 def test_pincell(model, library, filename):
     for u in model.geometry.get_all_universes().values():
-        if isinstance(u, openmc.DAGMCUniverse):
-            u.library = library
-            u.filename = filename
+        if isinstance(u, openmc.XDGUniverse):
+            u.mesh.library = library
+            u.mesh.filename = filename
 
     harness = PyAPITestHarness('statepoint.5.h5', model, inputs_true=f'inputs_{library}.dat')
     harness.main()
