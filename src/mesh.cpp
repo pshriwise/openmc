@@ -2633,7 +2633,8 @@ int XDGMesh::n_vertices() const
 
 Position XDGMesh::vertex(int id) const
 {
-  auto v = xdg_->mesh_manager()->vertex_coordinates(bin_to_mesh_id(id));
+  xdg::MeshID mesh_id = xdg_->mesh_manager()->vertex_id(id);
+  auto v = xdg_->mesh_manager()->vertex_coordinates(mesh_id);
   return {v[0], v[1], v[2]};
 }
 
@@ -2649,16 +2650,13 @@ double XDGMesh::volume(int bin) const
 
 xdg::MeshID XDGMesh::bin_to_mesh_id(int bin) const
 {
-  // MeshIDs are 1-indexed, so we add 1 to the bin, which is 0-indexed
   return xdg_->mesh_manager()->element_id(bin);
 }
 
 int32_t XDGMesh::mesh_id_to_bin(xdg::MeshID id) const
 {
-  // MeshIDs are 1-indexed, so we subtract 1 to get the bin, which is 0-indexed
   if (id < 0) return -1;
   return xdg_->mesh_manager()->element_index(id);
-  //  return std::max(-1, id - 1);
 }
 
 NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
