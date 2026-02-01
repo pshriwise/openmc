@@ -323,6 +323,8 @@ void Particle::event_delta_advance()
     this->event_cross_surface();
     material() = C_NONE;
     distance -= boundary().distance;
+    // if the particle is no longer alive after a surface crossing, continue
+    if (!alive()) break;
   }
 
   // store a copy of the current coordinates
