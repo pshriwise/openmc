@@ -903,8 +903,28 @@ void WeightWindowsGenerator::update() const
 // Non-member functions
 //==============================================================================
 
+bool weight_window_particle_check(const Particle& p) {
+  if (p.type() != ParticleType::neutron &&
+      p.type() != ParticleType::photon) {
+    return false;
+  }
+
+  if (!p.alive() || p.E() <= 0.0) {
+    return false;
+  }
+
+  return true;
+}
+
 WeightWindow search_weight_window(const Particle& p)
 {
+  if (!settings::weight_windows_on)
+    return {};
+
+  // if the particle is not viable for weight windows based on type, weight and energy, return invalid ww
+  if (!weight_window_particle_check(p))
+    return {};
+
   // TODO: this is a linear search - should do something more clever
   int mesh_bin;
   WeightWindow weight_window;
@@ -924,31 +944,17 @@ void apply_weight_windows(Particle& p)
   if (!settings::weight_windows_on)
     return;
 
-  // WW on photon and neutron only
-  if (p.type() != ParticleType::neutron && p.type() != ParticleType::photon)
-    return;
-
-  // skip dead or no energy
-  if (p.E() <= 0 || !p.alive())
-    return;
-
   auto ww = search_weight_window(p);
-  if (ww.is_valid()) {
-    apply_weight_window(p, ww);
-  } else {
-    if (p.wgt_ww_born() == -1.0)
-      p.wgt_ww_born() = 1.0;
-  }
+  apply_weight_window(p, ww);
 }
 
 void apply_weight_window(Particle& p, WeightWindow weight_window)
 {
-  if (!weight_window.is_valid())
+  if (!weight_window.is_valid()) {
+    if (p.wgt_ww_born() == -1.0)
+      p.wgt_ww_born() = 1.0;
     return;
-
-  // skip dead or no energy
-  if (p.E() <= 0 || !p.alive())
-    return;
+  }
 
   // If particle has not yet had its birth weight window value set, set it to
   // the current weight window.
