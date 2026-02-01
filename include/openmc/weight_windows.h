@@ -124,9 +124,9 @@ public:
   //! \param[in] group  HDF5 group to write to
   void to_hdf5(hid_t group) const;
 
-  //! Get particle bin inside weight window mesh
-  //! \param[in] p  Particle to get weight window bin for
-  const int get_mesh_bin(const Particle& p) const;
+  //! Check if a particle is viable for this weight window object (e.g. based on type)
+  //! \param[in] p  Particle to check
+  const bool particle_check(const Particle& p) const;
 
   //! Retrieve the weight window for a particle
   //! \param[in] p  Particle to get weight window for

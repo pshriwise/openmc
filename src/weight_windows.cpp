@@ -270,22 +270,20 @@ void WeightWindows::set_mesh(const Mesh* mesh)
   set_mesh(model::mesh_map[mesh->id_]);
 }
 
-const int WeightWindows::get_mesh_bin(const Particle& p) const
+const bool WeightWindows::particle_check(const Particle& p) const
 {
   // check for particle type
   if (particle_type_ != p.type())
-    return C_NONE;
+    return false;
 
   // particle energy
   double E = p.E();
 
   // check to make sure energy is in range, expects sorted energy values
   if (E < energy_bounds_.front() || E > energy_bounds_.back())
-    return C_NONE;
+    return false;
 
-  // Get mesh index for particle's position
-  const auto& mesh = this->mesh();
-  return mesh->get_bin(p.r());
+  return true;
 }
 
 WeightWindow WeightWindows::get_weight_window(const Particle& p) const
@@ -903,33 +901,28 @@ void WeightWindowsGenerator::update() const
 // Non-member functions
 //==============================================================================
 
-bool weight_window_particle_check(const Particle& p) {
-  if (p.type() != ParticleType::neutron &&
-      p.type() != ParticleType::photon) {
-    return false;
-  }
-
-  if (!p.alive() || p.E() <= 0.0) {
-    return false;
-  }
-
-  return true;
-}
-
 WeightWindow search_weight_window(const Particle& p)
 {
   if (!settings::weight_windows_on)
     return {};
 
   // if the particle is not viable for weight windows based on type, weight and energy, return invalid ww
-  if (!weight_window_particle_check(p))
+  if (p.type() != ParticleType::neutron &&
+      p.type() != ParticleType::photon) {
     return {};
+  }
+
+  if (!p.alive() || p.E() <= 0.0) {
+    return {};
+  }
 
   // TODO: this is a linear search - should do something more clever
   int mesh_bin;
   WeightWindow weight_window;
   for (const auto& ww : variance_reduction::weight_windows) {
-    mesh_bin = ww->get_mesh_bin(p);
+    if (!ww->particle_check(p))
+      continue;
+    mesh_bin = ww->mesh()->get_bin(p);
     if (mesh_bin < 0)
       continue;
     weight_window = ww->get_weight_window(p.E(), mesh_bin);
