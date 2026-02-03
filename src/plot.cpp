@@ -2198,4 +2198,45 @@ extern "C" int openmc_phong_plot_create_image(void* plot, uint8_t* data_out, int
   return 0;
 }
 
+extern "C" int openmc_phong_plot_get_color(void* plot, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
+{
+  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  if (!plt || !r || !g || !b) {
+    set_errmsg("Invalid arguments passed to openmc_phong_plot_get_color");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  int32_t index = -1;
+  int err = map_phong_domain_id(plt, id, &index);
+  if (err) return err;
+
+  if (index < 0 || static_cast<size_t>(index) >= plt->colors_.size()) {
+    set_errmsg("Color index out of range for PhongPlot");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  const auto& color = plt->colors_[index];
+  *r = color.red;
+  *g = color.green;
+  *b = color.blue;
+  return 0;
+}
+
+extern "C" int openmc_phong_plot_set_diffuse_fraction(void* plot, double diffuse_fraction)
+{
+  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  if (!plt) {
+    set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_diffuse_fraction");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (diffuse_fraction < 0.0 || diffuse_fraction > 1.0) {
+    set_errmsg("Diffuse fraction must be between 0 and 1");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  plt->set_diffuse_fraction(diffuse_fraction);
+  return 0;
+}
+
 } // namespace openmc

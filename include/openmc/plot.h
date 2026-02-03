@@ -471,6 +471,9 @@ public:
   const Position& light_location() const { return light_location_; }
   Position& light_location() { return light_location_; }
 
+  double diffuse_fraction() const { return diffuse_fraction_; }
+  void set_diffuse_fraction(double x) { diffuse_fraction_ = x; }
+
 private:
   void set_opaque_ids(pugi::xml_node node);
   void set_light_position(pugi::xml_node node);

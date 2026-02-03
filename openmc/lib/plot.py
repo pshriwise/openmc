@@ -317,6 +317,15 @@ _dll.openmc_phong_plot_create_image.argtypes = [c_void_p, POINTER(c_uint8), c_in
 _dll.openmc_phong_plot_create_image.restype = c_int
 _dll.openmc_phong_plot_create_image.errcheck = _error_handler
 
+_dll.openmc_phong_plot_get_color.argtypes = [c_void_p, c_int32,
+                                             POINTER(c_uint8), POINTER(c_uint8), POINTER(c_uint8)]
+_dll.openmc_phong_plot_get_color.restype = c_int
+_dll.openmc_phong_plot_get_color.errcheck = _error_handler
+
+_dll.openmc_phong_plot_set_diffuse_fraction.argtypes = [c_void_p, c_double]
+_dll.openmc_phong_plot_set_diffuse_fraction.restype = c_int
+_dll.openmc_phong_plot_set_diffuse_fraction.errcheck = _error_handler
+
 
 class PhongPlot:
     COLOR_BY_MATERIAL = 0
@@ -384,3 +393,13 @@ class PhongPlot:
             self._height
         )
         return image
+
+    def get_color(self, domain_id):
+        r = c_uint8()
+        g = c_uint8()
+        b = c_uint8()
+        _dll.openmc_phong_plot_get_color(self._ptr, int(domain_id), r, g, b)
+        return int(r.value), int(g.value), int(b.value)
+
+    def set_diffuse_fraction(self, value):
+        _dll.openmc_phong_plot_set_diffuse_fraction(self._ptr, float(value))

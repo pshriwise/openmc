@@ -139,6 +139,8 @@ int openmc_phong_plot_set_up(void* plot, double x, double y, double z);
 int openmc_phong_plot_set_light_position(void* plot, double x, double y, double z);
 int openmc_phong_plot_set_fov(void* plot, double fov);
 int openmc_phong_plot_create_image(void* plot, uint8_t* data_out, int32_t width, int32_t height);
+int openmc_phong_plot_get_color(void* plot, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b);
+int openmc_phong_plot_set_diffuse_fraction(void* plot, double diffuse_fraction);
 int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   double** grid_y, int* ny, double** grid_z, int* nz);
 int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
