@@ -328,6 +328,8 @@ public:
   const Direction& up() const { return up_; }
   Direction& up() { return up_; }
 
+  void update_view();
+
 protected:
   Direction camera_x_axis() const
   {
@@ -351,8 +353,6 @@ protected:
    * to this horizontal and vertical position.
    */
   std::pair<Position, Direction> get_pixel_ray(int horiz, int vert) const;
-
-  void update_view();
 
 private:
   void set_look_at(pugi::xml_node node);

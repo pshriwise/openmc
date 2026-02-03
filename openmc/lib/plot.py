@@ -313,6 +313,10 @@ _dll.openmc_phong_plot_set_fov.argtypes = [c_void_p, c_double]
 _dll.openmc_phong_plot_set_fov.restype = c_int
 _dll.openmc_phong_plot_set_fov.errcheck = _error_handler
 
+_dll.openmc_phong_plot_update_view.argtypes = [c_void_p]
+_dll.openmc_phong_plot_update_view.restype = c_int
+_dll.openmc_phong_plot_update_view.errcheck = _error_handler
+
 _dll.openmc_phong_plot_create_image.argtypes = [c_void_p, POINTER(c_uint8), c_int32, c_int32]
 _dll.openmc_phong_plot_create_image.restype = c_int
 _dll.openmc_phong_plot_create_image.errcheck = _error_handler
@@ -381,6 +385,9 @@ class PhongPlot:
 
     def set_fov(self, fov):
         _dll.openmc_phong_plot_set_fov(self._ptr, float(fov))
+
+    def update_view(self):
+        _dll.openmc_phong_plot_update_view(self._ptr)
 
     def create_image(self):
         if self._width is None or self._height is None:

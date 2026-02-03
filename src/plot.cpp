@@ -1927,7 +1927,7 @@ extern "C" int openmc_property_map(const void* plot, double* data_out)
 }
 
 namespace {
-int map_phong_domain_id(const PhongPlot* plot, int32_t id, int32_t* index_out)
+int map_phong_domain_id(const SolidRayTracePlot* plot, int32_t id, int32_t* index_out)
 {
   if (!plot || !index_out) {
     set_errmsg("Invalid plot pointer passed to map_phong_domain_id");
@@ -1937,7 +1937,7 @@ int map_phong_domain_id(const PhongPlot* plot, int32_t id, int32_t* index_out)
   if (plot->color_by_ == PlottableInterface::PlotColorBy::mats) {
     auto it = model::material_map.find(id);
     if (it == model::material_map.end()) {
-      set_errmsg("Invalid material ID for PhongPlot");
+      set_errmsg("Invalid material ID for SolidRayTracePlot");
       return OPENMC_E_INVALID_ID;
     }
     *index_out = it->second;
@@ -1947,14 +1947,14 @@ int map_phong_domain_id(const PhongPlot* plot, int32_t id, int32_t* index_out)
   if (plot->color_by_ == PlottableInterface::PlotColorBy::cells) {
     auto it = model::cell_map.find(id);
     if (it == model::cell_map.end()) {
-      set_errmsg("Invalid cell ID for PhongPlot");
+      set_errmsg("Invalid cell ID for SolidRayTracePlot");
       return OPENMC_E_INVALID_ID;
     }
     *index_out = it->second;
     return 0;
   }
 
-  set_errmsg("Unsupported color_by for PhongPlot");
+  set_errmsg("Unsupported color_by for SolidRayTracePlot");
   return OPENMC_E_INVALID_TYPE;
 }
 } // namespace
@@ -1967,7 +1967,7 @@ extern "C" int openmc_phong_plot_create(void** plot)
   }
 
   try {
-    auto* new_plot = new PhongPlot();
+    auto* new_plot = new SolidRayTracePlot();
     new_plot->color_by_ = PlottableInterface::PlotColorBy::mats;
     new_plot->pixels()[0] = 400;
     new_plot->pixels()[1] = 400;
@@ -1982,7 +1982,7 @@ extern "C" int openmc_phong_plot_create(void** plot)
 
 extern "C" int openmc_phong_plot_free(void* plot)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_free");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1994,7 +1994,7 @@ extern "C" int openmc_phong_plot_free(void* plot)
 
 extern "C" int openmc_phong_plot_set_pixels(void* plot, int32_t width, int32_t height)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt || width <= 0 || height <= 0) {
     set_errmsg("Invalid arguments passed to openmc_phong_plot_set_pixels");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2007,7 +2007,7 @@ extern "C" int openmc_phong_plot_set_pixels(void* plot, int32_t width, int32_t h
 
 extern "C" int openmc_phong_plot_set_color_by(void* plot, int32_t color_by)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_color_by");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2018,7 +2018,7 @@ extern "C" int openmc_phong_plot_set_color_by(void* plot, int32_t color_by)
   } else if (color_by == 1) {
     plt->color_by_ = PlottableInterface::PlotColorBy::cells;
   } else {
-    set_errmsg("Invalid color_by value for PhongPlot");
+    set_errmsg("Invalid color_by value for SolidRayTracePlot");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
@@ -2027,7 +2027,7 @@ extern "C" int openmc_phong_plot_set_color_by(void* plot, int32_t color_by)
 
 extern "C" int openmc_phong_plot_set_default_colors(void* plot)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_default_colors");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2039,7 +2039,7 @@ extern "C" int openmc_phong_plot_set_default_colors(void* plot)
 
 extern "C" int openmc_phong_plot_set_all_opaque(void* plot)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_all_opaque");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2060,13 +2060,13 @@ extern "C" int openmc_phong_plot_set_all_opaque(void* plot)
     return 0;
   }
 
-  set_errmsg("Unsupported color_by for PhongPlot");
+  set_errmsg("Unsupported color_by for SolidRayTracePlot");
   return OPENMC_E_INVALID_TYPE;
 }
 
 extern "C" int openmc_phong_plot_set_visibility(void* plot, int32_t id, bool visible)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_visibility");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2087,7 +2087,7 @@ extern "C" int openmc_phong_plot_set_visibility(void* plot, int32_t id, bool vis
 
 extern "C" int openmc_phong_plot_set_color(void* plot, int32_t id, uint8_t r, uint8_t g, uint8_t b)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_color");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2098,7 +2098,7 @@ extern "C" int openmc_phong_plot_set_color(void* plot, int32_t id, uint8_t r, ui
   if (err) return err;
 
   if (index < 0 || static_cast<size_t>(index) >= plt->colors_.size()) {
-    set_errmsg("Color index out of range for PhongPlot");
+    set_errmsg("Color index out of range for SolidRayTracePlot");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -2108,7 +2108,7 @@ extern "C" int openmc_phong_plot_set_color(void* plot, int32_t id, uint8_t r, ui
 
 extern "C" int openmc_phong_plot_set_camera_position(void* plot, double x, double y, double z)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_camera_position");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2120,7 +2120,7 @@ extern "C" int openmc_phong_plot_set_camera_position(void* plot, double x, doubl
 
 extern "C" int openmc_phong_plot_set_look_at(void* plot, double x, double y, double z)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_look_at");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2132,7 +2132,7 @@ extern "C" int openmc_phong_plot_set_look_at(void* plot, double x, double y, dou
 
 extern "C" int openmc_phong_plot_set_up(void* plot, double x, double y, double z)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_up");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2144,7 +2144,7 @@ extern "C" int openmc_phong_plot_set_up(void* plot, double x, double y, double z
 
 extern "C" int openmc_phong_plot_set_light_position(void* plot, double x, double y, double z)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_light_position");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2156,7 +2156,7 @@ extern "C" int openmc_phong_plot_set_light_position(void* plot, double x, double
 
 extern "C" int openmc_phong_plot_set_fov(void* plot, double fov)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_fov");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2166,22 +2166,34 @@ extern "C" int openmc_phong_plot_set_fov(void* plot, double fov)
   return 0;
 }
 
+extern "C" int openmc_phong_plot_update_view(void* plot)
+{
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
+  if (!plt) {
+    set_errmsg("Invalid plot pointer passed to openmc_phong_plot_update_view");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  plt->update_view();
+  return 0;
+}
+
 extern "C" int openmc_phong_plot_create_image(void* plot, uint8_t* data_out, int32_t width, int32_t height)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt || !data_out || width <= 0 || height <= 0) {
     set_errmsg("Invalid arguments passed to openmc_phong_plot_create_image");
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
   if (plt->pixels()[0] != width || plt->pixels()[1] != height) {
-    set_errmsg("Requested image size does not match PhongPlot pixel settings");
+    set_errmsg("Requested image size does not match SolidRayTracePlot pixel settings");
     return OPENMC_E_INVALID_SIZE;
   }
 
   ImageData data = plt->create_image();
   if (static_cast<int32_t>(data.shape()[0]) != width || static_cast<int32_t>(data.shape()[1]) != height) {
-    set_errmsg("Unexpected image size from PhongPlot create_image");
+    set_errmsg("Unexpected image size from SolidRayTracePlot create_image");
     return OPENMC_E_INVALID_SIZE;
   }
 
@@ -2200,7 +2212,7 @@ extern "C" int openmc_phong_plot_create_image(void* plot, uint8_t* data_out, int
 
 extern "C" int openmc_phong_plot_get_color(void* plot, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt || !r || !g || !b) {
     set_errmsg("Invalid arguments passed to openmc_phong_plot_get_color");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2211,7 +2223,7 @@ extern "C" int openmc_phong_plot_get_color(void* plot, int32_t id, uint8_t* r, u
   if (err) return err;
 
   if (index < 0 || static_cast<size_t>(index) >= plt->colors_.size()) {
-    set_errmsg("Color index out of range for PhongPlot");
+    set_errmsg("Color index out of range for SolidRayTracePlot");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
@@ -2224,7 +2236,7 @@ extern "C" int openmc_phong_plot_get_color(void* plot, int32_t id, uint8_t* r, u
 
 extern "C" int openmc_phong_plot_set_diffuse_fraction(void* plot, double diffuse_fraction)
 {
-  auto plt = reinterpret_cast<PhongPlot*>(plot);
+  auto plt = reinterpret_cast<SolidRayTracePlot*>(plot);
   if (!plt) {
     set_errmsg("Invalid plot pointer passed to openmc_phong_plot_set_diffuse_fraction");
     return OPENMC_E_INVALID_ARGUMENT;

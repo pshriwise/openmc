@@ -138,6 +138,7 @@ int openmc_phong_plot_set_look_at(void* plot, double x, double y, double z);
 int openmc_phong_plot_set_up(void* plot, double x, double y, double z);
 int openmc_phong_plot_set_light_position(void* plot, double x, double y, double z);
 int openmc_phong_plot_set_fov(void* plot, double fov);
+int openmc_phong_plot_update_view(void* plot);
 int openmc_phong_plot_create_image(void* plot, uint8_t* data_out, int32_t width, int32_t height);
 int openmc_phong_plot_get_color(void* plot, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b);
 int openmc_phong_plot_set_diffuse_fraction(void* plot, double diffuse_fraction);
