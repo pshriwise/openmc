@@ -336,6 +336,8 @@ class MeshBase(IDManagerMixin, ABC):
             an openmc mesh object
 
         """
+        from .xdg import XDGMesh
+
         mesh_type = get_text(elem, 'type')
 
         if mesh_type == 'regular' or mesh_type is None:
@@ -346,6 +348,8 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
             mesh = SphericalMesh.from_xml_element(elem)
+        elif mesh_type == 'xdg':
+            mesh = XDGMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
         else:
@@ -2841,7 +2845,7 @@ class UnstructuredMesh(MeshBase):
 
     @library.setter
     def library(self, lib: str):
-        cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
+        cv.check_value('Unstructured mesh library', lib, ('xdg','moab', 'libmesh'))
         self._library = lib
 
     @property
