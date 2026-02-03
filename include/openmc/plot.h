@@ -460,13 +460,13 @@ public:
 
   SolidRayTracePlot(pugi::xml_node plot);
 
-  ImageData create_image();
+  ImageData create_image() const;
 
   virtual void create_output() const;
   virtual void print_info() const;
 
-  const std::set<int>& opaque_ids() const { return opaque_ids_; }
-  std::set<int>& opaque_ids() { return opaque_ids_; }
+  const std::unordered_set<int>& opaque_ids() const { return opaque_ids_; }
+  std::unordered_set<int>& opaque_ids() { return opaque_ids_; }
 
   const Position& light_location() const { return light_location_; }
   Position& light_location() { return light_location_; }

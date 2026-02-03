@@ -1544,7 +1544,6 @@ void SolidRayTracePlot::print_info() const
 
 ImageData SolidRayTracePlot::create_image() const
 {
-  update_view();
   size_t width = pixels()[0];
   size_t height = pixels()[1];
   ImageData data({width, height}, not_found_);
@@ -1563,7 +1562,7 @@ ImageData SolidRayTracePlot::create_image() const
   return data;
 }
 
-void PhongPlot::create_output() const
+void SolidRayTracePlot::create_output() const
 {
 
   ImageData data = create_image();
