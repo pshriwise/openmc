@@ -125,6 +125,20 @@ int openmc_nuclide_name(int index, const char** name);
 int openmc_plot_geometry();
 int openmc_id_map(const void* slice, int32_t* data_out);
 int openmc_property_map(const void* slice, double* data_out);
+int openmc_phong_plot_create(void** plot);
+int openmc_phong_plot_free(void* plot);
+int openmc_phong_plot_set_pixels(void* plot, int32_t width, int32_t height);
+int openmc_phong_plot_set_color_by(void* plot, int32_t color_by);
+int openmc_phong_plot_set_default_colors(void* plot);
+int openmc_phong_plot_set_all_opaque(void* plot);
+int openmc_phong_plot_set_visibility(void* plot, int32_t id, bool visible);
+int openmc_phong_plot_set_color(void* plot, int32_t id, uint8_t r, uint8_t g, uint8_t b);
+int openmc_phong_plot_set_camera_position(void* plot, double x, double y, double z);
+int openmc_phong_plot_set_look_at(void* plot, double x, double y, double z);
+int openmc_phong_plot_set_up(void* plot, double x, double y, double z);
+int openmc_phong_plot_set_light_position(void* plot, double x, double y, double z);
+int openmc_phong_plot_set_fov(void* plot, double fov);
+int openmc_phong_plot_create_image(void* plot, uint8_t* data_out, int32_t width, int32_t height);
 int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
   double** grid_y, int* ny, double** grid_z, int* nz);
 int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
