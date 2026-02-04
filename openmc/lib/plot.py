@@ -331,7 +331,8 @@ _dll.openmc_solidraytrace_plot_set_diffuse_fraction.restype = c_int
 _dll.openmc_solidraytrace_plot_set_diffuse_fraction.errcheck = _error_handler
 
 
-class PhongPlot:
+class SolidRayTracePlot:
+    """C API wrapper for ray-traced solid plot generation."""
     COLOR_BY_MATERIAL = 0
     COLOR_BY_CELL = 1
 
@@ -391,7 +392,7 @@ class PhongPlot:
 
     def create_image(self):
         if self._width is None or self._height is None:
-            raise RuntimeError("PhongPlot pixels must be set before create_image")
+            raise RuntimeError("SolidRayTracePlot pixels must be set before create_image")
         image = np.zeros((self._height, self._width, 3), dtype=np.uint8)
         _dll.openmc_solidraytrace_plot_create_image(
             self._ptr,
