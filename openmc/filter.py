@@ -925,6 +925,8 @@ class MeshFilter(Filter):
                 self.bins = list(range(len(mesh.volumes)))
             else:
                 self.bins = []
+        elif isinstance(mesh, openmc.XDGMesh):
+            self.bins = []
         else:
             self.bins = list(mesh.indices)
 
