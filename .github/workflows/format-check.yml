@@ -29,4 +29,8 @@ jobs:
 
       - name: Failure Check
         if: steps.linter.outputs.checks-failed > 0
-        run: echo "Some files failed the formatting check! See job summary and file annotations for more info" && exit 1
+        run: |
+          echo "Some files failed the formatting check."
+          echo "See job summary and file annotations for details."
+          echo "To request inline suggestions from the bot, comment '/format' on this pull request."
+          exit 1

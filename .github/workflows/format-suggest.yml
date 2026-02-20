@@ -1,0 +1,160 @@
+name: C++ Format Suggestions
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cpp-format-suggestions:
+    if: >
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/format') &&
+      contains(fromJson('["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR branch
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const pull_number = context.payload.issue.number;
+            const {data: pr} = await github.rest.pulls.get({owner, repo, pull_number});
+            core.setOutput('head_repo', pr.head.repo.full_name);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('head_sha', pr.head.sha);
+
+      - name: Remove stale formatting suggestion comments
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const issue_number = context.payload.issue.number;
+            const botLogin = 'github-actions[bot]';
+            const markerRegex = /<!-- cpp-format-suggest:review_comment_ids=([0-9,]*) -->/;
+
+            const issueComments = await github.paginate(
+              github.rest.issues.listComments,
+              {owner, repo, issue_number, per_page: 100}
+            );
+
+            // Use only workflow-owned marker comments so we do not touch suggestions
+            // that were not created by this workflow.
+            const markerComments = issueComments.filter(
+              (comment) =>
+                comment.user &&
+                comment.user.login === botLogin &&
+                typeof comment.body === 'string' &&
+                markerRegex.test(comment.body)
+            );
+
+            for (const markerComment of markerComments) {
+              const match = markerComment.body.match(markerRegex);
+              const idList = match && match[1] ? match[1].split(',').filter(Boolean) : [];
+
+              for (const idText of idList) {
+                const comment_id = Number(idText);
+                if (!Number.isInteger(comment_id)) continue;
+                try {
+                  await github.rest.pulls.deleteReviewComment({
+                    owner,
+                    repo,
+                    comment_id
+                  });
+                } catch (err) {
+                  if (err.status !== 404) throw err;
+                }
+              }
+
+              await github.rest.issues.deleteComment({
+                owner,
+                repo,
+                comment_id: markerComment.id
+              });
+            }
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pr.outputs.head_repo }}
+          ref: ${{ steps.pr.outputs.head_ref }}
+          fetch-depth: 0
+
+      - name: Run cpp-linter with format suggestions
+        id: linter
+        uses: cpp-linter/cpp-linter-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: file
+          files-changed-only: true
+          tidy-checks: '-*'
+          version: '15'
+          extensions: 'cpp,h'
+          format-review: true
+          passive-reviews: true
+          file-annotations: false
+          step-summary: true
+
+      - name: Comment when no formatting changes are needed
+        if: steps.linter.outputs.checks-failed == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const issue_number = context.payload.issue.number;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: `No C++ formatting changes were needed for this branch.\n\nReviewed commit: \`${{ steps.pr.outputs.head_sha }}\``
+            });
+
+      - name: Collect suggestion comment IDs from this run
+        if: steps.linter.outputs.checks-failed != '0'
+        id: suggestions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const pull_number = context.payload.issue.number;
+            const headSha = '${{ steps.pr.outputs.head_sha }}';
+            const botLogin = 'github-actions[bot]';
+
+            const comments = await github.paginate(
+              github.rest.pulls.listReviewComments,
+              {owner, repo, pull_number, per_page: 100}
+            );
+
+            const ids = comments
+              .filter(
+                (comment) =>
+                  comment.user &&
+                  comment.user.login === botLogin &&
+                  comment.commit_id === headSha &&
+                  typeof comment.body === 'string' &&
+                  comment.body.includes('```suggestion')
+              )
+              .map((comment) => String(comment.id));
+
+            core.setOutput('review_comment_ids', ids.join(','));
+
+      - name: Comment when formatting suggestions are posted
+        if: steps.linter.outputs.checks-failed != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const issue_number = context.payload.issue.number;
+            const reviewCommentIds = '${{ steps.suggestions.outputs.review_comment_ids }}';
+            const marker = `<!-- cpp-format-suggest:review_comment_ids=${reviewCommentIds} -->`;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body: `C++ formatting suggestions have been posted to this pull request review.\n\nReviewed commit: \`${{ steps.pr.outputs.head_sha }}\`\n\n${marker}`
+            });
