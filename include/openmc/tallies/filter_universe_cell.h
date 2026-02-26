@@ -4,8 +4,6 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell.h"
 #include "openmc/vector.h"
