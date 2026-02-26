@@ -63,6 +63,8 @@ int cell_instance_at_level(const GeometryState& p, int level);
 bool exhaustive_find_cell(GeometryState& p, bool verbose = false);
 bool neighbor_list_find_cell(
   GeometryState& p, bool verbose = false); // Only usable on surface crossings
+bool descend_from_cell(
+  GeometryState& p, int32_t i_cell, bool verbose = false);
 
 //==============================================================================
 //! Move a particle into a new lattice tile.

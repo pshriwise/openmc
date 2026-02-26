@@ -135,6 +135,15 @@ bool find_cell_inner(
     }
   }
 
+  return descend_from_cell(p, i_cell, verbose);
+}
+
+//==============================================================================
+
+bool descend_from_cell(GeometryState& p, int32_t i_cell, bool verbose)
+{
+  bool found = (i_cell != C_NONE);
+
   // Check successively lower coordinate levels until finding material fill
   for (;; ++p.n_coord()) {
     // If we did not attempt to use neighbor lists, i_cell is still C_NONE.  In

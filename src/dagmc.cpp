@@ -80,56 +80,115 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
-  // Get material assignment overrides from nested DAGMC cell elements.
+  // get DAGMC cell overrides (standard cell syntax, without region)
   if (node.child("cell")) {
+    has_cell_overrides_ = true;
     for (pugi::xml_node cell_node : node.children("cell")) {
       if (!check_for_node(cell_node, "id")) {
-        fatal_error(
-          "Must specify id for each DAGMC cell override in <dagmc_universe>.");
+        fatal_error("Must specify id of cell in DAGMC universe overrides.");
       }
-
       int32_t cell_id = std::stoi(get_node_value(cell_node, "id"));
 
       if (check_for_node(cell_node, "region")) {
         fatal_error(fmt::format(
-          "DAGMC cell {} override cannot specify a region.", cell_id));
-      }
-      if (check_for_node(cell_node, "fill")) {
-        fatal_error(fmt::format(
-          "DAGMC cell {} override currently only supports material fills.",
-          cell_id));
+          "DAGMC cell {} overrides cannot specify a region.", cell_id));
       }
       if (check_for_node(cell_node, "universe")) {
         fatal_error(fmt::format(
-          "DAGMC cell {} override cannot specify a universe.", cell_id));
-      }
-      if (check_for_node(cell_node, "translation") ||
-          check_for_node(cell_node, "rotation")) {
-        fatal_error(fmt::format(
-          "DAGMC cell {} override does not support translation or rotation.",
-          cell_id));
-      }
-      if (!check_for_node(cell_node, "material")) {
-        fatal_error(fmt::format(
-          "DAGMC cell {} override must specify material.", cell_id));
+          "DAGMC cell {} overrides cannot specify a universe.", cell_id));
       }
 
-      auto inserted = material_overrides.emplace(
-        cell_id, parse_cell_material_xml(cell_node, cell_id));
-      if (!inserted.second) {
+      bool fill_present = check_for_node(cell_node, "fill");
+      bool material_present = check_for_node(cell_node, "material");
+      if (!(fill_present || material_present)) {
         fatal_error(fmt::format(
-          "Duplicate DAGMC cell override specified for cell {}", cell_id));
+          "Neither material nor fill was specified for DAGMC cell {}",
+          cell_id));
+      }
+      if (fill_present && material_present) {
+        fatal_error(fmt::format(
+          "DAGMC cell {} has both a material and a fill specified; only one "
+          "can be specified per cell",
+          cell_id));
+      }
+
+      DagmcCellOverride override;
+      if (check_for_node(cell_node, "name")) {
+        override.name = get_node_value(cell_node, "name");
+      }
+
+      if (material_present) {
+        vector<std::string> mats {
+          get_node_array<std::string>(cell_node, "material", true)};
+        if (mats.empty()) {
+          fatal_error(fmt::format(
+            "An empty material element was specified for DAGMC cell {}",
+            cell_id));
+        }
+        override.material_ids.reserve(mats.size());
+        for (const auto& mat : mats) {
+          if (mat == "void") {
+            override.material_ids.push_back(MATERIAL_VOID);
+          } else {
+            override.material_ids.push_back(std::stoi(mat));
+          }
+        }
+      } else {
+        override.is_fill = true;
+        override.fill_id = std::stoi(get_node_value(cell_node, "fill"));
+
+        if (check_for_node(cell_node, "translation")) {
+          auto xyz {get_node_array<double>(cell_node, "translation")};
+          if (xyz.size() != 3) {
+            fatal_error(fmt::format(
+              "Non-3D translation vector applied to DAGMC cell {}", cell_id));
+          }
+          override.translation = {xyz[0], xyz[1], xyz[2]};
+        }
+
+        if (check_for_node(cell_node, "rotation")) {
+          override.rotation = get_node_array<double>(cell_node, "rotation");
+        }
       }
 
       if (check_for_node(cell_node, "temperature")) {
-        temperature_overrides.emplace(
-          cell_id, parse_cell_temperature_xml(cell_node, cell_id));
+        if (!material_present) {
+          fatal_error(fmt::format(
+            "DAGMC cell {} was specified with a temperature but no material.",
+            cell_id));
+        }
+        override.temperatures = get_node_array<double>(cell_node, "temperature");
+        for (auto T : override.temperatures) {
+          if (T < 0) {
+            fatal_error(fmt::format(
+              "DAGMC cell {} was specified with a negative temperature",
+              cell_id));
+          }
+        }
       }
 
       if (check_for_node(cell_node, "density")) {
-        density_overrides.emplace(
-          cell_id, parse_cell_density_xml(cell_node, cell_id));
+        if (!material_present) {
+          fatal_error(fmt::format(
+            "DAGMC cell {} was specified with a density but no material.",
+            cell_id));
+        }
+        override.densities = get_node_array<double>(cell_node, "density");
+        for (auto rho : override.densities) {
+          if (rho <= 0) {
+            fatal_error(fmt::format(
+              "DAGMC cell {} was specified with a density less than or equal "
+              "to zero",
+              cell_id));
+          }
+        }
       }
+
+      if (cell_overrides_.count(cell_id)) {
+        fatal_error(fmt::format(
+          "Duplicate DAGMC cell override specified for cell {}", cell_id));
+      }
+      cell_overrides_.emplace(cell_id, std::move(override));
     }
   } else if (check_for_node(node, "material_overrides")) {
     if (node.child("cell")) {
@@ -262,6 +321,11 @@ void DAGUniverse::init_geometry(const MaterialOverrides& material_overrides,
 
   // initialize cell objects
   int n_cells = dagmc_instance_->num_entities(3);
+  if (has_cell_overrides_ && cell_overrides_.size() != n_cells) {
+    fatal_error(fmt::format(
+      "DAGMC Universe {} has {} cell overrides but {} cells are present.",
+      this->id_, cell_overrides_.size(), n_cells));
+  }
   moab::EntityHandle graveyard = 0;
   for (int i = 0; i < n_cells; i++) {
     moab::EntityHandle vol_handle = dagmc_instance_->entity_by_index(3, i + 1);
@@ -304,75 +368,96 @@ void DAGUniverse::init_geometry(const MaterialOverrides& material_overrides,
     if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
-    if (material_overrides.count(c->id_)) {
-      override_assign_material(c, material_overrides);
-    } else if (mat_str == "void" || mat_str == "vacuum" ||
-               mat_str == "graveyard") {
-      c->material_.push_back(MATERIAL_VOID);
-    } else if (uses_uwuw()) {
-      uwuw_assign_material(vol_handle, c);
-    } else {
-      legacy_assign_material(mat_str, c);
-    }
-
-    if (temperature_overrides.count(c->id_)) {
-      if (c->material_.empty() || c->material_[0] == MATERIAL_VOID) {
-        fatal_error(fmt::format("DAGMC cell {} was specified with a "
-                                "temperature but no non-void material.",
-          c->id_));
+    if (has_cell_overrides_) {
+      auto it = cell_overrides_.find(c->id_);
+      if (it == cell_overrides_.end()) {
+        fatal_error(fmt::format(
+          "DAGMC Universe {} is missing a cell override for cell {}",
+          this->id_, c->id_));
+      }
+      const auto& override = it->second;
+      if (!override.name.empty()) {
+        c->name_ = override.name;
       }
 
-      c->sqrtkT_.clear();
-      const auto& temp_overrides = temperature_overrides.at(c->id_);
-      c->sqrtkT_.reserve(temp_overrides.size());
-      for (auto T : temp_overrides) {
-        c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
-      }
-
-      if (settings::verbosity >= 10) {
-        std::stringstream override_values;
-        for (size_t i = 0; i < temp_overrides.size(); ++i) {
-          if (i > 0) {
-            override_values << " ";
+      if (override.is_fill) {
+        if (override.fill_id == this->id_) {
+          fatal_error(fmt::format(
+            "DAGMC cell {} is filled with the same universe that it is "
+            "contained in.",
+            c->id_));
+        }
+        c->fill_ = override.fill_id;
+        c->material_.clear();
+        c->sqrtkT_.clear();
+        c->density_mult_.clear();
+        if (override.translation != Position(0.0, 0.0, 0.0)) {
+          c->translation_ = override.translation;
+        }
+        if (!override.rotation.empty()) {
+          c->set_rotation(override.rotation);
+        }
+        model::cells.emplace_back(std::move(c));
+        continue;
+      } else {
+        c->material_.clear();
+        c->material_.reserve(override.material_ids.size());
+        for (auto mat_id : override.material_ids) {
+          if (mat_id == MATERIAL_VOID) {
+            c->material_.push_back(MATERIAL_VOID);
+          } else if (model::material_map.find(mat_id) !=
+                     model::material_map.end()) {
+            c->material_.push_back(mat_id);
+          } else {
+            fatal_error(fmt::format(
+              "Material with ID '{}' not found for DAGMC cell {}", mat_id,
+              c->id_));
           }
-          override_values << temp_overrides[i];
         }
-        auto msg = fmt::format("Overriding DAGMC cell {} property "
-                               "'temperature [K]' with value(s): {}",
-          c->id_, override_values.str());
-        write_message(msg, 10);
-      }
-    }
 
-    if (density_overrides.count(c->id_)) {
-      if (c->material_.empty() || c->material_[0] == MATERIAL_VOID) {
-        fatal_error(fmt::format("DAGMC cell {} was specified with a density "
-                                "but no non-void material.",
-          c->id_));
-      }
-      // density_mult_ holds the true density until materials are finalized,
-      // at which point it is converted to a proper multiplier (same as CSG).
-      c->density_mult_ = density_overrides.at(c->id_);
-
-      if (settings::verbosity >= 10) {
-        const auto& dens = density_overrides.at(c->id_);
-        std::stringstream override_values;
-        for (size_t i = 0; i < dens.size(); ++i) {
-          if (i > 0)
-            override_values << " ";
-          override_values << dens[i];
+        if (!override.temperatures.empty()) {
+          c->sqrtkT_.clear();
+          c->sqrtkT_.reserve(override.temperatures.size());
+          for (auto T : override.temperatures) {
+            c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * T));
+          }
         }
-        write_message(fmt::format("Overriding DAGMC cell {} property "
-                                  "'density [g/cm³]' with value(s): {}",
-                        c->id_, override_values.str()),
-          10);
+
+        if (!override.densities.empty()) {
+          for (auto mat_id : c->material_) {
+            if (mat_id == MATERIAL_VOID) {
+              fatal_error(fmt::format(
+                "DAGMC cell {} was specified with a density, but contains a "
+                "void material.",
+                c->id_));
+            }
+          }
+          c->density_mult_ = override.densities;
+        }
+      }
+    } else {
+      // material void checks
+      if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
+        c->material_.push_back(MATERIAL_VOID);
+      } else {
+        if (material_overrides_.count(c->id_)) {
+          override_assign_material(c);
+        } else if (uses_uwuw()) {
+          uwuw_assign_material(vol_handle, c);
+        } else {
+          legacy_assign_material(mat_str, c);
+        }
       }
     }
 
     // check for temperature assignment
     std::string temp_value;
 
-    // no temperature if void
+    // no temperature if void or if this is a fill cell
+    if (c->material_.empty()) {
+      model::cells.emplace_back(std::move(c));
+      continue;
+    }
     if (c->material_[0] == MATERIAL_VOID) {
       model::cells.emplace_back(std::move(c));
       continue;
@@ -809,14 +894,23 @@ DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
 std::pair<double, int32_t> DAGCell::distance(
   Position r, Direction u, int32_t on_surface, GeometryState* p) const
 {
+  int32_t cell_index = model::cell_map.at(id_);
+  int level = p->coord_level_for_cell(cell_index);
+  if (level < 0)
+    level = p->n_coord() - 1;
+
+  auto& coord = p->coord(level);
+  auto& history = coord.dagmc_history();
+  auto& last_dir = coord.dagmc_last_dir();
+
   // if we've changed direction or we're not on a surface,
   // reset the history and update last direction
-  if (u != p->last_dir()) {
-    p->last_dir() = u;
-    p->history().reset();
+  if (u != last_dir) {
+    last_dir = u;
+    history.reset();
   }
   if (on_surface == SURFACE_NONE) {
-    p->history().reset();
+    history.reset();
   }
 
   const auto& univ = model::universes[p->lowest_coord().universe()];
@@ -836,7 +930,7 @@ std::pair<double, int32_t> DAGCell::distance(
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
   MB_CHK_ERR_CONT(
-    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &p->history()));
+    dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &history));
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);
@@ -949,7 +1043,8 @@ Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
   moab::ErrorCode rval =
-    dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
+    dagmc_ptr_->get_angle(mesh_handle(), pnt, dir,
+      &p->lowest_coord().dagmc_history());
   MB_CHK_ERR_CONT(rval);
   return u.reflect(dir);
 }

@@ -155,7 +155,7 @@ void Particle::from_source(const SourceSite* src)
   zero_flux_derivs();
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
-  history().reset();
+  reset_dagmc_history();
 #endif
 
   // Copy attributes from source bank site
@@ -468,7 +468,7 @@ void Particle::event_collide()
     score_collision_derivative(*this);
 
 #ifdef OPENMC_DAGMC_ENABLED
-  history().reset();
+  reset_dagmc_history();
 #endif
 }
 
@@ -544,7 +544,7 @@ void Particle::event_check_limit_and_revive()
 void Particle::event_death()
 {
 #ifdef OPENMC_DAGMC_ENABLED
-  history().reset();
+  reset_dagmc_history();
 #endif
 
   // Finish particle track output.
@@ -632,7 +632,7 @@ void Particle::cross_surface(const Surface& surf)
 // if we're crossing a CSG surface, make sure the DAG history is reset
 #ifdef OPENMC_DAGMC_ENABLED
   if (surf.geom_type() == GeometryType::CSG)
-    history().reset();
+    reset_dagmc_history();
 #endif
 
   // Handle any applicable boundary conditions.
@@ -645,32 +645,25 @@ void Particle::cross_surface(const Surface& surf)
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
+  bool verbose = settings::verbosity >= 10 || trace();
+
 #ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
+    int32_t level = n_coord() - 1;
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
                        lowest_coord().universe()) -
                      1;
-    // save material, temperature, and density multiplier
-    material_last() = material();
-    sqrtkT_last() = sqrtkT();
-    density_mult_last() = density_mult();
-    // set new cell value
     lowest_coord().cell() = i_cell;
-    auto& cell = model::cells[i_cell];
-
-    cell_instance() = 0;
-    if (cell->distribcell_index_ >= 0)
-      cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
-
-    material() = cell->material(cell_instance());
-    sqrtkT() = cell->sqrtkT(cell_instance());
-    density_mult() = cell->density_mult(cell_instance());
+    if (!descend_from_cell(*this, i_cell, verbose)) {
+      mark_as_lost("After particle " + std::to_string(id()) +
+                   " crossed surface " + std::to_string(surf.id_) +
+                   " it could not be located in any cell and it did not leak.");
+    }
     return;
   }
 #endif
 
-  bool verbose = settings::verbosity >= 10 || trace();
   if (neighbor_list_find_cell(*this, verbose)) {
     return;
   }

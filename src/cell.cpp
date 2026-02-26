@@ -1265,8 +1265,10 @@ extern "C" int openmc_cell_set_fill(
       c.material_.shrink_to_fit();
     } else if (filltype == Fill::UNIVERSE) {
       c.type_ = Fill::UNIVERSE;
+      c.fill_ = indices[0];
     } else {
       c.type_ = Fill::LATTICE;
+      c.fill_ = indices[0];
     }
   } else {
     set_errmsg("Index in cells array is out of bounds.");

@@ -363,3 +363,32 @@ def test_dagmc_xml_temperature_roundtrip():
     dag_univ_roundtrip = openmc.DAGMCUniverse.from_xml_element(dagmc_elem, mats)
     assert dag_univ_roundtrip.cells[7].fill.id == 1
     assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)
+
+
+def test_dagmc_cell_overrides_parse_fill_lattice():
+    xml_str = """
+    <geometry>
+      <dagmc_universe id="1" filename="dummy.h5m">
+        <cell id="1" fill="20" />
+        <cell id="2" material="void" />
+      </dagmc_universe>
+      <lattice id="20">
+        <lower_left>0.0 0.0</lower_left>
+        <pitch>1.0 1.0</pitch>
+        <dimension>1 1</dimension>
+        <universes>2</universes>
+      </lattice>
+    </geometry>
+    """
+
+    geom = openmc.Geometry.from_xml_element(ET.fromstring(xml_str))
+    dag_univ = None
+    for univ in geom.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            dag_univ = univ
+            break
+    assert dag_univ is not None
+
+    assert dag_univ.cells[1].fill_type == 'lattice'
+    assert dag_univ.cells[1].fill.id == 20
+    assert dag_univ.cells[2].fill_type == 'void'

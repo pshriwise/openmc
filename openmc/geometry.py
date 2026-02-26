@@ -215,9 +215,11 @@ class Geometry:
         for s1, s2 in periodic.items():
             surfaces[s1].periodic_surface = surfaces[s2]
 
-        # Add any DAGMC universes
-        for e in elem.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml_element(e, mats)
+        # Add any DAGMC universes (parse cell overrides later)
+        dagmc_elements = list(elem.findall('dagmc_universe'))
+        for e in dagmc_elements:
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(
+                e, mats, parse_cell_overrides=False)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
@@ -246,6 +248,15 @@ class Geometry:
                     for ring in axial_slice:
                         for u in ring:
                             child_of[u].append(lat)
+
+        # Now parse DAGMC cell overrides (if any) once lattices exist
+        for e in dagmc_elements:
+            dag_univ = universes[int(xml.get_text(e, 'id'))]
+            if e.find('cell') is not None:
+                dag_univ._parse_cell_overrides(e, mats, get_universe)
+                for cell in dag_univ.cells.values():
+                    if cell.fill_type in ('universe', 'lattice'):
+                        child_of[cell.fill].append(cell)
 
         for e in elem.findall('cell'):
             c = openmc.Cell.from_xml_element(e, surfaces, mats, get_universe)

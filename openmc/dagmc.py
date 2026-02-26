@@ -383,7 +383,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         return out
 
     @classmethod
-    def from_xml_element(cls, elem, mats=None):
+    def from_xml_element(cls, elem, mats=None, get_universe=None,
+                         parse_cell_overrides=True):
         """Generate DAGMC universe from XML element
 
         Parameters
@@ -393,6 +394,14 @@ class DAGMCUniverse(openmc.UniverseBase):
         mats : dict
             Dictionary mapping material ID strings to :class:`openmc.Material`
             instances (defined in :meth:`openmc.Geometry.from_xml`)
+        get_universe : function
+            Function returning universe (defined in
+            :meth:`openmc.Geometry.from_xml`). Required when parsing DAGMC cell
+            overrides that reference universes or lattices.
+        parse_cell_overrides : bool
+            Whether to parse DAGMC cell overrides from nested `<cell>` elements.
+            Parsing should be deferred until after lattices are read so that
+            fill IDs resolve correctly.
 
         Returns
         -------
@@ -602,10 +611,31 @@ class DAGMCCell(openmc.Cell):
         return BoundingBox.infinite()
 
     def get_all_cells(self, memo=None):
-        return {}
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
+
+        cells = {}
+        if self.fill_type in ('universe', 'lattice'):
+            cells.update(self.fill.get_all_cells(memo))
+        return cells
 
     def get_all_universes(self, memo=None):
-        return {}
+        if memo is None:
+            memo = set()
+        if self in memo:
+            return {}
+        memo.add(self)
+
+        universes = {}
+        if self.fill_type == 'universe':
+            universes[self.fill.id] = self.fill
+            universes.update(self.fill.get_all_universes(memo))
+        elif self.fill_type == 'lattice':
+            universes.update(self.fill.get_all_universes(memo))
+        return universes
 
     def clone(self, clone_materials=True, clone_regions=True, memo=None):
         warnings.warn("clone is not available for cells in a DAGMC universe")

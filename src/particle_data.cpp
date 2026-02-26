@@ -46,6 +46,10 @@ void LocalCoord::reset()
   lattice_index_[1] = 0;
   lattice_index_[2] = 0;
   rotated_ = false;
+#ifdef OPENMC_DAGMC_ENABLED
+  history_.reset();
+  last_dir_ = {0.0, 0.0, 0.0};
+#endif
 }
 
 GeometryState::GeometryState()

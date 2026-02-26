@@ -458,6 +458,10 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
+  :material_overrides:
+    Legacy material override element. Ignored if any ``<cell>`` overrides
+    are present.
+
 .. note:: A geometry.xml file containing only a DAGMC model for a file named
           `dagmc.h5m` (no CSG) looks as follows:
 

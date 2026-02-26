@@ -180,6 +180,17 @@ public:
   virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Data Members
+  struct DagmcCellOverride {
+    bool is_fill {false};
+    int32_t fill_id {C_NONE};
+    vector<int32_t> material_ids;
+    vector<double> temperatures;
+    vector<double> densities;
+    Position translation {0.0, 0.0, 0.0};
+    vector<double> rotation;
+    std::string name;
+  };
+
   std::shared_ptr<moab::DagMC>
     dagmc_instance_;        //!< DAGMC Instance for this universe
   int32_t cell_idx_offset_; //!< An offset to the start of the cells in this
@@ -211,6 +222,15 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+
+  bool has_cell_overrides_ {false};
+  std::unordered_map<int32_t, DagmcCellOverride>
+    cell_overrides_; //!< Map of cell overrides
+  std::unordered_map<int32_t, vector<int32_t>>
+    material_overrides_; //!< Map of material overrides
+                         //!< keys correspond to the DAGMCCell id
+                         //!< values are a list of material ids used
+                         //!< for the override
 };
 
 //==============================================================================

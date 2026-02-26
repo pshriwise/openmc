@@ -130,6 +130,14 @@ public:
   bool& rotated() { return rotated_; }
   const bool& rotated() const { return rotated_; }
 
+#ifdef OPENMC_DAGMC_ENABLED
+  // DagMC state variables for this coordinate level
+  moab::DagMC::RayHistory& dagmc_history() { return history_; }
+  const moab::DagMC::RayHistory& dagmc_history() const { return history_; }
+  Direction& dagmc_last_dir() { return last_dir_; }
+  const Direction& dagmc_last_dir() const { return last_dir_; }
+#endif
+
 private:
   // Data members
   Position r_;  //!< particle position
@@ -139,6 +147,11 @@ private:
   int lattice_ {-1};
   array<int, 3> lattice_index_ {{-1, -1, -1}};
   bool rotated_ {false}; //!< Is the level rotated?
+
+#ifdef OPENMC_DAGMC_ENABLED
+  moab::DagMC::RayHistory history_;
+  Direction last_dir_;
+#endif
 };
 
 //==============================================================================
@@ -299,6 +312,28 @@ public:
     n_coord_last_ = 1;
   }
 
+#ifdef OPENMC_DAGMC_ENABLED
+  // reset DAGMC ray histories on all coordinate levels
+  void reset_dagmc_history()
+  {
+    for (auto& level : coord_) {
+      level.dagmc_history().reset();
+      level.dagmc_last_dir() = {0.0, 0.0, 0.0};
+    }
+  }
+#endif
+
+  // get coordinate level containing the given cell index
+  int coord_level_for_cell(int32_t cell_index) const
+  {
+    for (int i = 0; i < n_coord_; ++i) {
+      if (coord_[i].cell() == cell_index) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   //! moves the particle by the specified distance to its next location
   //! \param distance the distance the particle is moved
   void move_distance(double distance);
@@ -393,12 +428,6 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
-#ifdef OPENMC_DAGMC_ENABLED
-  // DagMC state variables
-  moab::DagMC::RayHistory& history() { return history_; }
-  Direction& last_dir() { return last_dir_; }
-#endif
-
   // material of current and last cell
   int& material() { return material_; }
   const int& material() const { return material_; }
@@ -446,10 +475,6 @@ private:
   double density_mult_ {1.0};      //!< density multiplier
   double density_mult_last_ {1.0}; //!< last density multiplier
 
-#ifdef OPENMC_DAGMC_ENABLED
-  moab::DagMC::RayHistory history_;
-  Direction last_dir_;
-#endif
 };
 
 //============================================================================
