@@ -154,9 +154,7 @@ void Particle::from_source(const SourceSite* src)
   fission() = false;
   zero_flux_derivs();
   lifetime() = 0.0;
-#ifdef OPENMC_DAGMC_ENABLED
   reset_dagmc_history();
-#endif
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -467,9 +465,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
 
-#ifdef OPENMC_DAGMC_ENABLED
   reset_dagmc_history();
-#endif
 }
 
 void Particle::event_revive_from_secondary(const SourceSite& site)
@@ -543,9 +539,7 @@ void Particle::event_check_limit_and_revive()
 
 void Particle::event_death()
 {
-#ifdef OPENMC_DAGMC_ENABLED
   reset_dagmc_history();
-#endif
 
   // Finish particle track output.
   if (write_track()) {

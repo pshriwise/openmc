@@ -309,10 +309,8 @@ bool exhaustive_find_cell(GeometryState& p, bool verbose)
 
 void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 {
-  #ifdef OPENMC_DAGMC_ENABLED
   // if we're crossing a lattice boundary, make sure the DAG history is reset
   p.reset_dagmc_history();
-  #endif
 
   auto& coord {p.lowest_coord()};
   auto& lat {*model::lattices[coord.lattice()]};

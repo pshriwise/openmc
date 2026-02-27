@@ -316,10 +316,12 @@ public:
   // reset DAGMC ray histories on all coordinate levels
   void reset_dagmc_history()
   {
+    #ifdef OPENMC_DAGMC_ENABLED
     for (auto& level : coord_) {
       level.dagmc_history().reset();
       level.dagmc_last_dir() = {0.0, 0.0, 0.0};
     }
+    #endif
   }
 #endif
 
