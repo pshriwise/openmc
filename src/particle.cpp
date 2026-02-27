@@ -651,16 +651,12 @@ void Particle::cross_surface(const Surface& surf)
 #ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
-    LocalCoord& coord = this->coord(boundary().coord_level()-1);
-    int32_t i_cell = next_cell(surface_index(), cell_last(boundary().coord_level()-1),
+    int coord_level = boundary().coord_level() - 1;
+    LocalCoord& coord = this->coord(coord_level);
+    int32_t i_cell = next_cell(surface_index(), cell_last(coord_level),
                        coord.universe()) -
                      1;
     coord.cell() = i_cell;
-    n_coord() = boundary().coord_level();
-    // reset all coordinates under this level
-    for (int i = boundary().coord_level() + 1; i < this->n_coord(); i++) {
-      this->coord(i).reset();
-    }
     if (!descend_from_cell(*this, i_cell, verbose)) {
       mark_as_lost("After particle " + std::to_string(id()) +
                    " crossed surface " + std::to_string(surf.id_) +
