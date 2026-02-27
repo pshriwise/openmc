@@ -913,7 +913,7 @@ std::pair<double, int32_t> DAGCell::distance(
     history.reset();
   }
 
-  const auto& univ = model::universes[p->lowest_coord().universe()];
+  const auto& univ = model::universes[p->coord(level).universe()];
 
   DAGUniverse* dag_univ = static_cast<DAGUniverse*>(univ.get());
   if (!dag_univ)
@@ -931,6 +931,8 @@ std::pair<double, int32_t> DAGCell::distance(
   double dir[3] = {u.x, u.y, u.z};
   MB_CHK_ERR_CONT(
     dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &history));
+    // std::cout << "DAGMC Distance: " << dist << std::endl;
+    // settings::dagmc_distance = dist;
   if (hit_surf != 0) {
     surf_idx =
       dag_univ->surf_idx_offset_ + dagmc_ptr_->index_by_handle(hit_surf);

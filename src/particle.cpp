@@ -627,6 +627,7 @@ void Particle::cross_surface(const Surface& surf)
 
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf.id_);
+    write_message(1, "    Geometry type {}", surf.geom_type());
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
@@ -650,11 +651,16 @@ void Particle::cross_surface(const Surface& surf)
 #ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
-    int32_t level = n_coord() - 1;
-    int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
-                       lowest_coord().universe()) -
+    LocalCoord& coord = this->coord(boundary().coord_level()-1);
+    int32_t i_cell = next_cell(surface_index(), cell_last(boundary().coord_level()-1),
+                       coord.universe()) -
                      1;
-    lowest_coord().cell() = i_cell;
+    coord.cell() = i_cell;
+    n_coord() = boundary().coord_level();
+    // reset all coordinates under this level
+    for (int i = boundary().coord_level() + 1; i < this->n_coord(); i++) {
+      this->coord(i).reset();
+    }
     if (!descend_from_cell(*this, i_cell, verbose)) {
       mark_as_lost("After particle " + std::to_string(id()) +
                    " crossed surface " + std::to_string(surf.id_) +
@@ -851,6 +857,8 @@ void Particle::mark_as_lost(const char* message)
       simulation::n_lost_particles >= settings::rel_max_lost_particles * n) {
     fatal_error("Maximum number of lost particles has been reached.");
   }
+
+  reset_dagmc_history();
 }
 
 void Particle::write_restart() const

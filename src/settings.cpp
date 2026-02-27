@@ -44,6 +44,8 @@ namespace openmc {
 
 namespace settings {
 
+double dagmc_distance {1e30f};
+
 // Default values for boolean flags
 bool assume_separate {false};
 bool check_overlaps {false};

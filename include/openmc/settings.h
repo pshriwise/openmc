@@ -56,6 +56,8 @@ struct CollisionTrackConfig {
 
 namespace settings {
 
+extern double dagmc_distance;
+
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?
 extern bool check_overlaps;       //!< check overlaps in geometry?
