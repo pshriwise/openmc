@@ -779,7 +779,7 @@ public:
   virtual std::string library() const = 0;
 
   //! Get the mesh filename
-  virtual std::string filename() const { return filename_; }
+  virtual const std::string& filename() const { return filename_; }
 
   // Data members
   bool output_ {
