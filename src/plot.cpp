@@ -1974,7 +1974,12 @@ void PhongRay::on_intersection()
     // directions though.
     bool found = exhaustive_find_cell(*this);
     if (!found) {
-      fatal_error("Lost particle after reflection.");
+      // Cannot locate cell for shadow check (e.g. ray started at model
+      // boundary). Treat the surface as unoccluded: result_color_ already
+      // holds the correctly lit (non-shadowed) contribution, so just stop.
+      // Any transmission ray was already appended to tx_queue_ above.
+      stop();
+      return;
     }
 
     // Must recalculate distance to boundary due to the direction change

@@ -1049,6 +1049,46 @@ def test_solid_raytrace_plot_transmission(lib_init, pincell_model):
         "Alpha=0 domain should be invisible (matches background)"
 
 
+def test_solid_raytrace_plot_multi_wave_transmission(lib_init, pincell_model):
+    """Test that secondary transmission rays chain through multiple semi-transparent layers.
+
+    Camera at (2, 0, 1) looking at origin: primary rays enter through the water
+    outer boundary, secondary rays reach the cladding cylinder.  When cladding is
+    semi-transparent a third wave hits the fuel — verifying the secondary-queue
+    drain loop runs more than one iteration.
+    """
+    plot = openmc.lib.SolidRayTracePlot()
+    plot.pixels = (8, 6)
+    plot.color_by = openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+    plot.camera_position = (2.0, 0.0, 1.0)
+    plot.look_at = (0.0, 0.0, 0.0)
+    plot.up = (0.0, 0.0, 1.0)
+    plot.update_view()
+    plot.set_default_colors()
+
+    # Baseline: water semi-transparent (id=3), cladding and fuel both opaque.
+    # Secondary rays from water hit opaque cladding → one secondary wave only.
+    plot.set_color(3, (0, 0, 255, 100))  # water: semi-transparent blue, alpha=100
+    plot.set_visibility(1, True)          # fuel (id=1): in opaque_ids_
+    plot.set_visibility(2, True)          # cladding (id=2): in opaque_ids_
+    single_layer = plot.create_image()
+
+    # Multi-layer: also make cladding semi-transparent.
+    # Secondary rays from water now hit semi-transparent cladding and spawn
+    # tertiary rays → secondary queue drains over two waves.
+    plot.set_color(2, (200, 200, 200, 150))  # cladding: semi-transparent gray
+    plot.set_visibility(2, False)             # remove cladding from opaque_ids_
+    multi_layer = plot.create_image()
+
+    # Output alpha must always be 255 regardless of how many waves ran.
+    assert np.all(single_layer[..., 3] == 255)
+    assert np.all(multi_layer[..., 3] == 255)
+
+    # The two images must differ: cladding treatment changed.
+    assert not np.array_equal(single_layer, multi_layer), \
+        "Multi-layer semi-transparent cladding must produce a different image"
+
+
 def test_position(lib_init):
 
     pos = openmc.lib.plot._Position(1.0, 2.0, 3.0)
