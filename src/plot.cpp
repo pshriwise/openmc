@@ -598,10 +598,10 @@ void PlottableInterface::set_default_colors()
 void PlottableInterface::set_user_colors(pugi::xml_node plot_node)
 {
   for (auto cn : plot_node.children("color")) {
-    // Make sure 3 values are specified for RGB
+    // Make sure 3 or 4 values are specified for RGB or RGBA
     vector<int> user_rgb = get_node_array<int>(cn, "rgb");
-    if (user_rgb.size() != 3) {
-      fatal_error(fmt::format("Bad RGB in plot {}", id()));
+    if (user_rgb.size() != 3 && user_rgb.size() != 4) {
+      fatal_error(fmt::format("Bad RGB/RGBA in plot {}", id()));
     }
     // Ensure that there is an id for this color specification
     int col_id;
@@ -906,20 +906,21 @@ void output_png(const std::string& filename, const ImageData& data)
   // Write header (8 bit colour depth)
   int width = data.shape(0);
   int height = data.shape(1);
-  png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
+  png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA,
     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
   png_write_info(png_ptr, info_ptr);
 
-  // Allocate memory for one row (3 bytes per pixel - RGB)
-  std::vector<png_byte> row(3 * width);
+  // Allocate memory for one row (4 bytes per pixel - RGBA)
+  std::vector<png_byte> row(4 * width);
 
   // Write color for each pixel
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       RGBColor rgb = data(x, y);
-      row[3 * x] = rgb.red;
-      row[3 * x + 1] = rgb.green;
-      row[3 * x + 2] = rgb.blue;
+      row[4 * x] = rgb.red;
+      row[4 * x + 1] = rgb.green;
+      row[4 * x + 2] = rgb.blue;
+      row[4 * x + 3] = rgb.alpha;
     }
     png_write_row(png_ptr, row.data());
   }
@@ -1684,16 +1685,75 @@ ImageData SolidRayTracePlot::create_image() const
 {
   size_t width = pixels()[0];
   size_t height = pixels()[1];
-  ImageData data({width, height}, not_found_);
 
+  // Float accumulator for color contributions across all wavefronts.
+  // Initialized to zero; rays spend their weight on domain colors or the
+  // background, so the final sum equals the full pixel color.
+  tensor::Tensor<std::array<float, 3>> color_accum(
+    {width, height}, {0.f, 0.f, 0.f});
+
+  // Secondary transmission ray queue; at most one entry per pixel per wave.
+  SharedArray<TransmissionRay> secondary(width * height);
+
+  // Accumulate a ray's color contribution into color_accum.
+  // result_color() is already scaled by weight * (alpha/255) inside
+  // on_intersection(), so we add it directly. Rays that exit without
+  // hitting anything spend their remaining weight on the background.
+  auto accumulate = [&](int px, int py, const PhongRay& ray) {
+    auto& acc = color_accum(px, py);
+    if (ray.hit_something()) {
+      const RGBColor& c = ray.result_color();
+      acc[0] += static_cast<float>(c.red);
+      acc[1] += static_cast<float>(c.green);
+      acc[2] += static_cast<float>(c.blue);
+    } else {
+      // Ray exited geometry: spend remaining weight on background color.
+      float w = static_cast<float>(ray.weight());
+      acc[0] += w * not_found_.red;
+      acc[1] += w * not_found_.green;
+      acc[2] += w * not_found_.blue;
+    }
+  };
+
+  // Wave 0: primary camera rays (one per pixel, weight = 1).
 #pragma omp parallel for schedule(dynamic) collapse(2)
   for (int horiz = 0; horiz < pixels()[0]; ++horiz) {
     for (int vert = 0; vert < pixels()[1]; ++vert) {
-      // RayTracePlot implements camera ray generation
       std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
-      PhongRay ray(ru.first, ru.second, *this);
+      PhongRay ray(ru.first, ru.second, *this, horiz, vert, 1.0, secondary);
       ray.trace();
-      data(horiz, vert) = ray.result_color();
+      accumulate(horiz, vert, ray);
+    }
+  }
+
+  // Subsequent waves: drain the secondary queue.
+  // Each pixel contributes at most one entry per wave, so concurrent writes
+  // to color_accum are safe (no two rays in a wave share a pixel).
+  while (secondary.size() > 0) {
+    SharedArray<TransmissionRay> next_secondary(secondary.size());
+    int64_t n = secondary.size();
+
+#pragma omp parallel for schedule(dynamic)
+    for (int64_t i = 0; i < n; ++i) {
+      const TransmissionRay& tx = secondary[i];
+      PhongRay ray(tx, *this, next_secondary);
+      ray.trace();
+      accumulate(tx.pixel_x, tx.pixel_y, ray);
+    }
+
+    secondary = std::move(next_secondary);
+  }
+
+  // Convert float accumulator to uint8 ImageData.
+  ImageData data({width, height}, not_found_);
+  for (int h = 0; h < static_cast<int>(width); ++h) {
+    for (int v = 0; v < static_cast<int>(height); ++v) {
+      const auto& acc = color_accum(h, v);
+      data(h, v) = RGBColor(
+        static_cast<int>(std::clamp(acc[0], 0.f, 255.f)),
+        static_cast<int>(std::clamp(acc[1], 0.f, 255.f)),
+        static_cast<int>(std::clamp(acc[2], 0.f, 255.f)),
+        255);
     }
   }
 
@@ -1762,9 +1822,26 @@ void ProjectionRay::on_intersection()
     traversal_distance_, boundary().surface_index());
 }
 
+PhongRay::PhongRay(const TransmissionRay& tx, const SolidRayTracePlot& plot,
+  SharedArray<TransmissionRay>& tx_queue)
+  : Ray(tx.geom), plot_(plot), pixel_x_(tx.pixel_x), pixel_y_(tx.pixel_y),
+    weight_(tx.weight), tx_queue_(&tx_queue)
+{
+  result_color_ = plot_.not_found_;
+  // The copied GeometryState has a stale boundary_ from the source ray's last
+  // compute_distance() call. Reset it so that trace()'s phase-1 callback
+  // (which fires when boundary().surface() != SURFACE_NONE) is not triggered
+  // spuriously. The main loop recomputes boundary_ on its first iteration.
+  boundary().reset();
+#ifdef OPENMC_DAGMC_ENABLED
+  // Clear stale DAGMC ray history inherited from the source ray.
+  history().reset();
+#endif
+}
+
 void PhongRay::on_intersection()
 {
-  // Check if we hit an opaque material or cell
+  // Determine what was hit (material or cell index depending on color_by_)
   int hit_id = plot_.color_by_ == PlottableInterface::PlotColorBy::mats
                  ? material()
                  : lowest_coord().cell();
@@ -1777,13 +1854,26 @@ void PhongRay::on_intersection()
     return;
   }
 
-  // Anything that's not opaque has zero impact on the plot.
-  if (plot_.opaque_ids_.find(hit_id) == plot_.opaque_ids_.end())
-    return;
+  // Determine the effective alpha for this domain:
+  //   - opaque_ids_ forces full opacity regardless of color alpha
+  //   - otherwise, a color with alpha strictly between 0 and 255 is
+  //     semi-transparent; alpha == 255 on a non-opaque domain keeps the
+  //     original behavior (invisible) for backward compatibility
+  double alpha;
+  if (plot_.opaque_ids_.count(hit_id) > 0) {
+    alpha = 255.0;
+  } else if (plot_.colors_[hit_id].alpha > 0 &&
+             plot_.colors_[hit_id].alpha < 255) {
+    alpha = plot_.colors_[hit_id].alpha;
+  } else {
+    return; // invisible: not in opaque_ids_ and not explicitly semi-transparent
+  }
+
+  // For shadow check rays (reflected_), semi-transparent domains do not
+  // block the light — treat them as fully transparent and continue.
+  if (reflected_ && alpha < 255.0) return;
 
   if (!reflected_) {
-    // reflect the particle and set the color to be colored by
-    // the normal or the diffuse lighting contribution
     reflected_ = true;
     result_color_ = plot_.colors_[hit_id];
     // The ray has been advanced slightly past the boundary. Use an
@@ -1843,10 +1933,25 @@ void PhongRay::on_intersection()
 
     double modulation =
       plot_.diffuse_fraction_ + (1.0 - plot_.diffuse_fraction_) * dotprod;
-    result_color_ *= modulation;
 
-    // Now point the particle to the camera. We now begin
-    // checking to see if it's occluded by another surface
+    // Scale by lighting modulation, incoming weight, and the domain's alpha
+    // fraction. For fully opaque domains (alpha=255) and primary rays
+    // (weight_=1) this is identical to the previous behavior.
+    result_color_ *= modulation * weight_ * (alpha / 255.0);
+    alpha_at_hit_ = alpha;
+
+    // For semi-transparent domains, spawn a transmission ray that continues
+    // in the same direction with the remaining weight. We capture the geometry
+    // state BEFORE redirecting u() toward the light; at this point u() still
+    // holds the original camera direction and surface() is set to the surface
+    // we just entered, both of which are correct for the continuation ray.
+    double tx_weight = weight_ * (1.0 - alpha / 255.0);
+    if (tx_weight > 0.0) {
+      GeometryState tx_geom = static_cast<const GeometryState&>(*this);
+      tx_queue_->thread_safe_append({pixel_x_, pixel_y_, tx_weight, tx_geom});
+    }
+
+    // Now point the particle toward the light to check for occlusion.
     u() = to_light;
 
     orig_hit_id_ = hit_id;
@@ -1872,20 +1977,17 @@ void PhongRay::on_intersection()
       fatal_error("Lost particle after reflection.");
     }
 
-    // Must recalculate distance to boundary due to the
-    // direction change
+    // Must recalculate distance to boundary due to the direction change
     compute_distance();
 
   } else {
-    // If it's not facing the light, we color with the diffuse contribution, so
-    // next we check if we're going to occlude the last reflected surface. if
-    // so, color by the diffuse contribution instead
-
+    // An opaque surface was found between the hit point and the light.
+    // Fall back to the diffuse-only contribution, scaled by weight and alpha.
     if (orig_hit_id_ == -1)
       fatal_error("somehow a ray got reflected but not original ID set?");
 
     result_color_ = plot_.colors_[orig_hit_id_];
-    result_color_ *= plot_.diffuse_fraction_;
+    result_color_ *= plot_.diffuse_fraction_ * weight_ * (alpha_at_hit_ / 255.0);
     stop();
   }
 }
@@ -2320,7 +2422,7 @@ extern "C" int openmc_solidraytrace_plot_set_opaque(
 }
 
 extern "C" int openmc_solidraytrace_plot_set_color(
-  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b)
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
   SolidRayTracePlot* plt = nullptr;
   int err = get_solidraytrace_plot_by_index(index, &plt);
@@ -2338,7 +2440,7 @@ extern "C" int openmc_solidraytrace_plot_set_color(
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  plt->colors_[domain_index] = RGBColor(r, g, b);
+  plt->colors_[domain_index] = RGBColor(r, g, b, a);
   return 0;
 }
 
@@ -2541,10 +2643,11 @@ extern "C" int openmc_solidraytrace_plot_create_image(
   for (int32_t y = 0; y < height; ++y) {
     for (int32_t x = 0; x < width; ++x) {
       const auto& color = data(x, y);
-      size_t idx = (static_cast<size_t>(y) * width + x) * 3;
+      size_t idx = (static_cast<size_t>(y) * width + x) * 4;
       data_out[idx + 0] = color.red;
       data_out[idx + 1] = color.green;
       data_out[idx + 2] = color.blue;
+      data_out[idx + 3] = color.alpha;
     }
   }
 
@@ -2552,9 +2655,9 @@ extern "C" int openmc_solidraytrace_plot_create_image(
 }
 
 extern "C" int openmc_solidraytrace_plot_get_color(
-  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b)
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a)
 {
-  if (!r || !g || !b) {
+  if (!r || !g || !b || !a) {
     set_errmsg(
       "Invalid arguments passed to openmc_solidraytrace_plot_get_color");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -2580,6 +2683,7 @@ extern "C" int openmc_solidraytrace_plot_get_color(
   *r = color.red;
   *g = color.green;
   *b = color.blue;
+  *a = color.alpha;
   return 0;
 }
 

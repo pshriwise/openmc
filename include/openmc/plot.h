@@ -19,6 +19,7 @@
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
 #include "openmc/ray.h"
+#include "openmc/shared_array.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_match.h"
 #include "openmc/xml_interface.h"
@@ -47,23 +48,26 @@ extern uint64_t plotter_seed; // Stream index used by the plotter
 
 struct RGBColor {
   // Constructors
-  RGBColor() : red(0), green(0), blue(0) {};
-  RGBColor(const int v[3]) : red(v[0]), green(v[1]), blue(v[2]) {};
-  RGBColor(int r, int g, int b) : red(r), green(g), blue(b) {};
+  RGBColor() : red(0), green(0), blue(0), alpha(255) {};
+  RGBColor(const int v[3]) : red(v[0]), green(v[1]), blue(v[2]), alpha(255) {};
+  RGBColor(int r, int g, int b) : red(r), green(g), blue(b), alpha(255) {};
+  RGBColor(int r, int g, int b, int a) : red(r), green(g), blue(b), alpha(a) {};
 
   RGBColor(const vector<int>& v)
   {
-    if (v.size() != 3) {
+    if (v.size() != 3 && v.size() != 4) {
       throw std::out_of_range("Incorrect vector size for RGBColor.");
     }
     red = v[0];
     green = v[1];
     blue = v[2];
+    alpha = (v.size() == 4) ? v[3] : 255;
   }
 
   bool operator==(const RGBColor& other)
   {
-    return red == other.red && green == other.green && blue == other.blue;
+    return red == other.red && green == other.green && blue == other.blue &&
+           alpha == other.alpha;
   }
 
   RGBColor& operator*=(const double x)
@@ -71,17 +75,18 @@ struct RGBColor {
     red *= x;
     green *= x;
     blue *= x;
+    // alpha is intentionally not modified by lighting modulation
     return *this;
   }
 
   // Members
-  uint8_t red, green, blue;
+  uint8_t red, green, blue, alpha;
 };
 
 // some default colors
-const RGBColor WHITE {255, 255, 255};
-const RGBColor RED {255, 0, 0};
-const RGBColor BLACK {0, 0, 0};
+const RGBColor WHITE {255, 255, 255, 255};
+const RGBColor RED {255, 0, 0, 255};
+const RGBColor BLACK {0, 0, 0, 255};
 
 /**
  * \class PlottableInterface
@@ -542,24 +547,53 @@ private:
   vector<WireframeRayTracePlot::TrackSegment>& line_segments_;
 };
 
+// Forward declaration needed for PhongRay
+struct TransmissionRay;
+
 class PhongRay : public Ray {
 public:
-  PhongRay(Position r, Direction u, const SolidRayTracePlot& plot)
-    : Ray(r, u), plot_(plot)
+  // Constructor for primary camera rays
+  PhongRay(Position r, Direction u, const SolidRayTracePlot& plot,
+    int pixel_x, int pixel_y, double weight,
+    SharedArray<TransmissionRay>& tx_queue)
+    : Ray(r, u), plot_(plot), pixel_x_(pixel_x), pixel_y_(pixel_y),
+      weight_(weight), tx_queue_(&tx_queue)
   {
     result_color_ = plot_.not_found_;
   }
 
+  // Constructor for secondary transmission rays. The stored GeometryState
+  // already has the cell and surface token set correctly so no geometry
+  // search is needed; we just reset the stale boundary and recompute distance.
+  PhongRay(const TransmissionRay& tx, const SolidRayTracePlot& plot,
+    SharedArray<TransmissionRay>& tx_queue);
+
   void on_intersection() override;
 
-  const RGBColor& result_color() { return result_color_; }
+  const RGBColor& result_color() const { return result_color_; }
+
+  // True if any domain was hit (opaque or semi-transparent)
+  bool hit_something() const { return orig_hit_id_ != -1; }
+
+  // Incoming weight for this ray (1.0 for primary rays)
+  double weight() const { return weight_; }
 
 private:
   const SolidRayTracePlot& plot_;
 
-  /* After the ray is reflected, it is moving towards the
-   * camera. It does that in order to see if the exposed surface
-   * is shadowed by something else.
+  int pixel_x_ {0};
+  int pixel_y_ {0};
+  double weight_ {1.0};
+
+  // Alpha of the domain hit in the !reflected_ pass; 255 for fully opaque.
+  // Used to scale both the lit color and the shadowed fallback color uniformly.
+  double alpha_at_hit_ {255.0};
+
+  // Non-owning pointer to the secondary transmission ray queue
+  SharedArray<TransmissionRay>* tx_queue_ {nullptr};
+
+  /* After the ray is reflected, it is moving towards the light to check
+   * whether the exposed surface is shadowed by another object.
    */
   bool reflected_ {false};
 
@@ -569,6 +603,16 @@ private:
   int orig_hit_id_ {-1};
 
   RGBColor result_color_;
+};
+
+// Carries everything needed to resume a secondary transmission ray without a
+// new geometry search. The stored GeometryState has the direction already set
+// to the original camera direction and the surface token on the far side of
+// the transparent surface, so the ray will not immediately re-intersect it.
+struct TransmissionRay {
+  int pixel_x, pixel_y;
+  double weight;
+  GeometryState geom;
 };
 
 //===============================================================================

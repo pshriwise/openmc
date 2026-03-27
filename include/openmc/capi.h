@@ -172,7 +172,7 @@ int openmc_solidraytrace_plot_set_all_opaque(int32_t index);
 int openmc_solidraytrace_plot_set_opaque(
   int32_t index, int32_t id, bool visible);
 int openmc_solidraytrace_plot_set_color(
-  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b);
+  int32_t index, int32_t id, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 int openmc_solidraytrace_plot_get_camera_position(
   int32_t index, double* x, double* y, double* z);
 int openmc_solidraytrace_plot_set_camera_position(
@@ -195,7 +195,7 @@ int openmc_solidraytrace_plot_update_view(int32_t index);
 int openmc_solidraytrace_plot_create_image(
   int32_t index, uint8_t* data_out, int32_t width, int32_t height);
 int openmc_solidraytrace_plot_get_color(
-  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b);
+  int32_t index, int32_t id, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a);
 int openmc_solidraytrace_plot_get_diffuse_fraction(
   int32_t index, double* diffuse_fraction);
 int openmc_solidraytrace_plot_set_diffuse_fraction(

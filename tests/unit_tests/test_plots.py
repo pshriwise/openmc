@@ -282,6 +282,54 @@ def test_phong_plot_roundtrip():
     new_elem = new_plot.to_xml_element()
 
 
+def test_phong_plot_rgba_color_roundtrip():
+    """RGBA colors survive XML serialization/deserialization."""
+    plot = openmc.SolidRayTracePlot(name='rgba roundtrip')
+    plot.id = 2301
+    plot.pixels = (10, 10)
+    plot.color_by = 'material'
+    plot.opaque_domains = [1, 2]
+
+    # 3-element RGB color — alpha should default to 255
+    plot.colors[1] = (100, 150, 200)
+    # 4-element RGBA color with non-trivial alpha
+    plot.colors[2] = (50, 60, 70, 128)
+
+    elem = plot.to_xml_element()
+    new_plot = openmc.SolidRayTracePlot.from_xml_element(elem)
+
+    # After XML roundtrip, colors are keyed by integer IDs
+    # RGB-only color: 3 values preserved (alpha omitted from XML when alpha==255)
+    assert tuple(new_plot.colors[1])[:3] == (100, 150, 200)
+    # RGBA color: all four components preserved through XML
+    assert tuple(new_plot.colors[2]) == (50, 60, 70, 128)
+
+    # Confirm re-serialization doesn't raise
+    new_plot.to_xml_element()
+
+
+def test_phong_plot_rgba_xml_backward_compat():
+    """3-element RGB colors in XML are accepted and get alpha=255."""
+    import xml.etree.ElementTree as ET
+
+    xml_str = """<plot id="999" name="compat" type="solid_raytrace"
+                       color_by="material" filename="compat">
+        <pixels>10 10</pixels>
+        <camera_position>0 0 10</camera_position>
+        <look_at>0 0 0</look_at>
+        <color id="3" rgb="10 20 30"/>
+    </plot>"""
+    elem = ET.fromstring(xml_str)
+    plot = openmc.SolidRayTracePlot.from_xml_element(elem)
+
+    # Colors are keyed by integer ID after XML deserialization
+    color = tuple(plot.colors[3])
+    assert color[:3] == (10, 20, 30)
+    # Alpha should default to 255 when not present in the XML
+    if len(color) == 4:
+        assert color[3] == 255
+
+
 def test_plot_directory(run_in_tmpdir):
     pwr_pin = openmc.examples.pwr_pin_cell()
 

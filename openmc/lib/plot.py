@@ -360,7 +360,7 @@ _dll.openmc_solidraytrace_plot_set_opaque.argtypes = [c_int32, c_int32, c_bool]
 _dll.openmc_solidraytrace_plot_set_opaque.restype = c_int
 _dll.openmc_solidraytrace_plot_set_opaque.errcheck = _error_handler
 
-_dll.openmc_solidraytrace_plot_set_color.argtypes = [c_int32, c_int32, c_uint8, c_uint8, c_uint8]
+_dll.openmc_solidraytrace_plot_set_color.argtypes = [c_int32, c_int32, c_uint8, c_uint8, c_uint8, c_uint8]
 _dll.openmc_solidraytrace_plot_set_color.restype = c_int
 _dll.openmc_solidraytrace_plot_set_color.errcheck = _error_handler
 
@@ -417,7 +417,7 @@ _dll.openmc_solidraytrace_plot_create_image.restype = c_int
 _dll.openmc_solidraytrace_plot_create_image.errcheck = _error_handler
 
 _dll.openmc_solidraytrace_plot_get_color.argtypes = [c_int32, c_int32,
-                                             POINTER(c_uint8), POINTER(c_uint8), POINTER(c_uint8)]
+                                             POINTER(c_uint8), POINTER(c_uint8), POINTER(c_uint8), POINTER(c_uint8)]
 _dll.openmc_solidraytrace_plot_get_color.restype = c_int
 _dll.openmc_solidraytrace_plot_get_color.errcheck = _error_handler
 
@@ -561,9 +561,12 @@ class SolidRayTracePlot(_FortranObjectWithID):
         )
 
     def set_color(self, domain_id, color):
-        r, g, b = [int(c) for c in color]
+        rgba = list(color)
+        if len(rgba) == 3:
+            rgba.append(255)
+        r, g, b, a = [int(c) for c in rgba]
         _dll.openmc_solidraytrace_plot_set_color(
-            self._index, int(domain_id), r, g, b)
+            self._index, int(domain_id), r, g, b, a)
 
     @property
     def camera_position(self):
@@ -619,7 +622,7 @@ class SolidRayTracePlot(_FortranObjectWithID):
 
     def create_image(self):
         width, height = self.pixels
-        image = np.zeros((height, width, 3), dtype=np.uint8)
+        image = np.zeros((height, width, 4), dtype=np.uint8)
         _dll.openmc_solidraytrace_plot_create_image(
             self._index,
             image.ctypes.data_as(POINTER(c_uint8)),
@@ -632,9 +635,10 @@ class SolidRayTracePlot(_FortranObjectWithID):
         r = c_uint8()
         g = c_uint8()
         b = c_uint8()
+        a = c_uint8()
         _dll.openmc_solidraytrace_plot_get_color(
-            self._index, int(domain_id), r, g, b)
-        return int(r.value), int(g.value), int(b.value)
+            self._index, int(domain_id), r, g, b, a)
+        return int(r.value), int(g.value), int(b.value), int(a.value)
 
     @property
     def diffuse_fraction(self):

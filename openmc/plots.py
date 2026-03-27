@@ -611,11 +611,13 @@ class PlotBase(IDManagerMixin):
             if color.lower() not in _SVG_COLORS:
                 raise ValueError(f"'{color}' is not a valid color.")
         else:
-            cv.check_length(err_string, color, 3)
-            for rgb in color:
-                cv.check_type(err_string, rgb, Real)
-                cv.check_greater_than('RGB component', rgb, 0, True)
-                cv.check_less_than('RGB component', rgb, 256)
+            if len(color) not in (3, 4):
+                raise ValueError(
+                    f"'{err_string}' must be a 3- or 4-element RGB/RGBA sequence.")
+            for component in color:
+                cv.check_type(err_string, component, Real)
+                cv.check_greater_than('color component', component, 0, True)
+                cv.check_less_than('color component', component, 256)
 
     # Helper function that returns the domain ID given either a
     # Cell/Material object or the domain ID itself
@@ -661,7 +663,11 @@ class PlotBase(IDManagerMixin):
             subelement.set("id", str(self._get_id(domain)))
             if isinstance(color, str):
                 color = _SVG_COLORS[color.lower()]
-            subelement.set("rgb", ' '.join(str(x) for x in color))
+            # Write alpha as 4th value only when not fully opaque
+            if len(color) == 4 and color[3] != 255:
+                subelement.set("rgb", ' '.join(str(x) for x in color))
+            else:
+                subelement.set("rgb", ' '.join(str(x) for x in color[:3]))
 
     def to_xml_element(self):
         """Save common plot attributes to XML element
@@ -2041,7 +2047,7 @@ class SolidRayTracePlot(RayTracePlot):
 
         # Set plot colors
         for color_elem in elem.findall("color"):
-            uid = get_text(color_elem, "id")
+            uid = int(get_text(color_elem, "id"))
             plot.colors[uid] = tuple(get_elem_list(color_elem, "rgb", int))
 
         return plot

@@ -972,15 +972,19 @@ def test_solid_raytrace_plot(lib_init, pincell_model):
 
     # Exercise color/visibility CAPI wrappers
     plot.set_default_colors()
+    # 3-element RGB sets alpha to 255 by default
     plot.set_color(1, (12, 34, 56))
-    assert plot.get_color(1) == (12, 34, 56)
+    assert plot.get_color(1) == (12, 34, 56, 255)
+    # 4-element RGBA roundtrip
+    plot.set_color(1, (12, 34, 56, 128))
+    assert plot.get_color(1) == (12, 34, 56, 128)
     plot.set_visibility(1, False)
     plot.set_visibility(1, True)
 
-    # Confirm image creation path works and dimensions match pixels
+    # Confirm image creation path works and dimensions match pixels (RGBA = 4 channels)
     plot.update_view()
     image = plot.create_image()
-    assert image.shape == (6, 8, 3)
+    assert image.shape == (6, 8, 4)
     assert image.dtype == np.uint8
 
     # Change some properties and confirm image changes
@@ -994,6 +998,55 @@ def test_solid_raytrace_plot(lib_init, pincell_model):
     changed = np.any(image != image2, axis=2)
     assert np.any(changed)
     assert np.mean(image2[..., 0][changed]) > np.mean(image[..., 0][changed])
+
+
+def test_solid_raytrace_plot_transmission(lib_init, pincell_model):
+    """Test semi-transparent domain rendering via the alpha channel."""
+    plot = openmc.lib.SolidRayTracePlot()
+    plot.pixels = (8, 6)
+    plot.color_by = openmc.lib.SolidRayTracePlot.COLOR_BY_MATERIAL
+    plot.camera_position = (2.0, 0.0, 1.0)
+    plot.look_at = (0.0, 0.0, 0.0)
+    plot.up = (0.0, 0.0, 1.0)
+    plot.update_view()
+    plot.set_default_colors()
+
+    # With no opaque_ids_ and all default colors (alpha=255), the image
+    # should be all-background (backward compatibility).
+    bg = plot.create_image()
+    # Confirm output is always RGBA with alpha=255 regardless of transparency.
+    assert bg.shape == (6, 8, 4)
+    assert np.all(bg[..., 3] == 255)
+
+    # Set material 1 to a saturated blue with alpha=128 (semi-transparent).
+    # Not adding it to opaque_ids_, so it goes through the semi-transparent path.
+    plot.set_color(1, (0, 0, 255, 128))
+    semi = plot.create_image()
+
+    # The semi-transparent image must differ from the all-background baseline
+    # somewhere (the semi-transparent material was rendered).
+    assert not np.array_equal(bg, semi), \
+        "Semi-transparent domain should produce a non-background image"
+
+    # Output alpha must always be 255 (fully opaque composite result).
+    assert np.all(semi[..., 3] == 255)
+
+    # The background is white (255, 255, 255). A semi-transparent blue material
+    # (0, 0, 255, alpha=128) contributes 0 red and 0 green, so changed pixels
+    # must have lower red and green than the white background.
+    changed = np.any(bg[..., :3] != semi[..., :3], axis=2)
+    assert np.any(changed)
+    assert np.all(semi[changed, 0] < bg[changed, 0]), \
+        "Red should decrease: semi-transparent blue domain on white background"
+    assert np.all(semi[changed, 1] < bg[changed, 1]), \
+        "Green should decrease: semi-transparent blue domain on white background"
+
+    # With alpha=0 the material is fully transparent — image should match
+    # the all-background baseline exactly.
+    plot.set_color(1, (0, 0, 255, 0))
+    invisible = plot.create_image()
+    assert np.array_equal(bg, invisible), \
+        "Alpha=0 domain should be invisible (matches background)"
 
 
 def test_position(lib_init):
