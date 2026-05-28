@@ -19,6 +19,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/output.h"
 #include "openmc/particle_data.h"
 #include "openmc/photon.h"
 #include "openmc/physics.h"

@@ -844,8 +844,7 @@ void DAGUniverse::uwuw_assign_material(
 #endif // OPENMC_UWUW_ENABLED
 }
 
-void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c,
-  const MaterialOverrides& material_overrides) const
+void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
 {
   // if Cell ID matches an override key, use it to override the material
   // assignment else if UWUW is used, get the material assignment from the DAGMC
@@ -853,30 +852,17 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c,
   // Notify User that an override is being applied on a DAGMCCell
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
 
-  const auto& mat_overrides = material_overrides.at(c->id_);
   if (settings::verbosity >= 10) {
-    std::stringstream override_values;
-    for (size_t i = 0; i < mat_overrides.size(); ++i) {
-      if (i > 0) {
-        override_values << " ";
-      }
-      if (mat_overrides[i] == MATERIAL_VOID) {
-        override_values << "void";
-      } else {
-        override_values << mat_overrides[i];
-      }
-    }
-    auto msg = fmt::format("Overriding DAGMC cell {} property 'material' "
-                           "with value(s): {}",
-      c->id_, override_values.str());
+    auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on "
+                           "override information (see input XML).",
+      c->id_);
     write_message(msg, 10);
   }
 
   // Override the material assignment for each cell instance using the legacy
   // assignement
-  for (auto mat_id : mat_overrides) {
-    if (mat_id != MATERIAL_VOID &&
-        model::material_map.find(mat_id) == model::material_map.end()) {
+  for (auto mat_id : material_overrides_.at(c->id_)) {
+    if (model::material_map.find(mat_id) == model::material_map.end()) {
       fatal_error(fmt::format(
         "Material with ID '{}' not found for DAGMC cell {}", mat_id, c->id_));
     }

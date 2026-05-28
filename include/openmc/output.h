@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "openmc/constants.h"
 #include "openmc/particle.h"
 
 namespace openmc {
@@ -85,7 +86,33 @@ struct formatter<std::array<T, 2>> {
 #endif
     return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
 }
-}; // namespace fmt
+};
+
+template<>
+struct formatter<openmc::GeometryType> {
+  template<typename ParseContext>
+  constexpr auto parse(ParseContext& ctx)
+  {
+    return ctx.begin();
+  }
+
+  template<typename FormatContext>
+#if FMT_VERSION >= 110000 // Version 11.0.0 and above
+  auto format(const openmc::GeometryType& type, FormatContext& ctx) const {
+#else // For versions below 11.0.0
+  auto format(const openmc::GeometryType& type, FormatContext& ctx)
+  {
+#endif
+    switch (type) {
+    case openmc::GeometryType::CSG:
+      return format_to(ctx.out(), "CSG");
+    case openmc::GeometryType::DAG:
+      return format_to(ctx.out(), "DAG");
+    default:
+      return format_to(ctx.out(), "Unknown");
+    }
+  }
+};
 
 } // namespace fmt
 

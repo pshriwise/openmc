@@ -153,8 +153,7 @@ public:
 
   //! Assign a material overriding normal assignement to a cell
   //! \param[in] c The OpenMC cell to which the material is assigned
-  void override_assign_material(std::unique_ptr<DAGCell>& c,
-    const MaterialOverrides& material_overrides) const;
+  void override_assign_material(std::unique_ptr<DAGCell>& c) const;
 
   //! Return the index into the model cells vector for a given DAGMC volume
   //! handle in the universe

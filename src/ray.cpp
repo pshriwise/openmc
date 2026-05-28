@@ -3,7 +3,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/settings.h"
-
+#include "openmc/surface.h"
 namespace openmc {
 
 void Ray::compute_distance()
@@ -136,9 +136,21 @@ void Ray::trace()
       cross_lattice(*this, boundary(), settings::verbosity >= 10);
     }
 
+    // If we're crossing a CSG surface, make sure the DAG history is reset.
+    // Lattice crossings have SURFACE_NONE and should not index model::surfaces.
+#ifdef OPENMC_DAGMC_ENABLED
+    if (boundary().surface() != SURFACE_NONE) {
+      const auto& crossed_surf = model::surfaces[boundary().surface_index()];
+      if (crossed_surf->geom_type() == GeometryType::CSG) {
+        reset_dagmc_history();
+      }
+    }
+#endif
+
     // Record how far the ray has traveled
     traversal_distance_ += boundary().distance();
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
+
 
     // Call the specialized logic for this type of ray. Note that we do not
     // call this if the advance distance is very small. Unfortunately, it seems
@@ -152,6 +164,16 @@ void Ray::trace()
       on_intersection();
       if (stop_)
         return;
+    }
+
+    // If the intersection handler didn't change the surface token (e.g., no
+    // reflection), clear it for DAGMC. This prevents DAGMC ray history from
+    // persisting across cell boundaries while preserving CSG on-surface logic.
+    if (surface() == boundary().surface() && surface() != SURFACE_NONE) {
+      const auto& surf = model::surfaces[std::abs(surface()) - 1];
+      if (surf->geom_type() == GeometryType::DAG) {
+        surface() = SURFACE_NONE;
+      }
     }
 
     if (!inside_cell)
