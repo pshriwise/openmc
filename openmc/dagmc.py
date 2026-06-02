@@ -645,9 +645,6 @@ class DAGMCCell(openmc.Cell):
         raise TypeError("plot is not available for DAGMC cells.")
 
     def create_xml_subelement(self, xml_element, memo=None):
-        if self.fill_type not in ('void', 'material', 'distribmat'):
-            raise TypeError("DAGMC cell overrides currently only support "
-                            "material fills.")
         if self.temperature is not None and self.fill_type not in (
             'material', 'distribmat'
         ):

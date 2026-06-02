@@ -768,6 +768,11 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
     return;
   }
 
+  if (surf.geom_type() == GeometryType::DAG) {
+    bool verbose = settings::verbosity >= 10 || trace();
+    descend_from_cell(*this, cell_last(0), verbose);
+  }
+
   // Set previous coordinate going slightly past surface crossing
   r_last_current() = r() + TINY_BIT * u();
 
