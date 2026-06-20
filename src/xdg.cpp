@@ -781,7 +781,7 @@ void XDGMeshUniverse::next_cell(Particle& p) const
   } else {
 
     // attempt to find an element just in front of the current particle position
-    auto bin = xdg_mesh()->get_bin(p.r_local()+p.u()+TINY_BIT);
+    auto bin = xdg_mesh()->get_bin(p.r_local()+p.u()*TINY_BIT);
     if (bin != C_NONE) {
       next_mesh_idx = bin;
       next_cell_idx = cells_[next_mesh_idx];
