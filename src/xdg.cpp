@@ -779,16 +779,24 @@ void XDGMeshUniverse::next_cell(Particle& p) const
 
     next_cell_idx = cells_[next_mesh_idx];
   } else {
-    write_message(
-      fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
-                  "{} \n\tDirection: {} {} {}",
-        p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
-      10);
-      // treat mesh exit as vacuum boundary for now
-      // p.wgt() = 0.0;
-      // return;
-    next_mesh_idx = C_NONE;
-    next_cell_idx = cells_[cells_.size() - 1];
+
+    // attempt to find an element just in front of the current particle position
+    auto bin = xdg_mesh()->get_bin(p.r_local()+p.u()+TINY_BIT);
+    if (bin != C_NONE) {
+      next_mesh_idx = bin;
+      next_cell_idx = cells_[next_mesh_idx];
+    } else {
+      write_message(
+        fmt::format("\tParticle {} moving out of the mesh. \n\tPosition: {} {} "
+                    "{} \n\tDirection: {} {} {}",
+          p.id(), p.r()[0], p.r()[1], p.r()[2], p.u()[0], p.u()[1], p.u()[2]),
+        10);
+        // treat mesh exit as vacuum boundary for now
+        // p.wgt() = 0.0;
+        // return;
+      next_mesh_idx = C_NONE;
+      next_cell_idx = cells_[cells_.size() - 1];
+    }
   }
 
   // reset the lattice_translation for the boundary crossing
