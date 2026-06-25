@@ -2675,9 +2675,9 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(GeometryState& g) const
     if (ipc_elem.second == C_NONE) {
       return {INFTY, -1, {-1, 0, 0}};
     }
-    // auto next_element = xdg_->mesh_manager()->get_boundary_face_element(g.xdg_prev_elements().back());
-    auto new_r = r + u * (ipc_elem.first + TINY_BIT);
-    auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
+    auto next_element = xdg_->mesh_manager()->get_boundary_face_element(g.xdg_prev_elements().back());
+    // auto new_r = r + u * (ipc_elem.first + TINY_BIT);
+    // auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
     return {ipc_elem.first, -1, {mesh_id_to_bin(next_element), 0, 0}};
   }
   auto mesh_id = bin_to_mesh_id(bin);
@@ -2695,9 +2695,9 @@ NextMeshCell XDGMesh::distance_to_bin_boundary(int bin, const Position& r, const
     if (ipc_elem.second == C_NONE) {
       return {INFTY, -1, {-1, 0, 0}};
     }
-    // auto next_element = xdg_->mesh_manager()->get_boundary_face_element(prev_elements.back());
-    auto new_r = r + u * (ipc_elem.first + TINY_BIT);
-    auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
+    auto next_element = xdg_->mesh_manager()->get_boundary_face_element(prev_elements.back());
+    // auto new_r = r + u * (ipc_elem.first + TINY_BIT);
+    // auto next_element = xdg_->find_element({new_r.x, new_r.y, new_r.z});
     return {ipc_elem.first, -1, {mesh_id_to_bin(next_element), 0, 0}};
   }
   auto mesh_id = bin_to_mesh_id(bin);
