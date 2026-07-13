@@ -103,7 +103,7 @@ void PropertyData::set_overlap(size_t y, size_t x, int /*overlap_idx*/)
 RasterData::RasterData(size_t h_res, size_t v_res, bool include_filter)
   : id_data_({v_res, h_res, include_filter ? 4u : 3u}, NOT_FOUND),
     property_data_({v_res, h_res, 2}, static_cast<double>(NOT_FOUND)),
-    include_filter_(include_filter)
+    include_filter_(include_filter), surface_crossings_(v_res)
 {}
 
 void RasterData::set_value(size_t y, size_t x, const Particle& p, int level,
@@ -173,6 +173,8 @@ namespace model {
 std::unordered_map<int, int> plot_map;
 vector<std::unique_ptr<PlottableInterface>> plots;
 uint64_t plotter_seed = 1;
+
+std::vector<std::vector<SurfaceCrossing>> cached_surface_crossings;
 
 } // namespace model
 
@@ -1891,6 +1893,74 @@ void PhongRay::on_intersection()
   }
 }
 
+void SliceRay::on_intersection()
+{
+  // ---------------------------------------------------------------
+  // Part 1: record the surface crossing.
+  // traversal_distance_ is the exact distance along u_hat from the
+  // left edge of this row where the ray hit a surface boundary.
+  // ---------------------------------------------------------------
+  SurfaceCrossing sc;
+  sc.surface_index = boundary().surface_index();
+  sc.surface_id = model::surfaces.at(sc.surface_index)->id_;
+  sc.u_pos = traversal_distance_;
+
+  // cell_last(0) is the cell the ray was leaving at this crossing
+  int32_t last_cell_idx = cell_last(0);
+  if (last_cell_idx >= 0 &&
+      static_cast<size_t>(last_cell_idx) < model::cells.size()) {
+    sc.from_cell_id = model::cells.at(last_cell_idx)->id_;
+  } else {
+    sc.from_cell_id = -1;
+  }
+
+  // lowest_coord().cell() is the cell being entered right now
+  int32_t next_cell_idx = lowest_coord().cell();
+  if (next_cell_idx >= 0 &&
+      static_cast<size_t>(next_cell_idx) < model::cells.size()) {
+    sc.to_cell_id = model::cells.at(next_cell_idx)->id_;
+  } else {
+    sc.to_cell_id = -1;
+  }
+
+  crossings_.push_back(sc);
+
+  // ---------------------------------------------------------------
+  // Part 2: fill all pixel columns between the previous crossing
+  // and this one with the cell/material data of the segment the
+  // ray just finished traversing.
+  //
+  // prev_dist_ starts at 0.0 (left edge of the plot) and advances
+  // to traversal_distance_ at the end of every call, so each
+  // segment is filled exactly once with no gaps or overlaps.
+  // ---------------------------------------------------------------
+  size_t col_prev = pixel_col(prev_dist_);
+  size_t col_now = pixel_col(traversal_distance_);
+
+  int j = n_coord() - 1;
+  if (level_ >= 0)
+    j = std::min(level_, j);
+
+  for (size_t col = col_prev; col < col_now && col < h_res_; col++) {
+    if (show_overlaps_) {
+      // check_cell_overlap detects any cells that overlap at
+      // this point. If found, mark the pixel OVERLAP rather
+      // than setting the normal cell/material value.
+      auto overlap = check_cell_overlap(*this, false);
+      if (!overlap.pairs.empty()) {
+        data_.set_overlap(row_, col, overlap.pairs);
+        continue;
+      }
+    }
+    // set_value writes cell ID, instance, material ID,
+    // temperature, density, and optionally filter bin —
+    // identical fields to what get_map<RasterData> produces.
+    data_.set_value(row_, col, *this, j, filter_, &match_);
+  }
+
+  prev_dist_ = traversal_distance_;
+}
+
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
 {
   static bool warned {false};
@@ -2006,6 +2076,111 @@ extern "C" int openmc_slice_data(const double origin[3], const double u_span[3],
     return OPENMC_E_UNASSIGNED;
   }
 
+  return 0;
+}
+
+extern "C" int openmc_slice_data_raytrace(const double origin[3],
+  const double u_span[3], const double v_span[3], const size_t pixels[2],
+  bool color_overlaps, int level, int32_t filter_index, int32_t* geom_data,
+  double* property_data)
+{
+  Direction u_span_d {u_span[0], u_span[1], u_span[2]};
+  Direction v_span_d {v_span[0], v_span[1], v_span[2]};
+
+  if (u_span_d.norm() == 0.0 || v_span_d.norm() == 0.0) {
+    set_errmsg("Span vectors must be non-zero.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  if (filter_index >= 0) {
+    if (int err = verify_filter(filter_index))
+      return err;
+  }
+
+  if (color_overlaps && model::overlap_check_count.empty()) {
+    model::overlap_check_count.resize(model::cells.size());
+    settings::check_overlaps = true;
+  }
+
+  try {
+    SlicePlotBase params;
+    params.origin_ = {origin[0], origin[1], origin[2]};
+    params.u_span_ = u_span_d;
+    params.v_span_ = v_span_d;
+    params.pixels_[0] = pixels[0];
+    params.pixels_[1] = pixels[1];
+    params.show_overlaps_ = color_overlaps;
+    params.slice_level_ = level;
+
+    // One raytrace pass: fills pixel data AND collects surface crossings.
+    // After this returns, data contains everything.
+    RasterData data = params.get_map_raytrace(filter_index);
+
+    // Copy pixel arrays out to the caller's pre-allocated buffers.
+    // Same shapes as openmc_slice_data so nothing changes on the
+    // Python side except which function gets called.
+    std::copy(data.id_data_.begin(), data.id_data_.end(), geom_data);
+
+    if (property_data != nullptr) {
+      std::copy(
+        data.property_data_.begin(), data.property_data_.end(), property_data);
+    }
+
+    // Move only the crossing vectors into the global cache.
+    // The large pixel arrays in data go out of scope here and are freed.
+    // The button will read from cached_surface_crossings — it will never
+    // trigger another raytrace.
+    model::cached_surface_crossings = std::move(data.surface_crossings_);
+
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+
+  return 0;
+}
+
+// Called first by Python to find out how many crossings to allocate for.
+// cached_surface_crossings was populated by the last raytrace call —
+// this function does zero geometry work.
+extern "C" int openmc_raytrace_surface_crossing_count(int32_t* count)
+{
+  if (!count) {
+    set_errmsg("Null pointer passed for crossing count.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  int total = 0;
+  for (const auto& row : model::cached_surface_crossings)
+    total += static_cast<int>(row.size());
+  *count = total;
+  return 0;
+}
+
+// Called second after Python pre-allocates arrays of the right size.
+// Flattens the nested vector into five parallel arrays that numpy
+// can consume directly. Again, zero geometry work — just a copy.
+extern "C" int openmc_raytrace_surface_crossing_data(int32_t* surface_ids,
+  double* u_positions, int32_t* row_indices, int32_t* from_cell_ids,
+  int32_t* to_cell_ids)
+{
+  if (!surface_ids || !u_positions || !row_indices || !from_cell_ids ||
+      !to_cell_ids) {
+    set_errmsg("Null pointer passed for crossing data.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  int i = 0;
+  for (int row = 0;
+       row < static_cast<int>(model::cached_surface_crossings.size()); row++) {
+    for (const auto& sc : model::cached_surface_crossings[row]) {
+      surface_ids[i] = sc.surface_id;
+      u_positions[i] = sc.u_pos;
+      row_indices[i] = row;
+      from_cell_ids[i] = sc.from_cell_id;
+      to_cell_ids[i] = sc.to_cell_id;
+      i++;
+    }
+  }
   return 0;
 }
 
