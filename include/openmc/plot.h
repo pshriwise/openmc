@@ -39,11 +39,6 @@ extern vector<std::unique_ptr<PlottableInterface>>
 
 extern uint64_t plotter_seed; // Stream index used by the plotter
 
-// Populated by openmc_slice_data_raytrace. Only the crossing vectors
-// are kept after the call — the pixel arrays are copied out and freed.
-// The button just reads this; it never triggers a raytrace.
-extern std::vector<std::vector<SurfaceCrossing>> cached_surface_crossings;
-
 } // namespace model
 
 //===============================================================================
@@ -195,10 +190,6 @@ struct RasterData {
   tensor::Tensor<double>
     property_data_;     //!< [v_res, h_res, 2]: temperature, density
   bool include_filter_; //!< Whether filter bin index is included
-
-  // Pre-sized to v_res in the constructor so parallel row indexing
-  // is safe — each thread writes only its own row.
-  std::vector<std::vector<SurfaceCrossing>> surface_crossings_;
 };
 
 //===============================================================================
@@ -298,54 +289,6 @@ T SlicePlotBase::get_map(int32_t filter_index) const
           }
         }
       } // inner for
-    }
-  }
-
-  return data;
-}
-
-RasterData SlicePlotBase::get_map_raytrace(int32_t filter_index) const
-{
-  size_t h_res = pixels_[0];
-  size_t v_res = pixels_[1];
-
-  bool include_filter = (filter_index >= 0);
-  Filter* filter =
-    include_filter ? model::tally_filters[filter_index].get() : nullptr;
-
-  // surface_crossings_ is pre-sized to v_res rows by the constructor
-  // so the parallel loop can index into it without a mutex.
-  RasterData data(h_res, v_res, include_filter);
-
-  // u_hat is the horizontal unit vector for this slice — identical to
-  // what get_map uses for its inner pixel loop direction.
-  Direction u_hat = u_span_ / u_span_.norm();
-
-  // v_step moves down one row in 3D space
-  Direction v_step = v_span_ / static_cast<double>(v_res);
-
-  // top_left is the 3D position of the left edge of the top row,
-  // matching the origin_ - 0.5*u_span_ + 0.5*v_span_ geometry from get_map
-  Position top_left = origin_ - 0.5 * u_span_ + 0.5 * v_span_;
-
-  // pixel_w is the width of one pixel in model-space cm along u_hat,
-  // used inside SliceRay to convert u_pos distances to column indices
-  double pixel_w = u_span_.norm() / static_cast<double>(h_res);
-
-#pragma omp parallel for
-  for (size_t row = 0; row < v_res; row++) {
-    // Each row fires one ray from the left edge across the full width.
-    // Ray::trace() calls on_intersection() automatically at every
-    // surface boundary — no additional work needed here.
-    Position row_start = top_left - v_step * static_cast<double>(row);
-    try {
-      SliceRay ray(row_start, u_hat,
-        data.surface_crossings_[row], // this row's crossings
-        data, row, h_res, pixel_w, slice_level_, filter, show_overlaps_);
-      ray.trace();
-    } catch (const std::exception&) {
-      // Lost ray — pixels for this row stay at NOT_FOUND,
-      // same behavior as get_map when exhaustive_find_cell fails
     }
   }
 
@@ -631,37 +574,79 @@ private:
   RGBColor result_color_;
 };
 
-// SliceRay always does both jobs: record crossings AND fill pixel data.
-// There is no crossings-only path anymore — the raytrace IS the rasterizer.
 class SliceRay : public Ray {
 public:
-  SliceRay(Position r, Direction u, std::vector<SurfaceCrossing>& crossings,
-    RasterData& data, size_t row, size_t h_res, double pixel_w, int level,
-    Filter* filter, bool show_overlaps)
-    : Ray(r, u), crossings_(crossings), data_(data), row_(row), h_res_(h_res),
-      pixel_w_(pixel_w), level_(level), filter_(filter),
-      show_overlaps_(show_overlaps)
-  {}
+    // No crossings vector — sentinel written directly into id_data_
+    SliceRay(Position r, Direction u, RasterData& data, size_t row,
+             size_t h_res, double pixel_w, int level,
+             Filter* filter, bool show_overlaps)
+        : Ray(r, u), data_(data), row_(row), h_res_(h_res),
+          pixel_w_(pixel_w), level_(level), filter_(filter),
+          show_overlaps_(show_overlaps)
+    {}
 
-  void on_intersection() override;
+    void on_intersection() override;
 
 private:
-  size_t pixel_col(double dist) const
-  {
-    return std::min(static_cast<size_t>(dist / pixel_w_), h_res_ - 1);
+    size_t pixel_col(double dist) const {
+        return std::min(static_cast<size_t>(dist / pixel_w_), h_res_ - 1);
+    }
+
+    RasterData& data_;
+    size_t row_;
+    size_t h_res_;
+    double pixel_w_;
+    double prev_dist_ {0.0};
+    int level_;
+    Filter* filter_;
+    FilterMatch match_;
+    bool show_overlaps_;
+};
+
+inline RasterData SlicePlotBase::get_map_raytrace(int32_t filter_index) const
+{
+  size_t h_res = pixels_[0];
+  size_t v_res = pixels_[1];
+
+  bool include_filter = (filter_index >= 0);
+  Filter* filter =
+    include_filter ? model::tally_filters[filter_index].get() : nullptr;
+
+  RasterData data(h_res, v_res, include_filter);
+
+  // u_hat is the horizontal unit vector for this slice — identical to
+  // what get_map uses for its inner pixel loop direction.
+  Direction u_hat = u_span_ / u_span_.norm();
+
+  // v_step moves down one row in 3D space
+  Direction v_step = v_span_ / static_cast<double>(v_res);
+
+  // top_left is the 3D position of the left edge of the top row,
+  // matching the origin_ - 0.5*u_span_ + 0.5*v_span_ geometry from get_map
+  Position top_left = origin_ - 0.5 * u_span_ + 0.5 * v_span_;
+
+  // pixel_w is the width of one pixel in model-space cm along u_hat,
+  // used inside SliceRay to convert u_pos distances to column indices
+  double pixel_w = u_span_.norm() / static_cast<double>(h_res);
+
+#pragma omp parallel for
+  for (size_t row = 0; row < v_res; row++) {
+    // Each row fires one ray from the left edge across the full width.
+    // Ray::trace() calls on_intersection() automatically at every
+    // surface boundary — no additional work needed here.
+    Position row_start = top_left - v_step * static_cast<double>(row);
+    try {
+      SliceRay ray(row_start, u_hat, data, row, h_res,
+           pixel_w, slice_level_, filter, show_overlaps_);
+      ray.trace();
+    } catch (const std::exception&) {
+      // Lost ray — pixels for this row stay at NOT_FOUND,
+      // same behavior as get_map when exhaustive_find_cell fails
+    }
   }
 
-  std::vector<SurfaceCrossing>& crossings_;
-  RasterData& data_;
-  size_t row_;
-  size_t h_res_;
-  double pixel_w_;
-  double prev_dist_ {0.0};
-  int level_;
-  Filter* filter_;
-  FilterMatch match_;
-  bool show_overlaps_;
-};
+  return data;
+}
 
 //===============================================================================
 // Non-member functions

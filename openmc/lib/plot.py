@@ -225,6 +225,120 @@ def slice_data(origin, width=None, basis='xy', u_span=None, v_span=None,
 
     return geom_data, property_data
 
+_dll.openmc_slice_data_raytrace.argtypes = [
+    POINTER(c_double * 3),   # origin
+    POINTER(c_double * 3),   # u_span
+    POINTER(c_double * 3),   # v_span
+    POINTER(c_size_t * 2),   # pixels
+    c_bool,                  # color_overlaps
+    c_int,                   # level
+    c_int32,                 # filter_index
+    POINTER(c_int32),        # geom_data output
+    POINTER(c_double),       # property_data output (nullable)
+]
+_dll.openmc_slice_data_raytrace.restype = c_int
+_dll.openmc_slice_data_raytrace.errcheck = _error_handler
+
+
+def slice_data_raytrace(origin, width=None, basis='xy', u_span=None,
+                        v_span=None, pixels=None, show_overlaps=False,
+                        level=None, filter=None, include_properties=True):
+    """Raytrace-based equivalent for slice_data.
+
+    Returns geom_data and property_data with the same shapes as slice_data.
+    Surface crossing sentinels are encoded in geom_data[:,:,1] — any value
+    <= -10 is a crossing, and surface_id = -(val + (-10)).
+    No separate crossing call needed; just read geom_data on the Python side.
+    """
+    # --- level handling: same as slice_data ---
+    if level is None:
+        level = -1
+    if not isinstance(level, int):
+        raise TypeError("level must be an integer.")
+
+    if pixels is None:
+        raise ValueError("pixels must be specified.")
+    if len(pixels) != 2:
+        raise ValueError("pixels must be a length-2 sequence.")
+
+    if width is not None and (u_span is not None or v_span is not None):
+        raise ValueError("width is mutually exclusive with u_span/v_span.")
+
+    if u_span is not None or v_span is not None:
+        if u_span is None or v_span is None:
+            raise ValueError("Both u_span and v_span must be provided.")
+        u_span = np.asarray(u_span, dtype=float)
+        v_span = np.asarray(v_span, dtype=float)
+        # same shape/norm/orthogonality checks as slice_data
+        if u_span.shape != (3,) or v_span.shape != (3,):
+            raise ValueError("u_span and v_span must be length-3 sequences.")
+        u_norm = np.linalg.norm(u_span)
+        v_norm = np.linalg.norm(v_span)
+        if u_norm == 0.0 or v_norm == 0.0:
+            raise ValueError("u_span and v_span must be non-zero vectors.")
+        dot = float(np.dot(u_span, v_span))
+        if abs(dot) > 1.0e-10 * u_norm * v_norm:
+            raise ValueError("u_span and v_span must be orthogonal.")
+    else:
+        if width is None:
+            raise ValueError("width must be provided.")
+        if len(width) != 2:
+            raise ValueError("width must be a length-2 sequence.")
+        basis_map = {'xy': 1, 'xz': 2, 'yz': 3}
+        if isinstance(basis, str):
+            basis = basis.lower()
+            if basis not in basis_map:
+                raise ValueError(f"{basis} is not a valid plot basis.")
+            basis = basis_map[basis]
+        elif isinstance(basis, int):
+            if basis not in basis_map.values():
+                raise ValueError(f"{basis} is not a valid plot basis.")
+        else:
+            raise ValueError(f"{basis} is not a valid plot basis.")
+
+        if basis == 1:
+            u_span = np.array([width[0], 0.0, 0.0], dtype=float)
+            v_span = np.array([0.0, width[1], 0.0], dtype=float)
+        elif basis == 2:
+            u_span = np.array([width[0], 0.0, 0.0], dtype=float)
+            v_span = np.array([0.0, 0.0, width[1]], dtype=float)
+        else:
+            u_span = np.array([0.0, width[0], 0.0], dtype=float)
+            v_span = np.array([0.0, 0.0, width[1]], dtype=float)
+
+    origin = np.asarray(origin, dtype=float)
+    if origin.shape != (3,):
+        raise ValueError("origin must be a length-3 sequence.")
+
+    # pack into ctypes arrays for the C call
+    origin_arr = (c_double * 3)(*origin)
+    u_span_arr = (c_double * 3)(*u_span)
+    v_span_arr = (c_double * 3)(*v_span)
+    pixels_arr = (c_size_t * 2)(*pixels)
+
+    filter_index = -1
+    if filter is not None:
+        fi = c_int32()
+        _dll.openmc_get_filter_index(filter.id, fi)
+        filter_index = fi.value
+
+    n_geom_fields = 4 if filter is not None else 3
+    geom_data = np.zeros((pixels[1], pixels[0], n_geom_fields), dtype=np.int32)
+
+    property_data = None
+    prop_ptr = None
+    if include_properties:
+        property_data = np.zeros((pixels[1], pixels[0], 2), dtype=np.float64)
+        prop_ptr = property_data.ctypes.data_as(POINTER(c_double))
+
+    _dll.openmc_slice_data_raytrace(
+        origin_arr, u_span_arr, v_span_arr, pixels_arr,
+        show_overlaps, level, filter_index,
+        geom_data.ctypes.data_as(POINTER(c_int32)),
+        prop_ptr,
+    )
+
+    return geom_data, property_data
 
 def id_map(plot):
     """Deprecated compatibility wrapper for geometry ID maps.
