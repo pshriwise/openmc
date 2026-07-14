@@ -1892,52 +1892,108 @@ void PhongRay::on_intersection()
   }
 }
 
+void SliceRay::fill_segment(
+  size_t col_start, size_t col_end, const GeometryState& seg)
+{
+  // A segment outside the model has no cell — leave those pixels NOT_FOUND.
+  if (seg.lowest_coord().cell() == C_NONE)
+    return;
+
+  // RasterData::set_value requires a Particle (it forwards to
+  // Filter::get_all_bins, which is hard-typed to const Particle&). A SliceRay
+  // is not a Particle, but both share the GeometryState base holding all the
+  // fields set_value and the filters actually read. Copy the segment's geometry
+  // state into a Particle (all columns in a segment share the same geometry).
+  Particle p;
+  static_cast<GeometryState&>(p) = seg;
+
+  int j = p.n_coord() - 1;
+  if (level_ >= 0)
+    j = std::min(level_, j);
+
+  for (size_t col = col_start; col < col_end && col < h_res_; col++) {
+    if (show_overlaps_) {
+      auto overlap_idx = check_cell_overlap(p, false);
+      if (overlap_idx >= 0) {
+        data_.set_overlap(row_, col, overlap_idx);
+        continue;
+      }
+    }
+    data_.set_value(row_, col, p, j, filter_, &match_);
+  }
+}
+
 void SliceRay::on_intersection()
 {
-    // Get the surface ID before we do anything else
-    int32_t surface_id =
-        model::surfaces.at(boundary().surface_index())->id_;
+  // Get the surface ID before we do anything else
+  int32_t surface_id = model::surfaces.at(boundary().surface_index())->id_;
 
-    // Fill all pixel columns between the previous crossing and this one
-    // with the cell/material data of the segment just traversed
-    size_t col_prev = pixel_col(prev_dist_);
-    size_t col_now  = pixel_col(traversal_distance_);
+  // Column of this crossing, derived from the actual 3D position so that any
+  // void gap the ray advanced through before entering the model is accounted
+  // for (columns left of the model stay NOT_FOUND).
+  size_t col_now = pixel_col(u_offset());
 
-    int j = n_coord() - 1;
-    if (level_ >= 0) j = std::min(level_, j);
+  // Fill the segment the ray just traversed. The correct geometry for that
+  // segment is the state *entering* it. trace() calls neighbor_list_find_cell()
+  // (which advances *this into the next cell) before this callback, so the
+  // current *this is the cell on the far side of the crossing — not the segment
+  // just traversed. For every segment after the first, the entering state was
+  // snapshotted at the previous crossing (prev_state_). For the first segment
+  // of a ray that started inside a cell (no prior crossing), reconstruct it
+  // from the pre-crossing "_last" fields, which trace()/find_cell preserve.
+  // Fill up to and including the crossing column so that channels 0 (cell id)
+  // and 2 (material id) at the crossing pixel hold the just-traversed segment's
+  // data; the sentinel below then overwrites only channel 1. The next segment
+  // starts at col_now + 1 so it does not mess up the sentinel.
+  if (have_prev_) {
+    fill_segment(prev_col_, col_now + 1, prev_state_);
+  } else if (traversal_distance_ > 0.0) {
+    GeometryState seg = static_cast<const GeometryState&>(*this);
+    seg.n_coord() = n_coord_last();
+    for (int i = 0; i < n_coord_last(); i++)
+      seg.coord(i).cell() = cell_last(i);
+    seg.material() = material_last();
+    fill_segment(0, col_now + 1, seg);
+  }
+  // else: first callback is the entry crossing from void (traversal_distance_
+  // is still 0); nothing has been traversed yet, so only the snapshot below
+  // runs and the void columns left of col_now stay NOT_FOUND.
 
-    // RasterData::set_value requires a Particle (it forwards to
-    // Filter::get_all_bins, which is hard-typed to const Particle&). A SliceRay
-    // is not a Particle, but both share the GeometryState base holding all the
-    // fields set_value and the filters actually read. Copy this ray's geometry
-    // state into a Particle once per crossing (all columns in this segment share
-    // the same geometry) and pass that.
-    Particle p;
-    static_cast<GeometryState&>(p) = static_cast<const GeometryState&>(*this);
+  // Write the surface crossing sentinel into channel 1 of the crossing pixel.
+  // Channel 0 (cell id) and channel 2 (material id) are left as written by
+  // fill_segment above — still valid and readable. Channel 1 is normally cell
+  // instance (always >= 0), so any value <= SURFACE_CROSSING_BASE is
+  // unambiguously a crossing sentinel.
+  // Recovery on the Python side: surface_id = SURFACE_CROSSING_BASE - val.
+  if (col_now < h_res_) {
+    data_.id_data_(row_, col_now, 1) = SURFACE_CROSSING_BASE - surface_id;
+  }
 
-    for (size_t col = col_prev; col < col_now && col < h_res_; col++) {
-        if (show_overlaps_) {
-            auto overlap_idx = check_cell_overlap(*this, false);
-            if (overlap_idx >= 0) {
-                data_.set_overlap(row_, col, overlap_idx);
-                continue;
-            }
-        }
-        data_.set_value(row_, col, p, j, filter_, &match_);
-    }
+  // Snapshot the post-crossing state as the entering state of the next segment,
+  // which begins one column past the sentinel pixel.
+  prev_state_ = static_cast<const GeometryState&>(*this);
+  prev_col_ = col_now + 1;
+  have_prev_ = true;
+}
 
-    // Write the surface crossing sentinel into channel 1 of the
-    // crossing pixel. Channel 0 (cell id) and channel 2 (material id)
-    // are left as written by set_value above — still valid and readable.
-    // Channel 1 is normally cell instance (always >= 0), so any value
-    // <= SURFACE_CROSSING_BASE is unambiguously a crossing sentinel.
-    // Recovery on Python side: surface_id = -(val + SURFACE_CROSSING_BASE)
-    if (col_now < h_res_) {
-        data_.id_data_(row_, col_now, 1) =
-            SURFACE_CROSSING_BASE - surface_id;
-    }
+void SliceRay::finish()
+{
+  // Determine whether the ray's final position is inside the model. find_cell()
+  // leaves a stale cell index behind when a ray exits, so probe explicitly.
+  GeometryState probe = static_cast<const GeometryState&>(*this);
+  if (!exhaustive_find_cell(probe, false)) {
+    // Ray exited the model: everything past the last crossing is void.
+    return;
+  }
 
-    prev_dist_ = traversal_distance_;
+  // Ray ended inside an unbounded cell with no exit crossing. Fill the trailing
+  // segment out to the right edge with that cell.
+  if (have_prev_) {
+    fill_segment(prev_col_, h_res_, prev_state_);
+  } else {
+    // No surface was ever crossed — the whole row is a single cell.
+    fill_segment(0, h_res_, probe);
+  }
 }
 
 extern "C" int openmc_id_map(const void* plot, int32_t* data_out)

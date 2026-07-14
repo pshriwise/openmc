@@ -576,31 +576,50 @@ private:
 
 class SliceRay : public Ray {
 public:
-    // No crossings vector — sentinel written directly into id_data_
-    SliceRay(Position r, Direction u, RasterData& data, size_t row,
-             size_t h_res, double pixel_w, int level,
-             Filter* filter, bool show_overlaps)
-        : Ray(r, u), data_(data), row_(row), h_res_(h_res),
-          pixel_w_(pixel_w), level_(level), filter_(filter),
-          show_overlaps_(show_overlaps)
-    {}
+  // No crossings vector — sentinel written directly into id_data_
+  SliceRay(Position r, Direction u, RasterData& data, size_t row, size_t h_res,
+    double pixel_w, int level, Filter* filter, bool show_overlaps)
+    : Ray(r, u), data_(data), row_(row), h_res_(h_res), pixel_w_(pixel_w),
+      r0_(r), level_(level), filter_(filter), show_overlaps_(show_overlaps)
+  {}
 
-    void on_intersection() override;
+  void on_intersection() override;
+
+  // Fill any columns after the last surface crossing out to the right edge of
+  // the image. There is no crossing to trigger on_intersection() for this
+  // trailing segment, so it must be handled once after trace() returns.
+  void finish();
 
 private:
-    size_t pixel_col(double dist) const {
-        return std::min(static_cast<size_t>(dist / pixel_w_), h_res_ - 1);
-    }
+  size_t pixel_col(double dist) const
+  {
+    if (dist < 0.0)
+      dist = 0.0;
+    return std::min(static_cast<size_t>(dist / pixel_w_), h_res_ - 1);
+  }
 
-    RasterData& data_;
-    size_t row_;
-    size_t h_res_;
-    double pixel_w_;
-    double prev_dist_ {0.0};
-    int level_;
-    Filter* filter_;
-    FilterMatch match_;
-    bool show_overlaps_;
+  // Distance along the ray direction from the image's left edge (r0_) to the
+  // current position. Unlike traversal_distance_, this is derived from the
+  // actual 3D position, so it correctly accounts for any void gap the ray
+  // advanced through before entering the model.
+  double u_offset() const { return (r() - r0_).dot(u()); }
+
+  // Paint columns [col_start, col_end) with the geometry state `seg`. No-ops if
+  // seg is outside the model (cell == C_NONE), leaving those pixels NOT_FOUND.
+  void fill_segment(size_t col_start, size_t col_end, const GeometryState& seg);
+
+  RasterData& data_;
+  size_t row_;
+  size_t h_res_;
+  double pixel_w_;
+  Position r0_;              //!< ray origin at the image's left edge
+  size_t prev_col_ {0};      //!< first column of the current (unfilled) segment
+  GeometryState prev_state_; //!< geometry state entering the current segment
+  bool have_prev_ {false};   //!< whether prev_state_/prev_col_ are valid
+  int level_;
+  Filter* filter_;
+  FilterMatch match_;
+  bool show_overlaps_;
 };
 
 inline RasterData SlicePlotBase::get_map_raytrace(int32_t filter_index) const
@@ -636,9 +655,13 @@ inline RasterData SlicePlotBase::get_map_raytrace(int32_t filter_index) const
     // surface boundary — no additional work needed here.
     Position row_start = top_left - v_step * static_cast<double>(row);
     try {
-      SliceRay ray(row_start, u_hat, data, row, h_res,
-           pixel_w, slice_level_, filter, show_overlaps_);
+      SliceRay ray(row_start, u_hat, data, row, h_res, pixel_w, slice_level_,
+        filter, show_overlaps_);
       ray.trace();
+      // Rasterize the final segment, which has no crossing to trigger
+      // on_intersection() (the ray either exited the model or ran to infinity
+      // in an unbounded cell).
+      ray.finish();
     } catch (const std::exception&) {
       // Lost ray — pixels for this row stay at NOT_FOUND,
       // same behavior as get_map when exhaustive_find_cell fails
