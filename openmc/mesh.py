@@ -2776,6 +2776,13 @@ class UnstructuredMesh(MeshBase):
         Multiplicative factor to apply to mesh coordinates
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
+    interface : {'native', 'xdg'}
+        Interface type for the unstructured mesh. The value 'native' indicates
+        that the C++ implementation interfaces directly with the indicated mesh
+        library. The value 'xdg' indicates that the C++ implementation
+        interfaces with the mesh library through the XDG interface, enabling
+        consistent behavior across different mesh libraries. The default value
+        is 'native'.
     options : str
         Special options that control spatial search data structures used. This
         is currently only used to set `parameters
@@ -2825,6 +2832,7 @@ class UnstructuredMesh(MeshBase):
         self._conectivity = None
         self._vertices = None
         self.library = library
+        self.interface = 'native'
         self._output = False
         self.length_multiplier = length_multiplier
         self.options = options
@@ -2847,6 +2855,15 @@ class UnstructuredMesh(MeshBase):
     def library(self, lib: str):
         cv.check_value('Unstructured mesh library', lib, ('moab', 'libmesh'))
         self._library = lib
+
+    @property
+    def interface(self):
+        return self._interface
+
+    @interface.setter
+    def interface(self, interface: str):
+        cv.check_value('Unstructured mesh interface', interface, ('native', 'xdg'))
+        self._interface = interface
 
     @property
     def options(self) -> str | None:
@@ -2969,6 +2986,7 @@ class UnstructuredMesh(MeshBase):
         string = super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tFilename', self.filename)
         string += '{: <16}=\t{}\n'.format('\tMesh Library', self.library)
+        string += '{: <16}=\t{}\n'.format('\tInterface', self.interface)
         if self.length_multiplier != 1.0:
             string += '{: <16}=\t{}\n'.format('\tLength multiplier',
                                               self.length_multiplier)
@@ -3312,6 +3330,9 @@ class UnstructuredMesh(MeshBase):
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 
+        if self.interface != 'native':
+            element.set("interface", self.interface)
+
         if self._length_multiplier != 1.0:
             element.set("length_multiplier", str(self.length_multiplier))
 
@@ -3336,8 +3357,10 @@ class UnstructuredMesh(MeshBase):
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
         options = get_text(elem, "options")
-
-        return cls(filename, library, mesh_id, '', length_multiplier, options)
+        out = cls(filename, library, mesh_id, '', length_multiplier, options)
+        if interface := get_text(elem, "interface") is not None:
+            out.interface = interface
+        return out
 
 
 def _read_meshes(elem):
