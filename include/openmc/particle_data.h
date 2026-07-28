@@ -312,7 +312,6 @@ public:
     n_coord_last_ = 1;
   }
 
-#ifdef OPENMC_DAGMC_ENABLED
   // reset DAGMC ray histories on all coordinate levels
   void reset_dagmc_history()
   {
@@ -323,7 +322,6 @@ public:
     }
     #endif
   }
-#endif
 
   // get coordinate level containing the given cell index
   int coord_level_for_cell(int32_t cell_index) const
