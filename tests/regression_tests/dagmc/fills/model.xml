@@ -1,0 +1,205 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density value="0.998" units="g/cc"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+      <nuclide name="B10" ao="0.00085"/>
+    </material>
+    <material id="13">
+      <density value="10.371" units="g/cc"/>
+      <nuclide name="U235" ao="0.033408078"/>
+      <nuclide name="U238" ao="0.966591922"/>
+      <nuclide name="O16" ao="2.0"/>
+    </material>
+    <material id="21">
+      <density value="6.44" units="g/cc"/>
+      <nuclide name="Zr90" wo="0.501807"/>
+      <nuclide name="Zr91" wo="0.110712"/>
+      <nuclide name="Zr92" wo="0.170991"/>
+      <nuclide name="Zr94" wo="0.177057"/>
+      <nuclide name="Zr96" wo="0.029133"/>
+    </material>
+    <material id="22">
+      <density value="7.9" units="g/cc"/>
+      <nuclide name="Mn55" wo="2.0"/>
+      <nuclide name="Ni58" wo="6.83"/>
+      <nuclide name="Ni60" wo="2.61"/>
+      <nuclide name="Cr53" wo="1.71"/>
+      <nuclide name="Fe54" wo="3.98257"/>
+      <nuclide name="Fe56" wo="63.03447"/>
+      <nuclide name="Fe57" wo="1.4763"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="11" material="void" region="-11" universe="11"/>
+    <cell id="12" material="13" region="11 -12 15 16" universe="11"/>
+    <cell id="13" material="void" region="11 -12 -15" universe="11"/>
+    <cell id="14" material="void" region="11 -12 -16" universe="11"/>
+    <cell id="15" material="void" region="12 -13" universe="11"/>
+    <cell id="16" material="21" region="13 -14" universe="11"/>
+    <cell id="17" material="1" region="14" universe="11"/>
+    <cell id="51" material="1" region="-51" universe="51"/>
+    <cell id="52" material="21" region="51 -52" universe="51"/>
+    <cell id="53" material="1" region="52" universe="51"/>
+    <cell id="100" material="1" universe="100"/>
+    <cell id="155" material="1" region="-155" universe="55"/>
+    <cell id="156" material="22" region="155 -156" universe="55"/>
+    <cell id="157" material="1" region="156" universe="55"/>
+    <dagmc_universe id="1" filename="/home/pshriwise/soft/openmc/tests/regression_tests/dagmc/fills/hex_boundary_cell.h5m">
+      <cell id="1" fill="101"/>
+      <cell id="2" name="implicit complement" material="void"/>
+    </dagmc_universe>
+    <hex_lattice id="101" n_rings="11" n_axial="3">
+      <pitch>1.265 1.2</pitch>
+      <outer>100</outer>
+      <center>0.0 0.0 0.0</center>
+      <universes>
+                    11
+                  11  11
+                11  11  11
+              11  11  11  11
+            11  11  11  11  11
+          11  11  11  11  11  11
+        11  11  11  11  11  11  11
+      11  11  11  11  11  11  11  11
+    11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  55  11  11  11  11  11
+  11  11  11  55  11  11  55  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  55  11  11  55  11  55  11  11
+11  11  11  11  55  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  55  11  11  11
+11  11  55  11  11  51  11  11  55  11  11
+  11  11  11  55  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  55  11  11  11  11
+  11  11  55  11  55  11  11  55  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  55  11  11  55  11  11  11
+11  11  11  11  11  55  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+    11  11  11  11  11  11  11  11  11
+      11  11  11  11  11  11  11  11
+        11  11  11  11  11  11  11
+          11  11  11  11  11  11
+            11  11  11  11  11
+              11  11  11  11
+                11  11  11
+                  11  11
+                    11
+                    11
+                  11  11
+                11  11  11
+              11  11  11  11
+            11  11  11  11  11
+          11  11  11  11  11  11
+        11  11  11  11  11  11  11
+      11  11  11  11  11  11  11  11
+    11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  55  11  11  11  11  11
+  11  11  11  55  11  11  55  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  55  11  11  55  11  55  11  11
+11  11  11  11  55  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  55  11  11  11
+11  11  55  11  11  51  11  11  55  11  11
+  11  11  11  55  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  55  11  11  11  11
+  11  11  55  11  55  11  11  55  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  55  11  11  55  11  11  11
+11  11  11  11  11  55  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+    11  11  11  11  11  11  11  11  11
+      11  11  11  11  11  11  11  11
+        11  11  11  11  11  11  11
+          11  11  11  11  11  11
+            11  11  11  11  11
+              11  11  11  11
+                11  11  11
+                  11  11
+                    11
+                    11
+                  11  11
+                11  11  11
+              11  11  11  11
+            11  11  11  11  11
+          11  11  11  11  11  11
+        11  11  11  11  11  11  11
+      11  11  11  11  11  11  11  11
+    11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  55  11  11  11  11  11
+  11  11  11  55  11  11  55  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  55  11  11  55  11  55  11  11
+11  11  11  11  55  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  55  11  11  11
+11  11  55  11  11  51  11  11  55  11  11
+  11  11  11  55  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  55  11  11  11  11
+  11  11  55  11  55  11  11  55  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+11  11  11  11  11  11  11  11  11  11  11
+  11  11  11  55  11  11  55  11  11  11
+11  11  11  11  11  55  11  11  11  11  11
+  11  11  11  11  11  11  11  11  11  11
+    11  11  11  11  11  11  11  11  11
+      11  11  11  11  11  11  11  11
+        11  11  11  11  11  11  11
+          11  11  11  11  11  11
+            11  11  11  11  11
+              11  11  11  11
+                11  11  11
+                  11  11
+                    11</universes>
+    </hex_lattice>
+    <surface id="11" type="z-cylinder" coeffs="0.0 0.0 0.06"/>
+    <surface id="12" type="z-cylinder" coeffs="0.0 0.0 0.378"/>
+    <surface id="13" type="z-cylinder" coeffs="0.0 0.0 0.3865"/>
+    <surface id="14" type="z-cylinder" coeffs="0.0 0.0 0.455"/>
+    <surface id="15" type="sphere" coeffs="0.0 0.0 -2.5639 2.0"/>
+    <surface id="16" type="sphere" coeffs="0.0 0.0 2.5639 2.0"/>
+    <surface id="51" type="z-cylinder" coeffs="0.0 0.0 0.44"/>
+    <surface id="52" type="z-cylinder" coeffs="0.0 0.0 0.515"/>
+    <surface id="155" type="z-cylinder" coeffs="0.0 0.0 0.55"/>
+    <surface id="156" type="z-cylinder" coeffs="0.0 0.0 0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>500</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-8.0 -8.0 -1.5 8.0 8.0 1.5</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>
