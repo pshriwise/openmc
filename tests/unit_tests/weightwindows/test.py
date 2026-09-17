@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -12,17 +11,12 @@ from tests import cdtemp
 
 
 @pytest.fixture
-def wws():
-
-    # weight windows
-    ww_files = ('ww_n.txt', 'ww_p.txt')
-    cwd = Path(__file__).parent.absolute()
-    ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
+def wws(ww_files):
 
     # load pre-generated weight windows
     # (created using the same tally as above)
-    ww_n_lower_bnds = np.loadtxt(ww_n_file)
-    ww_p_lower_bnds = np.loadtxt(ww_p_file)
+    ww_n_lower_bnds = np.loadtxt(ww_files.neutron)
+    ww_p_lower_bnds = np.loadtxt(ww_files.photon)
 
     # create a mesh matching the one used
     # to generate the weight windows
@@ -123,13 +117,9 @@ def model():
 
 
 @pytest.mark.parametrize("shared_secondary", [False, True])
-def test_weightwindows(model, wws, shared_secondary):
+def test_weightwindows(model, wws, shared_secondary, ww_files):
 
-    ww_files = ('ww_n.txt', 'ww_p.txt')
-    cwd = Path(__file__).parent.absolute()
-    filepaths = [cwd / Path(f) for f in ww_files]
-
-    with cdtemp(filepaths):
+    with cdtemp([ww_files.neutron, ww_files.photon]):
         # run once with variance reduction off
         model.settings.weight_windows_on = False
         model.settings.shared_secondary_bank = shared_secondary
@@ -348,7 +338,7 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
 
 
 @pytest.mark.parametrize('library', ('libmesh', 'moab'))
-def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
+def test_unstructured_mesh_applied_wws(umesh_files, run_in_tmpdir, library):
     """
     Ensure that weight windows on unstructured mesh work when
     they aren't part of a tally or weight window generator
@@ -367,8 +357,7 @@ def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
     cell = openmc.Cell(region=-box, fill=water)
 
     geometry = openmc.Geometry([cell])
-    mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
-    mesh = openmc.UnstructuredMesh(mesh_file, library)
+    mesh = openmc.UnstructuredMesh(umesh_files.tets, library)
 
     dummy_wws = np.ones((12_000,))
 

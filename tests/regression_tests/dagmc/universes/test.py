@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture
-def pin_lattice_model():
+def pin_lattice_model(dagmc_files):
     ### MATERIALS ###
     fuel = openmc.Material(name='no-void fuel')
     fuel.set_density('g/cc', 10.29769)
@@ -42,10 +42,12 @@ def pin_lattice_model():
 
     ### GEOMETRY ###
     # create the DAGMC universe
-    pincell_univ = openmc.DAGMCUniverse(filename='dagmc.h5m', auto_geom_ids=True)
+    pincell_univ = openmc.DAGMCUniverse(filename=dagmc_files.universes,
+                                        auto_geom_ids=True)
 
     # creates another DAGMC universe, this time with within a bounded cell
-    bound_pincell_universe = openmc.DAGMCUniverse(filename='dagmc.h5m').bounded_universe()
+    bound_pincell_universe = openmc.DAGMCUniverse(
+        filename=dagmc_files.universes).bounded_universe()
     # uses the bound_dag_cell as the root argument to test the type checks in openmc.Geometry
     bound_pincell_geometry = openmc.Geometry(root=bound_pincell_universe)
     # assigns the bound_dag_geometry to the model to test the type checks in model.Geometry setter

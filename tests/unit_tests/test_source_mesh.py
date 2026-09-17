@@ -1,5 +1,4 @@
 from itertools import product
-from pathlib import Path
 from math import sqrt
 import random
 
@@ -69,7 +68,7 @@ def ids(params):
     return f"{params['library']}-{params['source_strengths']}"
 
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
-def test_unstructured_mesh_sampling(model, request, test_cases):
+def test_unstructured_mesh_sampling(model, umesh_files, test_cases):
     # skip the test if the library is not enabled
     if test_cases['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
@@ -78,8 +77,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         pytest.skip("LibMesh is not enabled in this build.")
 
     # setup mesh source ###
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
+    uscd_mesh = openmc.UnstructuredMesh(umesh_files.tets, test_cases['library'])
 
     # subtract one to account for root cell produced by RegularMesh.build_cells
     n_cells = len(model.geometry.get_all_cells()) - 1
@@ -100,7 +98,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
     source = openmc.IndependentSource(space=space, energy=energy)
     model.settings.source = source
 
-    with cdtemp([mesh_filename]):
+    with cdtemp([umesh_files.tets]):
         model.export_to_xml()
 
         n_measurements = 100
@@ -145,10 +143,9 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         assert((diff < 6*std_dev).sum() / diff.size >= 0.997)
 
 
-def test_strengths_size_failure(request, model):
+def test_strengths_size_failure(umesh_files, model):
     # setup mesh source ###
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'libmesh')
+    uscd_mesh = openmc.UnstructuredMesh(umesh_files.tets, 'libmesh')
 
     # intentionally incorrectly sized to trigger an error
     n_cells = len(model.geometry.get_all_cells())
@@ -171,22 +168,20 @@ def test_strengths_size_failure(request, model):
     # make sure that an incorrrectly sized strengths array causes a failure
     source.space.strengths = source.space.strengths[:-1]
 
-    mesh_filename = Path(request.fspath).parent / source.space.mesh.filename
-
-    with pytest.raises(RuntimeError, match=r'strengths array'), cdtemp([mesh_filename]):
+    with pytest.raises(RuntimeError, match=r'strengths array'), \
+            cdtemp([umesh_files.tets]):
         model.export_to_xml()
         openmc.run()
 
 
-def test_roundtrip(run_in_tmpdir, model, request):
+def test_roundtrip(run_in_tmpdir, model, umesh_files):
     if (
         not openmc.lib.feature_enabled('libmesh')
         and not openmc.lib.feature_enabled('dagmc')
     ):
         pytest.skip("Unstructured mesh is not enabled in this build.")
 
-    mesh_filename = Path(request.fspath).parent / 'test_mesh_tets.e'
-    ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library='libmesh')
+    ucd_mesh = openmc.UnstructuredMesh(umesh_files.tets, library='libmesh')
 
     if not openmc.lib.feature_enabled('libmesh'):
         ucd_mesh.library = 'moab'
@@ -322,7 +317,8 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
 
 
 @pytest.mark.parametrize("library", ('moab', 'libmesh'))
-def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
+def test_umesh_source_independent(run_in_tmpdir, umesh_files, void_model,
+                                  library):
     import openmc.lib
     # skip the test if the library is not enabled
     if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
@@ -333,8 +329,7 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
 
     model = void_model
 
-    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
+    uscd_mesh = openmc.UnstructuredMesh(umesh_files.tets, library)
     ind_source = openmc.IndependentSource()
     n_elements = 12_000
     model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])

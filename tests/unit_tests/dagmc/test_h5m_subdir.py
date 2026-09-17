@@ -11,12 +11,11 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("absolute", [True, False])
-def test_model_h5m_in_subdirectory(run_in_tmpdir, request, absolute):
+def test_model_h5m_in_subdirectory(run_in_tmpdir, dagmc_files, absolute):
     # Create new subdirectory and copy h5m file there
-    h5m = Path(request.fspath).parent / "dagmc.h5m"
     subdir = Path("h5m")
     subdir.mkdir()
-    shutil.copy(h5m, subdir)
+    shutil.copy(dagmc_files.legacy, subdir)
 
     # Create simple model with h5m file in subdirectory
     if absolute:

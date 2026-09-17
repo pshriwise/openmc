@@ -80,14 +80,14 @@ def test_export_periodic_mesh_metadata(run_in_tmpdir):
 
 
 @pytest.mark.parametrize('library', ('libmesh', 'moab'))
-def test_export_hdf5_unstructured_mesh(request, run_in_tmpdir, library):
+def test_export_hdf5_unstructured_mesh(umesh_files, run_in_tmpdir, library):
     if library == 'libmesh' and not openmc.lib.feature_enabled('libmesh'):
         pytest.skip('LibMesh not enabled in this build.')
     if library == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip('DAGMC (and MOAB) not enabled in this build.')
 
     mesh = openmc.UnstructuredMesh(
-        request.path.with_name('test_mesh_tets.exo'), library, mesh_id=20,
+        umesh_files.tets, library, mesh_id=20,
         name='unstructured', length_multiplier=2.0)
     ww = openmc.WeightWindows(mesh, np.ones(12_000), upper_bound_ratio=5.0)
     openmc.WeightWindowsList([ww]).export_to_hdf5('ww.h5')

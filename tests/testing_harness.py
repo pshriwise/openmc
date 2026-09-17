@@ -12,6 +12,7 @@ import openmc
 from openmc.examples import pwr_core
 from colorama import Fore, init
 
+from tests import data as test_data
 from tests.regression_tests import config
 
 init()
@@ -354,8 +355,23 @@ class PyAPITestHarness(TestHarness):
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
         xmls = ['model.xml', 'plots.xml']
-        return ''.join([open(fname).read() for fname in xmls
+        text = ''.join([open(fname).read() for fname in xmls
                         if os.path.exists(fname)])
+        return self._normalize_data_paths(text)
+
+    @staticmethod
+    def _normalize_data_paths(text):
+        """Rewrite absolute paths under tests/ as repo-relative ones.
+
+        Tests refer to shared geometry and mesh files by absolute path (see the
+        '*_files' fixtures in tests/conftest.py) so that they resolve from any
+        working directory. Those absolute paths would otherwise be written into
+        the reference files and differ on every machine.
+        """
+        tests_dir = test_data.TESTS_DIR
+        for prefix in (f'{tests_dir}{os.sep}', f'{tests_dir.as_posix()}/'):
+            text = text.replace(prefix, '')
+        return text
 
     def _write_inputs(self, input_digest):
         """Write the digest of the input XMLs to an ASCII file."""

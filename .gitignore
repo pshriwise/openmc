@@ -41,6 +41,10 @@ results_error.dat
 inputs_error.dat
 results_test.dat
 
+# Copied in by the 'dagmc_h5m_in_cwd' fixture so the external C++ driver can
+# load it; removed on teardown, but this keeps a crashed run out of git status.
+tests/regression_tests/dagmc/external/dagmc.h5m
+
 # Test
 .pytest_cache/
 

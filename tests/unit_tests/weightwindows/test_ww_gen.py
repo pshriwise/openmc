@@ -339,14 +339,13 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
     not openmc.lib.feature_enabled('dagmc'),
     reason="DAGMC CAD geometry is not enabled."
 )
-def test_ww_generation_with_dagmc(run_in_tmpdir):
+def test_ww_generation_with_dagmc(run_in_tmpdir, dagmc_files):
     mat1 = openmc.Material(name="1")
     mat1.add_nuclide("H1", 1, percent_type="ao")
     mat1.set_density("g/cm3", 0.001)
 
     materials = openmc.Materials([mat1])
-    dag_univ = openmc.DAGMCUniverse(
-        Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
+    dag_univ = openmc.DAGMCUniverse(dagmc_files.tets_no_graveyard)
     bound_dag_univ = dag_univ.bounded_universe(padding_distance=1)
     geometry = openmc.Geometry(bound_dag_univ)
 

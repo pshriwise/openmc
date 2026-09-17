@@ -56,43 +56,26 @@ def cpp_driver(request):
         os.remove('CMakeLists.txt')
 
 @pytest.fixture
-def model():
-    model = openmc.model.Model()
+def dagmc_h5m_in_cwd(dagmc_files):
+    """Place the geometry alongside the test.
 
-    # Settings
-    model.settings.batches = 5
-    model.settings.inactive = 0
-    model.settings.particles = 100
-    source_box = openmc.stats.Box([-4, -4, -4],
-                                  [ 4,  4,  4])
-    source = openmc.IndependentSource(space=source_box)
-    model.settings.source = source
+    Unlike every other DAGMC test, this one drives OpenMC from main.cpp, which
+    calls ``load_file("dagmc.h5m")`` directly rather than going through the
+    model XML. The C++ driver therefore needs the file in its working
+    directory regardless of the path recorded in the XML.
+    """
+    dest = Path(__file__).parent / dagmc_files.legacy.name
+    shutil.copy(dagmc_files.legacy, dest)
+    try:
+        yield dest
+    finally:
+        dest.unlink(missing_ok=True)
+
+
+@pytest.fixture
+def model(dagmc_models):
+    model = dagmc_models.legacy_pincell
     model.settings.temperature['default'] = 293
-
-    # Geometry
-    dag_univ = openmc.DAGMCUniverse("dagmc.h5m")
-    model.geometry = openmc.Geometry(dag_univ)
-
-    # Tallies
-    tally = openmc.Tally()
-    tally.scores = ['total']
-    tally.filters = [openmc.CellFilter(1)]
-    model.tallies = [tally]
-
-    # Materials
-    u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide('U235', 1.0, 'ao')
-    u235.set_density('g/cc', 11)
-    u235.id = 40
-    water = openmc.Material(name="water")
-    water.add_nuclide('H1', 2.0, 'ao')
-    water.add_nuclide('O16', 1.0, 'ao')
-    water.set_density('g/cc', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
-    water.id = 41
-    mats = openmc.Materials([u235, water])
-    model.materials = mats
-
     return model
 
 class ExternalDAGMCTest(PyAPITestHarness):
@@ -123,6 +106,6 @@ class ExternalDAGMCTest(PyAPITestHarness):
             openmc.run(openmc_exec=self.executable,
                        event_based=config['event'])
 
-def test_external_dagmc(cpp_driver, model):
+def test_external_dagmc(cpp_driver, model, dagmc_h5m_in_cwd):
     harness = ExternalDAGMCTest(cpp_driver, 'statepoint.5.h5', model)
     harness.main()

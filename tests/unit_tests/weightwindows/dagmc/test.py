@@ -9,7 +9,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_dagmc_weight_windows_near_boundary(run_in_tmpdir, request):
+def test_dagmc_weight_windows_near_boundary(run_in_tmpdir,
+                                            dagmc_files):
     """Ensure splitting near a boundary doesn't lose particles due to
     a stale DAGMC history on the particle object."""
 
@@ -22,8 +23,7 @@ def test_dagmc_weight_windows_near_boundary(run_in_tmpdir, request):
     # particles are allowed to the correct DAGMC history after splitting is used.
     model = openmc.Model()
 
-    dagmc_file = request.path.parent / 'nested_shell_geometry.h5m'
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_file)
+    dagmc_univ = openmc.DAGMCUniverse(dagmc_files.nested_shells)
     model.geometry = openmc.Geometry(dagmc_univ)
 
     tungsten = openmc.Material(name='shell')

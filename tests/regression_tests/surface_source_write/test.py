@@ -888,43 +888,11 @@ def test_surface_source_cell_event_based(
 
 
 @pytest.fixture(scope="module")
-def model_dagmc_1():
-    """Model based on the mesh file 'dagmc.h5m' available from
-    tests/regression_tests/dagmc/legacy.
-
-    """
+def model_dagmc_1(dagmc_models):
+    """Legacy pincell with an elongated, fissionable-only source."""
     openmc.reset_auto_ids()
-    model = openmc.Model()
-
-    # =============================================================================
-    # Materials
-    # =============================================================================
-
-    u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide("U235", 1.0, "ao")
-    u235.set_density("g/cc", 11)
-    u235.id = 40
-
-    water = openmc.Material(name="water")
-    water.add_nuclide("H1", 2.0, "ao")
-    water.add_nuclide("O16", 1.0, "ao")
-    water.set_density("g/cc", 1.0)
-    water.add_s_alpha_beta("c_H_in_H2O")
-    water.id = 41
-
-    materials = openmc.Materials([u235, water])
-    model.materials = materials
-
-    # =============================================================================
-    # Geometry
-    # =============================================================================
-
-    dagmc_univ = openmc.DAGMCUniverse(Path("../../dagmc/legacy/dagmc.h5m"))
-    model.geometry = openmc.Geometry(dagmc_univ)
-
-    # =============================================================================
-    # Settings
-    # =============================================================================
+    model = dagmc_models.legacy_pincell
+    model.tallies.clear()
 
     model.settings = openmc.Settings()
     model.settings.particles = 100
@@ -940,41 +908,13 @@ def model_dagmc_1():
 
 
 @pytest.fixture(scope="module")
-def model_dagmc_2():
-    """Model based on the mesh file 'dagmc.h5m' available from
-    tests/regression_tests/dagmc/legacy.
-
-    This model corresponds to the model_dagmc_1 contained in two boxes to introduce
-    multiple level of coordinates from CSG geometry.
-
-    """
+def model_dagmc_2(dagmc_models):
+    """Legacy pincell contained in two boxes to add CSG coordinate levels."""
     openmc.reset_auto_ids()
-    model = openmc.Model()
-
-    # =============================================================================
-    # Materials
-    # =============================================================================
-
-    u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide("U235", 1.0, "ao")
-    u235.set_density("g/cc", 11)
-    u235.id = 40
-
-    water = openmc.Material(name="water")
-    water.add_nuclide("H1", 2.0, "ao")
-    water.add_nuclide("O16", 1.0, "ao")
-    water.set_density("g/cc", 1.0)
-    water.add_s_alpha_beta("c_H_in_H2O")
-    water.id = 41
-
-    materials = openmc.Materials([u235, water])
-    model.materials = materials
-
-    # =============================================================================
-    # Geometry
-    # =============================================================================
-
-    dagmc_univ = openmc.DAGMCUniverse(Path("../../dagmc/legacy/dagmc.h5m"))
+    model = dagmc_models.legacy_pincell
+    model.tallies.clear()
+    dagmc_univ = model.geometry.root_universe
+    water = model.materials[1]
 
     # -----------------------------------------------------------------------------
     # Box 1

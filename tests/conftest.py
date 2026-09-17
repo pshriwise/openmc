@@ -1,9 +1,11 @@
 import os
 import hashlib
+
 import pytest
 import openmc
 import openmc.lib
 
+from tests import data
 from tests.regression_tests import config as regression_config
 
 # MD5 hash of the official NNDC HDF5 cross_sections.xml file.
@@ -97,6 +99,102 @@ def run_in_tmpdir(tmpdir):
 @pytest.fixture(scope="module")
 def endf_data():
     return os.environ['OPENMC_ENDF_DATA']
+
+
+class _FileGroup:
+    """Paths to a group of test data files, reached by attribute.
+
+    Paths are absolute, so a test can use one regardless of the directory it
+    runs in and regardless of whether OpenMC later relocates the model XML
+    (``Model.convert_to_multigroup`` and ``Model.plot()`` both move it into a
+    temporary directory). ``PyAPITestHarness._get_inputs`` rewrites these
+    absolute paths to repo-relative ones before comparing against
+    ``inputs_true.dat``, so reference files stay machine independent.
+    """
+
+    def __init__(self, files):
+        self._files = files
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(name)
+        try:
+            return self._files[name]
+        except KeyError:
+            raise AttributeError(
+                f"no test data file named '{name}'; available: "
+                f"{', '.join(sorted(self._files))}") from None
+
+    def __dir__(self):
+        return [*super().__dir__(), *self._files]
+
+
+def _file_group_fixture(group_name, files):
+    """Build the '<group>_files' fixture.
+
+    Session-scoped so that module- and session-scoped fixtures can use it; it
+    only hands back constants, with nothing to set up or tear down.
+    """
+    @pytest.fixture(name=f'{group_name}_files', scope='session')
+    def _fixture():
+        return _FileGroup(files)
+
+    return _fixture
+
+
+dagmc_files = _file_group_fixture('dagmc', data.DAGMC_FILES)
+umesh_files = _file_group_fixture('umesh', data.UMESH_FILES)
+ww_files = _file_group_fixture('ww', data.WW_FILES)
+
+
+class _DAGMCModels:
+    """DAGMC model builders exposed as attributes, each returning a fresh model."""
+
+    def __init__(self, files):
+        self._files = files
+
+    @property
+    def legacy_pincell(self):
+        """A fuel-and-water pincell with a box source and a cell total tally."""
+        openmc.reset_auto_ids()
+        model = openmc.Model()
+        model.settings.batches = 5
+        model.settings.inactive = 0
+        model.settings.particles = 100
+        model.settings.source = openmc.IndependentSource(
+            space=openmc.stats.Box([-4, -4, -4], [4, 4, 4]))
+
+        model.geometry = openmc.Geometry(
+            openmc.DAGMCUniverse(self._files.legacy))
+
+        tally = openmc.Tally()
+        tally.scores = ['total']
+        tally.filters = [openmc.CellFilter(1)]
+        model.tallies = [tally]
+
+        fuel = openmc.Material(name='no-void fuel', material_id=40)
+        fuel.add_nuclide('U235', 1.0, 'ao')
+        fuel.set_density('g/cc', 11)
+
+        water = openmc.Material(name='water', material_id=41)
+        water.add_nuclide('H1', 2.0, 'ao')
+        water.add_nuclide('O16', 1.0, 'ao')
+        water.set_density('g/cc', 1.0)
+        water.add_s_alpha_beta('c_H_in_H2O')
+
+        model.materials = openmc.Materials([fuel, water])
+        return model
+
+
+@pytest.fixture(scope='session')
+def dagmc_models(dagmc_files):
+    """Shared DAGMC model builders for fixtures of any scope.
+
+    Each attribute access creates an independent ``openmc.Model`` that callers
+    can modify. Callers manage ID resets and library initialization/finalization.
+    """
+    return _DAGMCModels(dagmc_files)
+
 
 @pytest.fixture(scope='session', autouse=True)
 def resolve_paths():

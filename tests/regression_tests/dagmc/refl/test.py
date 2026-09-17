@@ -10,7 +10,7 @@ pytestmark = pytest.mark.skipif(
     reason="UWUW is not enabled.")
 
 class UWUWTest(PyAPITestHarness):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, dagmc_file, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # settings
@@ -23,7 +23,7 @@ class UWUWTest(PyAPITestHarness):
         self._model.settings.source = source
 
         # geometry
-        dag_univ = openmc.DAGMCUniverse("dagmc.h5m", auto_geom_ids=True)
+        dag_univ = openmc.DAGMCUniverse(dagmc_file, auto_geom_ids=True)
         self._model.geometry = openmc.Geometry(dag_univ)
 
         # tally
@@ -33,6 +33,6 @@ class UWUWTest(PyAPITestHarness):
         self._model.tallies = [tally]
 
 
-def test_refl():
-    harness = UWUWTest('statepoint.5.h5', model=openmc.Model())
+def test_refl(dagmc_files):
+    harness = UWUWTest(dagmc_files.refl, 'statepoint.5.h5', model=openmc.Model())
     harness.main()

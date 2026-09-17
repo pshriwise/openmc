@@ -2,7 +2,6 @@
 particles/batches to be set beforehand.
 """
 
-from pathlib import Path
 import pytest
 import openmc
 import openmc.lib
@@ -12,7 +11,8 @@ pytestmark = pytest.mark.skipif(
     reason="DAGMC CAD geometry is not enabled.")
 
 
-def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
+def test_convert_to_multigroup_without_particles_batches(
+        run_in_tmpdir, dagmc_files):
     """Test that convert_to_multigroup works with DAGMC model without
     setting particles/batches beforehand."""
     openmc.reset_auto_ids()
@@ -21,9 +21,11 @@ def test_convert_to_multigroup_without_particles_batches(run_in_tmpdir):
     mat.add_nuclide("Fe56", 1.0)
     mat.set_density("g/cm3", 7.0)
 
-    # Use minimal tetrahedral DAGMC file
-    dagmc_file = Path(__file__).parent / "dagmc_tetrahedral_no_graveyard.h5m"
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_file, auto_geom_ids=True)
+    # Use minimal tetrahedral DAGMC file. An absolute path is required here:
+    # convert_to_multigroup relocates the model XML into a temporary directory,
+    # so a bare filename would no longer resolve.
+    dagmc_univ = openmc.DAGMCUniverse(dagmc_files.tets_no_graveyard,
+                                      auto_geom_ids=True)
     bound_dagmc_univ = dagmc_univ.bounded_universe(padding_distance=1)
 
     # Create model WITHOUT setting particles or batches

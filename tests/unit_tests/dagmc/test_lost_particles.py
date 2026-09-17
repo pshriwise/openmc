@@ -1,5 +1,4 @@
 import numpy as np
-from pathlib import Path
 
 import openmc
 import openmc.lib
@@ -12,7 +11,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture
-def broken_dagmc_model(request):
+def broken_dagmc_model(dagmc_files):
     openmc.reset_auto_ids()
     model = openmc.Model()
 
@@ -34,8 +33,7 @@ def broken_dagmc_model(request):
     ### GEOMETRY ###
     # create the DAGMC universe using a model that has many triangles
     # removed
-    dagmc_file = Path(request.fspath).parent / "broken_model.h5m"
-    pincell_univ = openmc.DAGMCUniverse(filename=dagmc_file, auto_geom_ids=True)
+    pincell_univ = openmc.DAGMCUniverse(filename=dagmc_files.broken, auto_geom_ids=True)
 
     # create a 2 x 2 lattice using the DAGMC pincell
     pitch = np.asarray((24.0, 24.0))

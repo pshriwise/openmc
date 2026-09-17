@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture()
-def model(request):
+def model(dagmc_files):
     pitch = 1.26
 
     mats = {}
@@ -30,9 +30,8 @@ def model(request):
     mats["41"].set_density("g/cm3", 1.0)
     mats["41"].add_s_alpha_beta("c_H_in_H2O")
 
-    p = Path(request.fspath).parent / "dagmc.h5m"
-
-    daguniv = openmc.DAGMCUniverse(p, name='simple-dagmc', auto_geom_ids=True)
+    daguniv = openmc.DAGMCUniverse(dagmc_files.legacy, name='simple-dagmc',
+                                   auto_geom_ids=True)
 
     lattice = openmc.RectLattice()
     lattice.dimension = [2, 2]
@@ -303,10 +302,9 @@ def test_dagmc_length_multiplier_from_hdf5(run_in_tmpdir):
     assert u_default.length_multiplier == 1.0
 
 
-def test_dagmc_length_multiplier_hdf5_roundtrip(request):
-    p = Path(request.fspath).parent / "dagmc_sphere_r5.h5m"
-
-    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True, length_multiplier=0.5)
+def test_dagmc_length_multiplier_hdf5_roundtrip(dagmc_files):
+    daguniv = openmc.DAGMCUniverse(dagmc_files.sphere_r5, auto_geom_ids=True,
+                                   length_multiplier=0.5)
     root = daguniv.bounded_universe()
 
     mat = openmc.Material(name="test_mat")
@@ -446,17 +444,16 @@ def test_dagmc_xml_temperature_roundtrip():
     assert dag_univ_roundtrip.cells[7].temperature == pytest.approx(825.0)
 
 
-def test_dagmc_length_multiplier_volume_scaling(request):
+def test_dagmc_length_multiplier_volume_scaling(dagmc_files):
     """Stochastic volume of a DAGMC sphere should scale as length_multiplier^3.
     A DAGMC sphere with radius 5 cm (and no graveyard) is checked against the 
     analytical volume (4/3 * pi * r^3) for length_multiplier values of 1.0 and 10.0.
     """
-    p = Path(request.fspath).parent / "dagmc_sphere_r5.h5m"
     n_samples = 1000000
 
     def _compute_sphere_volume(length_multiplier):
         openmc.reset_auto_ids()
-        daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True,
+        daguniv = openmc.DAGMCUniverse(dagmc_files.sphere_r5, auto_geom_ids=True,
                                        length_multiplier=length_multiplier)
         root = daguniv.bounded_universe()
 

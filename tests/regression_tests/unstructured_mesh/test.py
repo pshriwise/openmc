@@ -253,7 +253,7 @@ for i, (lib, estimator, ext_geom, holes) in enumerate(product(*param_values)):
 
 
 @pytest.mark.parametrize("test_opts", test_cases)
-def test_unstructured_mesh_tets(model, test_opts):
+def test_unstructured_mesh_tets(model, test_opts, umesh_files):
     # skip the test if the library is not enabled
     if test_opts['library'] == 'moab' and not openmc.lib.feature_enabled('dagmc'):
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
@@ -267,9 +267,9 @@ def test_unstructured_mesh_tets(model, test_opts):
        pytest.skip("Tracklength tallies are not supported using libmesh.")
 
     if test_opts['holes']:
-        mesh_filename = "test_mesh_tets_w_holes.e"
+        mesh_filename = umesh_files.tets_w_holes
     else:
-        mesh_filename = "test_mesh_tets.e"
+        mesh_filename = umesh_files.tets
 
     # add reference mesh tally
     regular_mesh_tally = model.tallies[0]
@@ -304,12 +304,12 @@ def test_unstructured_mesh_tets(model, test_opts):
 
 @pytest.mark.skipif(not openmc.lib.feature_enabled('libmesh'),
                     reason='LibMesh is not enabled in this build.')
-def test_unstructured_mesh_hexes(model):
+def test_unstructured_mesh_hexes(model, umesh_files):
     regular_mesh_tally = model.tallies[0]
     regular_mesh_tally.estimator = 'collision'
 
     # add analagous unstructured mesh tally
-    uscd_mesh = openmc.UnstructuredMesh('test_mesh_hexes.e', 'libmesh')
+    uscd_mesh = openmc.UnstructuredMesh(umesh_files.hexes, 'libmesh')
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies

@@ -1,7 +1,4 @@
-import shutil
-
 import numpy as np
-from pathlib import Path
 import pytest
 
 import openmc
@@ -15,25 +12,12 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module", autouse=True)
-def dagmc_model(request):
-
-    model = openmc.model.Model()
-
-    # settings
-    model.settings.batches = 5
-    model.settings.inactive = 0
-    model.settings.particles = 100
+def dagmc_model(dagmc_models):
+    model = dagmc_models.legacy_pincell
     model.settings.temperature = {'tolerance': 50.0}
     model.settings.verbosity = 1
-    source_box = openmc.stats.Box([ -4, -4, -4 ],
-                                  [  4,  4,  4 ])
-    source = openmc.IndependentSource(space=source_box)
-    model.settings.source = source
-
-    # geometry
-    dagmc_file = Path(request.fspath).parent / 'dagmc.h5m'
-    dagmc_universe = openmc.DAGMCUniverse(dagmc_file)
-    model.geometry = openmc.Geometry(dagmc_universe)
+    model.materials[0].temperature = 320
+    dagmc_universe = model.geometry.root_universe
 
     # check number of surfaces and volumes for this pincell model there should
     # be 5 volumes: two fuel regions, water, graveyard, implicit complement (the
@@ -43,34 +27,7 @@ def dagmc_model(request):
     assert dagmc_universe.n_cells == 5
     assert dagmc_universe.n_surfaces == 21
 
-    # tally
-    tally = openmc.Tally()
-    tally.scores = ['total']
-    tally.filters = [openmc.CellFilter(1)]
-    model.tallies = [tally]
-
-    # materials
-    u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide('U235', 1.0, 'ao')
-    u235.set_density('g/cc', 11)
-    u235.id = 40
-    u235.temperature = 320
-
-    water = openmc.Material(name="water")
-    water.add_nuclide('H1', 2.0, 'ao')
-    water.add_nuclide('O16', 1.0, 'ao')
-    water.set_density('g/cc', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
-    water.id = 41
-
-    mats = openmc.Materials([u235, water])
-    model.materials = mats
-
-    # location of  dagmc file in test directory
-    dagmc_file = request.fspath.dirpath() + "/dagmc.h5m"
-    # move to a temporary directory
     with cdtemp():
-        shutil.copyfile(dagmc_file, "./dagmc.h5m")
         model.export_to_xml()
         openmc.lib.init()
         yield

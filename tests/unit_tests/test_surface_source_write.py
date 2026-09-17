@@ -228,42 +228,11 @@ def test_surface_source_id(run_in_tmpdir):
 
 
 @pytest.fixture
-def model_dagmc(request):
-    """Model based on the mesh file 'dagmc.h5m' available from
-    tests/regression_tests/dagmc/legacy.
-
-    """
+def model_dagmc(dagmc_models):
+    """Legacy pincell with an elongated source for surface-crossing tests."""
     openmc.reset_auto_ids()
-    model = openmc.Model()
-
-    # =============================================================================
-    # Materials
-    # =============================================================================
-
-    u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide("U235", 1.0, "ao")
-    u235.set_density("g/cc", 11)
-    u235.id = 40
-
-    water = openmc.Material(name="water")
-    water.add_nuclide("H1", 2.0, "ao")
-    water.add_nuclide("O16", 1.0, "ao")
-    water.set_density("g/cc", 1.0)
-    water.add_s_alpha_beta("c_H_in_H2O")
-    water.id = 41
-
-    model.materials = openmc.Materials([u235, water])
-
-    # =============================================================================
-    # Geometry
-    # =============================================================================
-    dagmc_path = Path(request.fspath).parent / "../regression_tests/dagmc/legacy/dagmc.h5m"
-    dagmc_univ = openmc.DAGMCUniverse(dagmc_path)
-    model.geometry = openmc.Geometry(dagmc_univ)
-
-    # =============================================================================
-    # Settings
-    # =============================================================================
+    model = dagmc_models.legacy_pincell
+    model.tallies.clear()
 
     model.settings = openmc.Settings()
     model.settings.particles = 300

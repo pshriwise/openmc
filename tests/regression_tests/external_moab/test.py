@@ -141,7 +141,7 @@ class ExternalMoabTest(PyAPITestHarness):
                 os.remove(f)
 
 
-def test_external_mesh(cpp_driver):
+def test_external_mesh(cpp_driver, umesh_files):
 
     # Materials
     materials = openmc.Materials()
@@ -231,11 +231,8 @@ def test_external_mesh(cpp_driver):
     # create a containing universe
     geometry = openmc.Geometry([fuel_cell, clad_cell, water_cell])
 
-    # Meshes
-    mesh_filename = "test_mesh_tets.h5m"
-
     # Create a normal unstructured mesh to compare to
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'moab')
+    uscd_mesh = openmc.UnstructuredMesh(umesh_files.tets_moab, 'moab')
 
     # Create filters
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)

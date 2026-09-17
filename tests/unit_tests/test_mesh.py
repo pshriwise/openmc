@@ -13,6 +13,8 @@ import openmc.lib
 from openmc.utility_funcs import change_directory
 from uncertainties.unumpy import uarray, nominal_values, std_devs
 
+from tests import data
+
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
 def test_raises_error_when_flat(val_left, val_right):
@@ -387,8 +389,8 @@ def test_mesh_name_roundtrip(run_in_tmpdir):
     assert mesh.name == 'regular-mesh'
 
 
-def test_umesh_roundtrip(run_in_tmpdir, request):
-    umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
+def test_umesh_roundtrip(run_in_tmpdir, umesh_files):
+    umesh = openmc.UnstructuredMesh(umesh_files.tets, 'moab')
     umesh.output = True
 
     # create a tally using this mesh
@@ -426,7 +428,7 @@ def test_umesh_from_hdf5_without_filename(run_in_tmpdir):
 
 
 @pytest.fixture(scope='module')
-def simple_umesh(request):
+def simple_umesh(umesh_files):
     """Fixture returning UnstructuredMesh with all attributes"""
     surf1 = openmc.Sphere(r=20.0, boundary_type="vacuum")
     material1 = openmc.Material()
@@ -438,8 +440,7 @@ def simple_umesh(request):
     geometry = openmc.Geometry([cell1])
 
     umesh = openmc.UnstructuredMesh(
-       filename=request.path.parent.parent
-        / "regression_tests/external_moab/test_mesh_tets.h5m",
+       filename=umesh_files.tets_moab,
        library="moab",
        mesh_id=1
     )
@@ -511,17 +512,12 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
 
 
 vtkhdf_tests = [
-    (
-        Path("test_mesh_dagmc_tets.vtk"),
-        "moab"
-    ),
-    (
-        Path("test_mesh_hexes.exo"),
-        "libmesh"
-    )
+    (data.UMESH_DAGMC_TETS, "moab"),
+    (data.UMESH_HEXES, "libmesh"),
 ]
-@pytest.mark.parametrize('mesh_file, mesh_library', vtkhdf_tests)
-def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
+@pytest.mark.parametrize('mesh_file, mesh_library', vtkhdf_tests,
+                         ids=lambda p: getattr(p, 'name', p))
+def test_write_vtkhdf(mesh_file, mesh_library, run_in_tmpdir):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
@@ -539,7 +535,7 @@ def test_write_vtkhdf(mesh_file, mesh_library, request, run_in_tmpdir):
     model.geometry = openmc.Geometry([cell1])
 
     umesh = openmc.UnstructuredMesh(
-        request.path.parent / mesh_file,
+        mesh_file,
         mesh_library,
         mesh_id = 1
     )
@@ -767,13 +763,11 @@ def test_material_volumes_outside_geometry():
 
 
 @pytest.mark.skipif(not openmc.lib.feature_enabled('dagmc'), reason="DAGMC not enabled.")
-def test_material_volumes_outside_dagmc_geometry():
+def test_material_volumes_outside_dagmc_geometry(dagmc_files):
     """Test a mesh extending outside a root DAGMC universe."""
     openmc.reset_auto_ids()
 
-    dagmc_path = (Path(__file__).parents[1] /
-                  'regression_tests/dagmc/legacy/dagmc.h5m')
-    dagmc_universe = openmc.DAGMCUniverse(dagmc_path)
+    dagmc_universe = openmc.DAGMCUniverse(dagmc_files.legacy)
 
     fuel = openmc.Material(name='no-void fuel')
     fuel.add_nuclide('U235', 0.03)
