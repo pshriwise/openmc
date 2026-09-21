@@ -138,6 +138,8 @@ class Model:
         self.plots = openmc.Plots() if plots is None else plots
         self.description = description
 
+        self._geometry_derivatives = None
+
     @property
     def geometry(self) -> openmc.Geometry:
         return self._geometry
@@ -216,6 +218,19 @@ class Model:
     @property
     def bounding_box(self) -> openmc.BoundingBox:
         return self.geometry.bounding_box
+
+    @property
+    def geometry_derivatives(self) -> openmc.GeometricDerivatives:
+        return self._geometry_derivatives
+
+    @geometry_derivatives.setter
+    def geometry_derivatives(self, derivatives):
+        if derivatives is None:
+            self._geometry_derivatives = None
+            return
+
+        check_type('geometry_derivatives', derivatives, openmc.GeometricDerivatives)
+        self._geometry_derivatives = derivatives
 
     @property
     def is_initialized(self) -> bool:
