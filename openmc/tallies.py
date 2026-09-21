@@ -4002,3 +4002,152 @@ class Tallies(cv.CheckedList):
             tree = ET.parse(path, parser=parser)
             root = tree.getroot()
             return cls.from_xml_element(root)
+
+class GeometricDerivative():
+    """Class used to define the geometric derivative for a tally
+
+    Parameters
+    ----------
+    id : int
+        Unique ID for the geometric derivative
+    tally : openmc.Tally
+        Tally to which the geometric derivative is applied
+    cell : openmc.Cell
+        Cell to which the geometric derivative is applied
+    """
+    def __init__(self, tally : openmc.Tally, cell: openmc.Cell, id: int = None):
+        self.id = id
+        self.tally = tally
+        self.cell = cell
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, id):
+        cv.check_type('geometric derivative ID', id, Integral, none_ok=True)
+        self._id = id
+
+    def n_bins(self):
+        """Return the number of bins in the geometric derivative
+
+        Returns
+        -------
+        int
+            Number of bins in the geometric derivative
+        """
+        # the number of bins in this geometric deriative
+        # is the number of tally bins multiplied by the number
+        # of differentiable surface parameters
+
+        surfaces = self.cell.region.get_surfaces().values()
+
+        n_surface_parameters = sum([s.n_diff_params() for s in surfaces])
+
+        return self.tally.num_filter_bins * n_surface_parameters
+
+    def to_xml_element(self):
+        """Create a 'derivative' element to be written to an XML file.
+
+        Returns
+        -------
+        lxml.etree._Element
+            XML element
+
+        """
+        element = ET.Element("geometry_derivative")
+        element.set("id", str(self.id))
+        element.set("tally", str(self.tally.id))
+        element.set("cell", str(self.cell.id))
+        return element
+
+    def from_xml_element(cls, elem, tallies=None, cells=None):
+        """Generate a geometric derivative from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        tallies : dict or None
+            A dictionary with tally IDs as keys and tally instances as values that
+            have already been read from XML. Pre-existing tallies are used
+            and new tallies are added to when creating geometric derivative objects.
+        cells : dict or None
+            A dictionary with cell IDs as keys and cell instances as values that
+            have already been read from XML. Pre-existing cells are used
+            and new cells are added to when creating geometric derivative objects.
+
+        Returns
+        -------
+        openmc.GeometricDerivative
+            Geometric derivative object
+
+        """
+        id = int(elem.get("id"))
+        tally = tallies[int(elem.get("tally"))]
+        cell = cells[int(elem.get("cell"))]
+        return cls(tally, cell, id=id)
+
+
+class GeometricDerivatives(cv.CheckedList):
+    """Collection of GeometricDerivatives used for an OpenMC simulation.
+
+    A staging container for serialization of GeometricDerivatives. It can be
+    thought of as a normal Python list where each member is a
+    :class:`GeometricDerivative`. It behaves like a list as the following
+    example demonstrates:
+
+    >>> t1 = openmc.Tally()
+    >>> c1 = openmc.Cell()
+    >>> gd1 = openmc.GeometricDerivative(t1, c1)
+    >>> gd2 = openmc.GeometricDerivative(t1, c1)
+    >>> gds = openmc.GeometricDerivatives([gd1])
+    >>> gds.append(gd2)
+
+    Parameters
+    ----------
+    geometric_derivatives : Iterable of openmc.GeometricDerivative
+        GeometricDerivatives to add to the collection
+
+    """
+
+    def __init__(self, geometric_derivatives=None):
+        super().__init__(GeometricDerivative, 'geometric derivatives collection')
+        if geometric_derivatives is not None:
+            self += geometric_derivatives
+
+    def to_xml_element(self):
+        """Creates a 'derivatives' element to be written to an XML file.
+        """
+        element = ET.Element("geometry_derivatives")
+        for gd in self:
+            element.append(gd.to_xml_element())
+        return element
+
+    def from_xml_element(cls, elem, tallies=None, cells=None):
+        """Generate geometric derivatives from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+        tallies : dict or None
+            A dictionary with tally IDs as keys and tally instances as values that
+            have already been read from XML. Pre-existing tallies are used
+            and new tallies are added to when creating geometric derivative objects.
+        cells : dict or None
+            A dictionary with cell IDs as keys and cell instances as values that
+            have already been read from XML. Pre-existing cells are used
+            and new cells are added to when creating geometric derivative objects.
+
+        Returns
+        -------
+        openmc.GeometricDerivatives
+            Collection of geometric derivative objects
+
+        """
+        gds = cls()
+        for gd_elem in elem.findall("geometry_derivative"):
+            gds.append(GeometricDerivative.from_xml_element(gd_elem, tallies, cells))
+        return gds

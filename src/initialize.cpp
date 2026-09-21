@@ -16,6 +16,7 @@
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
+#include "openmc/geometry_derivatives.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
@@ -505,6 +506,8 @@ bool read_model_xml()
     read_tallies_xml(root.child("tallies"));
 
   check_pulse_height_compatibility();
+
+  read_geometry_derivatives(root.child("geometry_derivatives"));
 
   // Initialize distribcell_filters
   prepare_distribcell();

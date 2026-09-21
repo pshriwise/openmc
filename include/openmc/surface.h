@@ -100,6 +100,8 @@ public:
    */
   virtual GeometryType geom_type() const { return GeometryType::CSG; }
 
+  virtual int n_diff_params() const { return 0; }
+
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
@@ -249,6 +251,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
+  int n_diff_params() const override { return 1; }
   double x0_, y0_, z0_, radius_;
 };
 

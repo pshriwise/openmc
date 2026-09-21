@@ -153,7 +153,8 @@ class Surface(IDManagerMixin, ABC):
         Name of the surface
     type : str
         Type of the surface
-
+    n_diff_params : int
+        Number of differentiable parameters for the surface
     """
 
     min_id = 1
@@ -332,6 +333,9 @@ class Surface(IDManagerMixin, ABC):
         coeffs2 = self.normalize(other._get_base_coeffs())
 
         return np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol)
+
+    def n_diff_params(self):
+        return 0
 
     @abstractmethod
     def _get_base_coeffs(self):
@@ -1734,6 +1738,10 @@ class Sphere(QuadricMixin, Surface):
         k = x0*x0 + y0*y0 + z0*z0 - r*r
 
         return (a, b, c, d, e, f, g, h, j, k)
+
+    def n_diff_params(self):
+        # sphere radius is the only differentiable parameter, so return 1
+        return 1
 
     def bounding_box(self, side):
         if side == '-':
