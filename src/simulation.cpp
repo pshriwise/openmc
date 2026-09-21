@@ -8,6 +8,7 @@
 #include "openmc/error.h"
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/geometry_derivatives.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -106,6 +107,8 @@ int openmc_simulation_init()
       std::min(simulation::work_per_rank, settings::max_particles_in_flight);
     init_event_queues(event_buffer_length);
   }
+
+  prepare_geometry_derivatives();
 
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {

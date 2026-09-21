@@ -100,6 +100,9 @@ public:
    */
   virtual GeometryType geom_type() const { return GeometryType::CSG; }
 
+  //! Return the number of differentiable parameters for this surface. This is
+  //! used in the GeometricDerivatives class to determine how many derivatives
+  //! to compute for each surface.
   virtual int n_diff_params() const { return 0; }
 
 protected:
