@@ -21,15 +21,15 @@ GeometryDerivative::GeometryDerivative(pugi::xml_node node)
   }
   id_ = std::stoi(get_node_value(node, "id"));
 
-  if (!check_for_node(node, "tally_id")) {
+  if (!check_for_node(node, "tally")) {
     fatal_error("Must specify tally_id of geometry derivative in geometry_derivatives XML file.");
   }
-  tally_id_ = std::stoi(get_node_value(node, "tally_id"));
+  tally_id_ = std::stoi(get_node_value(node, "tally"));
 
-  if (!check_for_node(node, "cell_id")) {
-    fatal_error("Must specify cell_id of geometry derivative in geometry_derivatives XML file.");
+  if (!check_for_node(node, "cell")) {
+    fatal_error("Must specify cell of geometry derivative in geometry_derivatives XML file.");
   }
-  cell_id_ = std::stoi(get_node_value(node, "cell_id"));
+  cell_id_ = std::stoi(get_node_value(node, "cell"));
 }
 
 void GeometryDerivative::init_results()
@@ -63,7 +63,7 @@ void GeometryDerivative::init_results()
 
 void read_geometry_derivatives(pugi::xml_node node)
 {
-  if (!check_for_node(node, "geometry_derivatives")) {
+  if (!check_for_node(node, "geometry_derivative")) {
     return;
   }
 
