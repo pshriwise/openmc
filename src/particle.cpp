@@ -13,6 +13,7 @@
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/geometry_derivatives.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
@@ -402,6 +403,12 @@ void Particle::event_collide()
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
+  }
+
+  // update geometric derivatives if the particle's trajectory
+  // intersects a surface that is part of a geometry derivative computation
+  if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
+    update_surface_derivative(*this);
   }
 
   // Score surface current tallies -- this has to be done before the collision

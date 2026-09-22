@@ -688,6 +688,31 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
   }
 }
 
+double SurfaceSphere::derivative(Position r, Direction u, int param_idx) const
+{
+  // compute relevant factors
+  Position r0 {r.x - x0_, r.y - y0_, r.z - z0_};
+  double a = u.dot(u);
+  double b = 2.0 * r0.dot(u);
+  double c = r0.dot(r0) - radius_ * radius_;
+
+  double q = b*b - 4.0*a*c;
+
+  if (q < 0.0) {
+    fatal_error(fmt::format("Attempting to compute a derivative on surface {} for a particle that does not intersect the surface", id_));
+  }
+
+  if (std::abs(c) < FP_COINCIDENT || c < 0.0) {
+    // if c is less than or approx zero, we know we should use the positive root
+    // to compute the derivative
+    return 2*radius_ / sqrt(q);
+  } else {
+    // if c is greater than zero, we know we should use the negative root
+    // to compute the derivative
+    return -2*radius_ / sqrt(q);
+  }
+}
+
 Direction SurfaceSphere::normal(Position r) const
 {
   return {2.0 * (r.x - x0_), 2.0 * (r.y - y0_), 2.0 * (r.z - z0_)};

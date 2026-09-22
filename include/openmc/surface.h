@@ -105,6 +105,21 @@ public:
   //! to compute for each surface.
   virtual int n_diff_params() const { return 0; }
 
+  virtual std::vector<double> derivatives(Position r, Direction u) const {
+    std::vector<double> derivatives;
+    for (int i = 0; i < n_diff_params(); ++i) {
+      derivatives.push_back(derivative(r, u, i));
+    }
+    return derivatives;
+  }
+
+  //! Return the derivative of the surface with respect to the given position
+  //! and direction
+  virtual double derivative(Position r, Direction u, int param_idx) const
+  {
+    return 0.0;
+  }
+
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
@@ -254,7 +269,11 @@ public:
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
 
+  // just one differentiable parameter (the radius) for now
   int n_diff_params() const override { return 1; }
+
+  double derivative(Position r, Direction u, int param_idx) const override;
+
   double x0_, y0_, z0_, radius_;
 };
 
