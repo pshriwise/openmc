@@ -22,7 +22,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import (check_type, check_value, check_greater_than,
+from openmc.checkvalue import (check_iterable_type, check_type, check_value, check_greater_than,
                                check_length, PathLike)
 from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES, _id_map_to_rgb
@@ -229,8 +229,8 @@ class Model:
             self._geometry_derivatives = None
             return
 
-        check_type('geometry_derivatives', derivatives, openmc.GeometricDerivatives)
-        self._geometry_derivatives = derivatives
+        check_iterable_type('geometry_derivatives', derivatives, openmc.GeometricDerivative)
+        self._geometry_derivatives = openmc.GeometricDerivatives(derivatives)
 
     @property
     def is_initialized(self) -> bool:
@@ -802,6 +802,12 @@ class Model:
                 xml.clean_indentation(
                     plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
+
+            if self.geometry_derivatives is not None:
+                derivatives_element = self.geometry_derivatives.to_xml_element()
+                xml.clean_indentation(
+                    derivatives_element, level=1, trailing_indent=False)
+                fh.write(ET.tostring(derivatives_element, encoding="unicode"))
             fh.write("</model>\n")
 
         self._link_geometry_to_filters()

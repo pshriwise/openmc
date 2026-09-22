@@ -507,7 +507,8 @@ bool read_model_xml()
 
   check_pulse_height_compatibility();
 
-  read_geometry_derivatives(root.child("geometry_derivatives"));
+  if (check_for_node(root, "geometry_derivatives"))
+    read_geometry_derivatives(root.child("geometry_derivatives"));
 
   // Initialize distribcell_filters
   prepare_distribcell();

@@ -4003,7 +4003,7 @@ class Tallies(cv.CheckedList):
             root = tree.getroot()
             return cls.from_xml_element(root)
 
-class GeometricDerivative():
+class GeometricDerivative(IDManagerMixin):
     """Class used to define the geometric derivative for a tally
 
     Parameters
