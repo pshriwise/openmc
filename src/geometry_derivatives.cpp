@@ -175,6 +175,14 @@ void update_surface_derivative(Particle& p)
   }
 }
 
+void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, int32_t param_idx, double score, double dJ, double datt) {
+  const auto& geom_deriv = model::geometry_derivatives[geometry_deriv_idx];
+  // update the tally derivative with respect to the surface parameter
+  double deriv = (dJ + datt) * score;
+#pragma omp atomic
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 0) += deriv;
+}
+
 void tally_geometry_derivatives(
   int32_t tally_id, int64_t score_bin, double score)
 {
@@ -182,15 +190,20 @@ void tally_geometry_derivatives(
     if (geom_deriv->tally_id() != tally_id) {
       continue;
     }
-
     for (int i = 0; i < geom_deriv->geom_parameters().shape(0); ++i) {
-      // update the tally derivative with respect to the surface parameter
-      double dJ = geom_deriv->geom_parameters()(i, 1);
-      double datt = geom_deriv->geom_parameters()(i, 3);
-      double deriv = (dJ + datt) * score;
-#pragma omp atomic
-      geom_deriv->tally_derivatives()(i, score_bin, 0) += deriv;
+      tally_geometry_derivative(model::geometry_derivatives_map[geom_deriv->id()], score_bin, i, score, geom_deriv->geom_parameters()(i, 1), geom_deriv->geom_parameters()(i, 3));
     }
+  }
+}
+
+void tally_geometry_derivatives(Particle& p, int32_t tally_id, int64_t score_bin, double score)
+{
+  for (const auto& geom_deriv_state : p.geometry_deriv_state()) {
+    const auto& geom_deriv = model::geometry_derivatives[geom_deriv_state.geometry_derivative_idx];
+    if (geom_deriv->tally_id() != tally_id) {
+      continue;
+    }
+    tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx, score_bin, geom_deriv_state.parameter_idx, score, geom_deriv_state.dj, geom_deriv_state.df);
   }
 }
 
@@ -203,7 +216,6 @@ void accumulate_geometry_derivatives()
 
 void report_geometry_derivatives()
 {
-  return;
   for (const auto& geom_deriv : model::geometry_derivatives) {
     std::cout << "Geometry Derivative ID: " << geom_deriv->id() << std::endl;
     std::cout << "Tally ID: " << geom_deriv->tally_id() << std::endl;

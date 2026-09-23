@@ -1103,8 +1103,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
     if (model::geometry_derivative_tallies.count(tally.id()) > 0) {
       int64_t flat_bin_index =
         filter_index * tally.results_.shape(1) + score_index;
-      tally_geometry_derivatives(
-        tally.id(), flat_bin_index, score * filter_weight);
+      // tally_geometry_derivatives(tally.id(), flat_bin_index, score * filter_weight);
+      tally_geometry_derivatives(p, tally.id(), flat_bin_index, score * filter_weight);
     }
 
 // Update tally results
