@@ -442,6 +442,11 @@ std::vector<FilterType> Tally::filter_types() const
   return filter_types;
 }
 
+int64_t Tally::flat_index(int64_t filter_bin, int64_t score_index, int64_t value_index) const
+{
+  return filter_bin * results_.shape(0) + score_index * results_.shape(1) + value_index * results_.shape(2);
+}
+
 std::unordered_map<FilterType, int32_t> Tally::filter_indices() const
 {
   std::unordered_map<FilterType, int32_t> filter_indices;

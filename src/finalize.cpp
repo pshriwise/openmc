@@ -12,6 +12,7 @@
 #include "openmc/event.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/geometry_derivatives.h"
 #include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -70,6 +71,8 @@ int openmc_finalize()
 {
   if (simulation::initialized)
     openmc_simulation_finalize();
+
+  report_geometry_derivatives();
 
   // Clear results
   openmc_reset();

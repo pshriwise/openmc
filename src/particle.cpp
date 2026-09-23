@@ -198,6 +198,11 @@ void Particle::from_source(const SourceSite* src)
     }
   }
 
+  // reset geometry derivatives
+  for (const auto& geom_deriv : model::geometry_derivatives) {
+    geom_deriv->geom_parameters().fill(0.0);
+  }
+
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
@@ -288,6 +293,12 @@ void Particle::event_advance()
     collision_distance() = INFINITY;
   } else {
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
+  }
+
+  // update geometric derivatives if the particle's trajectory
+  // intersects a surface that is part of a geometry derivative computation
+  if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
+    update_surface_derivative(*this);
   }
 
   double speed = this->speed();
@@ -403,12 +414,6 @@ void Particle::event_collide()
   // Score collision estimate of keff
   if (settings::run_mode == RunMode::EIGENVALUE && type().is_neutron()) {
     keff_tally_collision() += wgt() * macro_xs().nu_fission / macro_xs().total;
-  }
-
-  // update geometric derivatives if the particle's trajectory
-  // intersects a surface that is part of a geometry derivative computation
-  if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
-    update_surface_derivative(*this);
   }
 
   // Score surface current tallies -- this has to be done before the collision

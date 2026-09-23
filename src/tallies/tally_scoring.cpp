@@ -4,6 +4,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/geometry_derivatives.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mgxs_interface.h"
@@ -1098,6 +1099,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
     if (tally.deriv_ != C_NONE)
       apply_derivative_to_score(
         p, i_tally, i_nuclide, atom_density, score_bin, score);
+
+    if (model::geometry_derivative_tallies.count(tally.id()) > 0) {
+      int64_t flat_bin_index = tally.flat_index(filter_index, score_index, static_cast<int64_t>(TallyResult::VALUE));
+      tally_geometry_derivatives(tally.id(), flat_bin_index, score * filter_weight);
+    }
 
 // Update tally results
 #pragma omp atomic

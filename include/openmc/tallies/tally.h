@@ -62,6 +62,11 @@ public:
   //! returns a vector of filter types for the tally
   std::vector<FilterType> filter_types() const;
 
+  //! returns the flat index of the tally bin corresponding to the given filter and score
+  //! \param[in] indices A vector of filter bin indices, one for each filter in the tally
+  //! \return The flat index of the tally bin corresponding to the given filter and score
+  int64_t flat_index(int64_t filter_bin, int64_t score_index, int64_t value_index) const;
+
   //! returns a mapping of filter types to index into the tally's filters
   std::unordered_map<FilterType, int32_t> filter_indices() const;
 
@@ -80,6 +85,7 @@ public:
     }
     return nullptr;
   }
+
 
   template<class T>
   const T* get_filter(int idx) const
