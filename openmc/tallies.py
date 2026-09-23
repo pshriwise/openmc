@@ -4015,19 +4015,13 @@ class GeometricDerivative(IDManagerMixin):
     cell : openmc.Cell
         Cell to which the geometric derivative is applied
     """
+    next_id = 1
+    used_ids = set()
+
     def __init__(self, tally : openmc.Tally, cell: openmc.Cell, id: int = None):
         self.id = id
         self.tally = tally
         self.cell = cell
-
-    @property
-    def id(self):
-        return self._id
-
-    @id.setter
-    def id(self, id):
-        cv.check_type('geometric derivative ID', id, Integral, none_ok=True)
-        self._id = id
 
     def n_bins(self):
         """Return the number of bins in the geometric derivative
@@ -4062,6 +4056,7 @@ class GeometricDerivative(IDManagerMixin):
         element.set("cell", str(self.cell.id))
         return element
 
+    @classmethod
     def from_xml_element(cls, elem, tallies=None, cells=None):
         """Generate a geometric derivative from an XML element
 
@@ -4125,6 +4120,7 @@ class GeometricDerivatives(cv.CheckedList):
             element.append(gd.to_xml_element())
         return element
 
+    @classmethod
     def from_xml_element(cls, elem, tallies=None, cells=None):
         """Generate geometric derivatives from an XML element
 

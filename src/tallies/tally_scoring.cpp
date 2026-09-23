@@ -1101,8 +1101,10 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         p, i_tally, i_nuclide, atom_density, score_bin, score);
 
     if (model::geometry_derivative_tallies.count(tally.id()) > 0) {
-      int64_t flat_bin_index = tally.flat_index(filter_index, score_index, static_cast<int64_t>(TallyResult::VALUE));
-      tally_geometry_derivatives(tally.id(), flat_bin_index, score * filter_weight);
+      int64_t flat_bin_index =
+        filter_index * tally.results_.shape(1) + score_index;
+      tally_geometry_derivatives(
+        tally.id(), flat_bin_index, score * filter_weight);
     }
 
 // Update tally results

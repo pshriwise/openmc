@@ -103,6 +103,7 @@ int openmc_add_unstructured_mesh(const char filename[], const char library[],
   double length_multiplier, const char options[], int32_t id, int32_t* index);
 int64_t openmc_get_seed();
 uint64_t openmc_get_stride();
+int openmc_get_geometry_derivative_index(int32_t id, int32_t* index);
 int openmc_get_tally_index(int32_t id, int32_t* index);
 void openmc_get_tally_next_id(int32_t* id);
 int openmc_global_tallies(double** ptr);
@@ -264,6 +265,17 @@ int openmc_tally_get_type(int32_t index, int32_t* type);
 int openmc_tally_get_writable(int32_t index, bool* writable);
 int openmc_tally_reset(int32_t index);
 int openmc_tally_results(int32_t index, double** ptr, size_t shape_[3]);
+int openmc_geometry_derivative_get_id(int32_t index, int32_t* id);
+int openmc_geometry_derivative_get_tally_id(int32_t index, int32_t* id);
+int openmc_geometry_derivative_get_cell_id(int32_t index, int32_t* id);
+int openmc_geometry_derivative_get_surface_ids(
+  int32_t index, const int32_t** surface_ids, size_t* n);
+int openmc_geometry_derivative_parameters(
+  int32_t index, double** parameters, size_t shape_[2]);
+int openmc_geometry_derivative_results(
+  int32_t index, double** results, size_t shape_[3]);
+int openmc_geometry_derivative_reset(int32_t index);
+size_t openmc_geometry_derivatives_size();
 int openmc_tally_set_active(int32_t index, bool active);
 int openmc_tally_set_estimator(int32_t index, const char* estimator);
 int openmc_tally_set_filters(int32_t index, size_t n, const int32_t* indices);
