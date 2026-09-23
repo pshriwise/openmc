@@ -457,6 +457,12 @@ class Model:
             if root.find('plots') is not None:
                 model.plots = openmc.Plots.from_xml_element(root.find('plots'))
 
+            if root.find('geometry_derivatives') is not None:
+                tally_dict = {tally.id: tally for tally in model.tallies}
+                cell_dict = model.geometry.get_all_cells()
+                model.geometry_derivatives = openmc.GeometricDerivatives.from_xml_element(
+                    root.find('geometry_derivatives'), tally_dict, cell_dict)
+
         return model
 
     def init_lib(
