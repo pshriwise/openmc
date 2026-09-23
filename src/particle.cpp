@@ -160,6 +160,7 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = src->n_collision;
   fission() = false;
   zero_flux_derivs();
+  reset_geom_derivs();
   lifetime() = 0.0;
 #ifdef OPENMC_DAGMC_ENABLED
   history().reset();
@@ -299,6 +300,7 @@ void Particle::event_advance()
   // intersects a surface that is part of a geometry derivative computation
   if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
     update_surface_derivative(*this);
+    this->update_geometry_derivatives();
   }
 
   double speed = this->speed();

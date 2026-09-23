@@ -3,8 +3,10 @@
 #include <sstream>
 
 #include "openmc/cell.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/geometry_derivatives.h"
 #include "openmc/material.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
@@ -102,6 +104,21 @@ ParticleData::ParticleData()
     zero_flux_derivs();
   }
 
+  // Allocate space for geometry derivative states
+  for (int i = 0; i < model::geometry_derivatives.size(); ++i) {
+    const auto& geom_deriv = model::geometry_derivatives[i];
+    for (const auto& surface_pair : geom_deriv->surface_indices()) {
+      const auto& surface = model::surfaces[model::surface_map[surface_pair.first]];
+      for (int j = 0; j < surface->n_diff_params(); ++j) {
+        geometry_deriv_state().push_back(GeometryDerivativeState());
+        auto& state = geometry_deriv_state().back();
+        state.geometry_derivative_idx = i;
+        state.surface_id = surface_pair.first;
+        state.parameter_idx = j;
+      }
+    }
+  }
+
   // Allocate space for tally filter matches
   filter_matches_.resize(model::tally_filters.size());
 
@@ -114,6 +131,14 @@ ParticleData::ParticleData()
     pht_storage_.resize(model::pulse_height_cells.size(), 0.0);
   }
 }
+
+void ParticleData::update_geometry_derivatives()
+{
+  for (auto& d : geometry_deriv_state()) {
+    d.update_params(*this);
+  }
+}
+
 
 TrackState ParticleData::get_track_state() const
 {
@@ -130,5 +155,28 @@ TrackState ParticleData::get_track_state() const
   }
   return state;
 }
+
+void GeometryDerivativeState::update_params(ParticleData& pd)
+{
+  if (geometry_derivative_idx == C_NONE) {
+    return;
+  }
+
+  const auto& geom_deriv = model::geometry_derivatives[geometry_derivative_idx];
+
+  if (geom_deriv->surface_indices().count(surface_id) == 0) {
+    return;
+  }
+
+  const auto& surface = model::surfaces[model::surface_map[surface_id]];
+  double surface_derivative = surface->derivative(pd.r(), pd.u(), parameter_idx);
+  double adv_distance = std::min(pd.boundary().distance(), pd.collision_distance());
+  f *= std::exp(-pd.macro_xs().total * adv_distance);
+  df += -pd.macro_xs().total * adv_distance / pd.boundary().distance() * surface_derivative;
+  if (pd.boundary().distance() < pd.collision_distance()) return;
+  j *= pd.boundary().distance();
+  dj += surface_derivative / pd.boundary().distance();
+}
+
 
 } // namespace openmc

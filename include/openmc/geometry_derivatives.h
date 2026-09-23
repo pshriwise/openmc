@@ -27,6 +27,8 @@ void prepare_geometry_derivatives();
 void update_surface_derivative(Particle& p);
 void tally_geometry_derivatives(
   int32_t tally_id, int64_t score_bin, double score);
+void tally_geometry_derivatives(
+  Particle& p, int32_t tally_id, int64_t score_bin, double score);
 void accumulate_geometry_derivatives();
 void report_geometry_derivatives();
 void reset_geometry_derivatives();

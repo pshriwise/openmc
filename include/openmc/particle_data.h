@@ -15,6 +15,7 @@
 
 namespace openmc {
 
+class ParticleData;
 //==============================================================================
 // Constants
 //==============================================================================
@@ -94,6 +95,20 @@ struct TrackStateHistory {
   ParticleType particle;
   std::vector<TrackState> states;
 };
+
+struct GeometryDerivativeState {
+  double j {0.0}, dj {0.0}, f {0.0}, df {0.0};
+  int geometry_derivative_idx {C_NONE};
+  int surface_id {SURFACE_NONE};
+  int parameter_idx {C_NONE};
+
+  void update_params(ParticleData& pd);
+
+  void reset() {
+    j = dj = f = df = 0.0;
+  }
+};
+
 
 //! Saved ("banked") state of a particle, for nu-fission tallying
 struct NuBank {
@@ -349,6 +364,10 @@ public:
   int& cell_last(int i) { return cell_last_[i]; }
   const int& cell_last(int i) const { return cell_last_[i]; }
 
+  // Geometry derivative state accessors
+  const auto& geometry_deriv_state() const { return geometry_deriv_state_; }
+  auto& geometry_deriv_state() { return geometry_deriv_state_; }
+
   // Coordinates at birth
   Position& r_born() { return r_born_; }
   const Position& r_born() const { return r_born_; }
@@ -432,6 +451,8 @@ private:
                             //!< current tallies
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
+
+  vector<GeometryDerivativeState> geometry_deriv_state_; //!< geometry derivative state
 
   int surface_ {
     SURFACE_NONE}; //!< surface token for surface the particle is currently on
@@ -780,6 +801,9 @@ public:
   //! Get track information based on particle's current state
   TrackState get_track_state() const;
 
+  //! Update geometric derivative state based on particle's current state
+  void update_geometry_derivatives();
+
   void zero_delayed_bank()
   {
     for (int& n : n_delayed_bank_) {
@@ -793,6 +817,14 @@ public:
       d = 0;
     }
   }
+
+  void reset_geom_derivs()
+  {
+    for (auto& d : geometry_deriv_state()) {
+      d.reset();
+    }
+  }
+
 };
 
 } // namespace openmc
