@@ -14,11 +14,15 @@ namespace model {
   extern std::unordered_map<int32_t, int32_t> geometry_derivatives_map;
   extern vector<unique_ptr<GeometryDerivative>> geometry_derivatives;
   extern std::unordered_set<int32_t> derivative_surface_indices;
+  extern std::unordered_set<int32_t> geometry_derivative_tallies;
 }
 
 void read_geometry_derivatives(pugi::xml_node node);
 void prepare_geometry_derivatives();
 void update_surface_derivative(Particle& p);
+void tally_geometry_derivatives(int32_t tally_id, int score_bin, double score);
+void accumulate_geometry_derivatives();
+void report_geometry_derivatives();
 
 class GeometryDerivative {
 
@@ -42,6 +46,8 @@ class GeometryDerivative {
   const auto& tally_derivatives() const { return tally_derivatives_; }
 
 
+  void accumulate();
+
   private:
   int32_t id_;
   int32_t tally_id_;
@@ -59,8 +65,9 @@ class GeometryDerivative {
   //! Results of the tally derivative with respsect to various geometric
   //! parameters. The first dimension of the array is for geometric parameter
   //! indices. The second dimension is the flattened tally bin index. The
-  //! third dimension is the result of the tally derivative with respect to
-  //! the corresponding tally bin and geometric parameter.
+  //! third dimension is the tally for the current batch of the tally derivative with respect to
+  //! the corresponding tally bin and geometric parameter for the current batch.
+  //! The fourth dimension is the final result with accumulation after each batch.
   tensor::Tensor<double> tally_derivatives_;
 
   //! Store start in surface parameter index for the surface of each cell

@@ -528,6 +528,8 @@ void finalize_batch()
   accumulate_tallies();
   simulation::time_tallies.stop();
 
+  accumulate_geometry_derivatives();
+
   // update weight windows if needed
   for (const auto& wwg : variance_reduction::weight_windows_generators) {
     wwg->update();
