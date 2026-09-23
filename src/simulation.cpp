@@ -108,13 +108,13 @@ int openmc_simulation_init()
     init_event_queues(event_buffer_length);
   }
 
-  prepare_geometry_derivatives();
-
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
     t->set_strides();
     t->init_results();
   }
+
+  prepare_geometry_derivatives();
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {

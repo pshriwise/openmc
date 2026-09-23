@@ -80,6 +80,7 @@ from .cell import *
 from .mesh import *
 from .filter import *
 from .tally import *
+from .geom_derivs import *
 from .settings import settings
 from .math import *
 from .plot import *

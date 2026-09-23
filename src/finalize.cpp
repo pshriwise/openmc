@@ -56,6 +56,7 @@ void free_memory()
   free_memory_source();
   free_memory_mesh();
   free_memory_tally();
+  free_memory_geometry_derivatives();
   free_memory_bank();
   free_memory_plot();
   free_memory_weight_windows();
@@ -233,6 +234,7 @@ int openmc_reset()
   for (auto& t : model::tallies) {
     t->reset();
   }
+  reset_geometry_derivatives();
 
   // Reset global tallies
   simulation::n_realizations = 0;
