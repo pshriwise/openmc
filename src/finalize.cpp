@@ -73,8 +73,6 @@ int openmc_finalize()
   if (simulation::initialized)
     openmc_simulation_finalize();
 
-  report_geometry_derivatives();
-
   // Clear results
   openmc_reset();
 

@@ -36,10 +36,6 @@ _dll.openmc_geometry_derivative_get_surface_ids.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
 _dll.openmc_geometry_derivative_get_surface_ids.restype = c_int
 _dll.openmc_geometry_derivative_get_surface_ids.errcheck = _error_handler
-_dll.openmc_geometry_derivative_parameters.argtypes = [
-    c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t*2)]
-_dll.openmc_geometry_derivative_parameters.restype = c_int
-_dll.openmc_geometry_derivative_parameters.errcheck = _error_handler
 _dll.openmc_geometry_derivative_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t*3)]
 _dll.openmc_geometry_derivative_results.restype = c_int
@@ -72,8 +68,6 @@ class GeometryDerivative(_FortranObjectWithID):
         Cell to which the geometry derivative is applied.
     cell_id : int
         ID of the cell to which the geometry derivative is applied.
-    geom_parameters : numpy.ndarray
-        Geometry parameter accumulator data.
     id : int
         ID of the geometry derivative.
     mean : numpy.ndarray
@@ -141,18 +135,21 @@ class GeometryDerivative(_FortranObjectWithID):
         return [surface_ids[i] for i in range(n.value)]
 
     @property
-    def geom_parameters(self):
-        data = POINTER(c_double)()
-        shape = (c_size_t*2)()
-        _dll.openmc_geometry_derivative_parameters(self._index, data, shape)
-        return as_array(data, tuple(shape))
-
-    @property
     def results(self):
         data = POINTER(c_double)()
         shape = (c_size_t*3)()
         _dll.openmc_geometry_derivative_results(self._index, data, shape)
         return as_array(data, tuple(shape))
+
+    @property
+    def dJ(self):
+        """Return the dJ component of the geometry derivative results."""
+        return self.results[:, :, 5]
+
+    @property
+    def datt(self):
+        """Return the datt component of the geometry derivative results."""
+        return self.results[:, :, 3]
 
     @property
     def mean(self):

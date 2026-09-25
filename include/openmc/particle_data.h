@@ -97,7 +97,7 @@ struct TrackStateHistory {
 };
 
 struct GeometryDerivativeState {
-  double j {0.0}, dj {0.0}, f {0.0}, df {0.0};
+  double f {0.0}, df {0.0}, j {0.0}, dj {0.0};
   int geometry_derivative_idx {C_NONE};
   int surface_id {SURFACE_NONE};
   int parameter_idx {C_NONE};
@@ -105,7 +105,7 @@ struct GeometryDerivativeState {
   void update_params(ParticleData& pd);
 
   void reset() {
-    j = dj = f = df = 0.0;
+    f = df = j = dj = 0.0;
   }
 };
 

@@ -199,11 +199,6 @@ void Particle::from_source(const SourceSite* src)
     }
   }
 
-  // reset geometry derivatives
-  for (const auto& geom_deriv : model::geometry_derivatives) {
-    geom_deriv->geom_parameters().fill(0.0);
-  }
-
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
@@ -299,7 +294,6 @@ void Particle::event_advance()
   // update geometric derivatives if the particle's trajectory
   // intersects a surface that is part of a geometry derivative computation
   if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
-    update_surface_derivative(*this);
     this->update_geometry_derivatives();
   }
 
