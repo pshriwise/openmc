@@ -24,7 +24,6 @@ extern std::unordered_set<int32_t> geometry_derivative_tallies;
 
 void read_geometry_derivatives(pugi::xml_node node);
 void prepare_geometry_derivatives();
-void update_surface_derivative(Particle& p);
 void tally_geometry_derivatives(
   int32_t tally_id, int64_t score_bin, double score);
 void tally_geometry_derivatives(
@@ -52,8 +51,6 @@ public:
   const auto& surface_indices() const { return surface_indices_; }
   auto& surface_indices() { return surface_indices_; }
   const auto& surface_ids() const { return surface_ids_; }
-  const auto& geom_parameters() const { return geom_parameters_; }
-  auto& geom_parameters() { return geom_parameters_; }
   auto& tally_derivatives() { return tally_derivatives_; }
   const auto& tally_derivatives() const { return tally_derivatives_; }
 
@@ -63,15 +60,6 @@ private:
   int32_t id_;
   int32_t tally_id_;
   int32_t cell_id_;
-
-  //! Results of the geometry derivative tally -- the first dimesion of the
-  //! array is for the surface index. The second dimension is size 5 holding the
-  //! following values for each geometric paramater/tally score combination:
-  //! 0: jacobian
-  //! 1: jacobian derivative
-  //! 2: attenuation factor
-  //! 3: attenuation factor derivative
-  tensor::Tensor<double> geom_parameters_;
 
   //! Results of the tally derivative with respsect to various geometric
   //! parameters. The first dimension of the array is for geometric parameter

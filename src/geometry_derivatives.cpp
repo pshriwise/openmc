@@ -44,7 +44,6 @@ void GeometryDerivative::init_results()
 {
   surface_indices_.clear();
   surface_ids_.clear();
-  geom_parameters_ = {};
   tally_derivatives_ = {};
 
   // determine number of differentiable parameters on the cell
@@ -71,20 +70,14 @@ void GeometryDerivative::init_results()
       tally_id_));
   }
 
-  geom_parameters_ =
-    tensor::Tensor<double>({static_cast<size_t>(n_surface_params), 4});
-
   int n_tally_bins = tally->results().shape(0) * tally->results().shape(1);
   tally_derivatives_ =
     tensor::Tensor<double>({static_cast<size_t>(n_surface_params),
-      static_cast<size_t>(n_tally_bins), 2});
+      static_cast<size_t>(n_tally_bins), 6});
 }
 
 void GeometryDerivative::reset()
 {
-  if (geom_parameters_.size() != 0) {
-    geom_parameters_.fill(0.0);
-  }
   if (tally_derivatives_.size() != 0) {
     tally_derivatives_.fill(0.0);
   }
@@ -104,10 +97,14 @@ void GeometryDerivative::accumulate()
     norm = 1.0;
   }
 
-  for (int i = 0; i < geom_parameters_.shape(0); ++i) {
+  for (int i = 0; i < tally_derivatives_.shape(0); ++i) {
     for (int j = 0; j < tally_derivatives_.shape(1); ++j) {
       tally_derivatives_(i, j, 1) += tally_derivatives_(i, j, 0) * norm;
       tally_derivatives_(i, j, 0) = 0.0;
+      tally_derivatives_(i, j, 3) += tally_derivatives_(i, j, 2) * norm;
+      tally_derivatives_(i, j, 2) = 0.0;
+      tally_derivatives_(i, j, 5) += tally_derivatives_(i, j, 4) * norm;
+      tally_derivatives_(i, j, 4) = 0.0;
     }
   }
 }
@@ -136,64 +133,16 @@ void prepare_geometry_derivatives()
   }
 }
 
-void update_surface_derivative(Particle& p)
-{
-  // compute the derivatives for the surface parameters
-  // of the surface being crossed
-  const auto& surface = model::surfaces[p.boundary().surface_index()];
-  std::vector<double> surface_derivatives = surface->derivatives(p.r(), p.u());
-  int32_t surface_id = surface->id_;
-  double adv_distance =
-    std::min(p.boundary().distance(), p.collision_distance());
-  // find the geometry derivative for the cell being crossed
-  for (const auto& geom_deriv : model::geometry_derivatives) {
-    // find the index of the surface in the geometry derivative
-    if (geom_deriv->surface_indices().count(surface_id) > 0) {
-      int32_t surface_param_start = geom_deriv->surface_indices()[surface_id];
-      for (int i = 0; i < surface_derivatives.size(); ++i) {
-        // update attenuation derivative factor for the surface parameter
-#pragma omp atomic
-        geom_deriv->geom_parameters()(surface_param_start + i, 2) *=
-          std::exp(-p.macro_xs().total * adv_distance);
-        double new_att_deriv = -p.macro_xs().total * adv_distance /
-                               p.boundary().distance() * surface_derivatives[i];
-#pragma omp atomic
-        geom_deriv->geom_parameters()(surface_param_start + i, 3) +=
-          new_att_deriv;
-        if (p.boundary().distance() <= p.collision_distance()) {
-          continue;
-        }
-        // update jacobian and jacobian derivative for the surface parameter
-#pragma omp atomic
-        geom_deriv->geom_parameters()(surface_param_start + i, 0) *=
-          p.boundary().distance();
-#pragma omp atomic
-        geom_deriv->geom_parameters()(surface_param_start + i, 1) +=
-          surface_derivatives[i] / p.boundary().distance();
-      }
-    }
-  }
-}
-
 void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, int32_t param_idx, double score, double dJ, double datt) {
   const auto& geom_deriv = model::geometry_derivatives[geometry_deriv_idx];
   // update the tally derivative with respect to the surface parameter
   double deriv = (dJ + datt) * score;
 #pragma omp atomic
     geom_deriv->tally_derivatives()(param_idx, score_bin, 0) += deriv;
-}
-
-void tally_geometry_derivatives(
-  int32_t tally_id, int64_t score_bin, double score)
-{
-  for (const auto& geom_deriv : model::geometry_derivatives) {
-    if (geom_deriv->tally_id() != tally_id) {
-      continue;
-    }
-    for (int i = 0; i < geom_deriv->geom_parameters().shape(0); ++i) {
-      tally_geometry_derivative(model::geometry_derivatives_map[geom_deriv->id()], score_bin, i, score, geom_deriv->geom_parameters()(i, 1), geom_deriv->geom_parameters()(i, 3));
-    }
-  }
+#pragma omp atomic
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 2) += score * datt;
+#pragma omp atomic
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 4) += score * dJ;
 }
 
 void tally_geometry_derivatives(Particle& p, int32_t tally_id, int64_t score_bin, double score)
@@ -211,42 +160,6 @@ void accumulate_geometry_derivatives()
 {
   for (const auto& geom_deriv : model::geometry_derivatives) {
     geom_deriv->accumulate();
-  }
-}
-
-void report_geometry_derivatives()
-{
-  for (const auto& geom_deriv : model::geometry_derivatives) {
-    std::cout << "Geometry Derivative ID: " << geom_deriv->id() << std::endl;
-    std::cout << "Tally ID: " << geom_deriv->tally_id() << std::endl;
-    std::cout << "Cell ID: " << geom_deriv->cell_id() << std::endl;
-    std::cout << "Surface Indices: ";
-    for (const auto& [surface_id, surface_param_start] :
-      geom_deriv->surface_indices()) {
-      std::cout << surface_id << " ";
-    }
-    std::cout << std::endl;
-    // report geometry parameters and tally derivatives in loops
-    for (int i = 0; i < geom_deriv->geom_parameters().shape(0); ++i) {
-      std::cout << "Surface Parameter Index: " << i << std::endl;
-      std::cout << "Jacobian: " << geom_deriv->geom_parameters()(i, 0)
-                << std::endl;
-      std::cout << "Jacobian Derivative: "
-                << geom_deriv->geom_parameters()(i, 1) << std::endl;
-      std::cout << "Attenuation Factor: " << geom_deriv->geom_parameters()(i, 2)
-                << std::endl;
-      std::cout << "Attenuation Factor Derivative: "
-                << geom_deriv->geom_parameters()(i, 3) << std::endl;
-    }
-    for (int i = 0; i < geom_deriv->tally_derivatives().shape(0); ++i) {
-      std::cout << "Tally Derivative for Surface Parameter Index: " << i
-                << std::endl;
-      for (int j = 0; j < geom_deriv->tally_derivatives().shape(1); ++j) {
-        std::cout << "Score Bin " << j << ": "
-                  << geom_deriv->tally_derivatives()(i, j, 1) << std::endl;
-      }
-    }
-    std::cout << "----------------------------------------" << std::endl;
   }
 }
 
@@ -335,26 +248,6 @@ extern "C" int openmc_geometry_derivative_get_surface_ids(
 
   *surface_ids = deriv->surface_ids().data();
   *n = deriv->surface_ids().size();
-  return 0;
-}
-
-extern "C" int openmc_geometry_derivative_parameters(
-  int32_t index, double** parameters, size_t* shape)
-{
-  auto* deriv = get_geometry_derivative(index);
-  if (!deriv)
-    return OPENMC_E_OUT_OF_BOUNDS;
-
-  auto& geom_parameters = deriv->geom_parameters();
-  if (geom_parameters.size() == 0) {
-    set_errmsg("Geometry derivative parameters have not been allocated yet.");
-    return OPENMC_E_ALLOCATE;
-  }
-
-  *parameters = geom_parameters.data();
-  auto s = geom_parameters.shape();
-  shape[0] = s[0];
-  shape[1] = s[1];
   return 0;
 }
 
