@@ -5,7 +5,7 @@ import pytest
 import openmc
 import openmc.lib
 
-from tests import data
+from tests import data_assets
 from tests.regression_tests import config as regression_config
 
 # MD5 hash of the official NNDC HDF5 cross_sections.xml file.
@@ -101,7 +101,7 @@ def endf_data():
     return os.environ['OPENMC_ENDF_DATA']
 
 
-class _FileGroup:
+class FileGroup:
     """Paths to a group of test data files, reached by attribute.
 
     Paths are absolute, so a test can use one regardless of the directory it
@@ -137,17 +137,17 @@ def _file_group_fixture(group_name, files):
     """
     @pytest.fixture(name=f'{group_name}_files', scope='session')
     def _fixture():
-        return _FileGroup(files)
+        return FileGroup(files)
 
     return _fixture
 
 
-dagmc_files = _file_group_fixture('dagmc', data.DAGMC_FILES)
-umesh_files = _file_group_fixture('umesh', data.UMESH_FILES)
-ww_files = _file_group_fixture('ww', data.WW_FILES)
+dagmc_files = _file_group_fixture('dagmc', data_assets.DAGMC_FILES)
+umesh_files = _file_group_fixture('umesh', data_assets.UMESH_FILES)
+ww_files = _file_group_fixture('ww', data_assets.WW_FILES)
 
 
-class _DAGMCModels:
+class DAGMCModels:
     """DAGMC model builders exposed as attributes, each returning a fresh model."""
 
     def __init__(self, files):
@@ -193,7 +193,7 @@ def dagmc_models(dagmc_files):
     Each attribute access creates an independent ``openmc.Model`` that callers
     can modify. Callers manage ID resets and library initialization/finalization.
     """
-    return _DAGMCModels(dagmc_files)
+    return DAGMCModels(dagmc_files)
 
 
 @pytest.fixture(scope='session', autouse=True)

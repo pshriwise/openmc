@@ -12,7 +12,7 @@ import openmc
 from openmc.examples import pwr_core
 from colorama import Fore, init
 
-from tests import data as test_data
+from tests import data_assets as test_data
 from tests.regression_tests import config
 
 init()

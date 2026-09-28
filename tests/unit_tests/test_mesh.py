@@ -13,7 +13,7 @@ import openmc.lib
 from openmc.utility_funcs import change_directory
 from uncertainties.unumpy import uarray, nominal_values, std_devs
 
-from tests import data
+from tests import data_assets
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -512,8 +512,8 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
 
 
 vtkhdf_tests = [
-    (data.UMESH_DAGMC_TETS, "moab"),
-    (data.UMESH_HEXES, "libmesh"),
+    (data_assets.UMESH_TETS_H5M, "moab"),
+    (data_assets.UMESH_HEXES_EXO, "libmesh"),
 ]
 @pytest.mark.parametrize('mesh_file, mesh_library', vtkhdf_tests,
                          ids=lambda p: getattr(p, 'name', p))
