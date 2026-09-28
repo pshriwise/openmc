@@ -106,6 +106,6 @@ class ExternalDAGMCTest(PyAPITestHarness):
             openmc.run(openmc_exec=self.executable,
                        event_based=config['event'])
 
-def test_external_dagmc(cpp_driver, model):
+def test_external_dagmc(cpp_driver, model, dagmc_h5m_in_cwd):
     harness = ExternalDAGMCTest(cpp_driver, 'statepoint.5.h5', model)
     harness.main()
