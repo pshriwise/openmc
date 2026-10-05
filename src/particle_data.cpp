@@ -169,13 +169,64 @@ void GeometryDerivativeState::update_params(ParticleData& pd)
   }
 
   const auto& surface = model::surfaces[model::surface_map[surface_id]];
-  double surface_derivative = surface->derivative(pd.r(), pd.u(), parameter_idx);
+
+  double rdot_direct = 0.0;
+  // only update if we're moving toward the surface of interest
+  if (surface_id == std::abs(pd.boundary().surface())) {
+    rdot_direct = surface->derivative(pd.r(), pd.u(), parameter_idx);
+  }
+
+  double r = pd.boundary().distance();
+  double t = std::min(pd.boundary().distance(), pd.collision_distance());
+
   double adv_distance = std::min(pd.boundary().distance(), pd.collision_distance());
+
+
+  Position x_dot_prev = this->x_dot;
+
+  const auto& hit_surface = model::surfaces[pd.boundary().surface_index()];
+
+  Direction n = hit_surface->normal(pd.r() + r * pd.u());
+
+  double rdot_inherit = -n.dot(x_dot_prev) / n.dot(pd.u());
+
+  double rdot_total = rdot_direct + rdot_inherit;
+
+  double tdot = rdot_total * t / r;
+
+  double df_old = df;
+  double dj_old = dj;
+
   f *= std::exp(-pd.macro_xs().total * adv_distance);
-  df += -pd.macro_xs().total * adv_distance / pd.boundary().distance() * surface_derivative;
-  if (pd.boundary().distance() < pd.collision_distance()) return;
-  j *= pd.boundary().distance();
-  dj += surface_derivative / pd.boundary().distance();
+  df += -pd.macro_xs().total * tdot;
+
+  this->x_dot += pd.u() * tdot;
+
+  if (pd.boundary().distance() >= pd.collision_distance()) {
+    j *= pd.boundary().distance();
+    dj += rdot_total / r;
+  }
+
+  bool boundary_first = pd.boundary().distance() < pd.collision_distance();
+
+// std::cout
+//   << "GEOM"
+//   << "\t history: " << pd.id()
+//   << "\t collision: " << pd.n_collision()
+//   << "\t event: " << (boundary_first ? "BOUNDARY" : "COLLISION")
+//   << "\t r_b: " << pd.boundary().distance()
+//   << "\t r_c: " << pd.collision_distance()
+//   << "\t sigma_t: " << pd.macro_xs().total
+//   << "\t dr_partial: " << rdot_direct
+//   << "\t delta_df: " << df - df_old
+//   << "\t delta_dj: " << dj - dj_old
+//   << "\t df_before: " << df_old
+//   << "\t df_after: " << df
+//   << "\t dj_before: " << dj_old
+//   << "\t dj_after: " << dj
+//   << '\n';
+
+
 }
 
 

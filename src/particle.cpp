@@ -120,6 +120,9 @@ bool Particle::create_secondary(
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
 
+  bank.geom_deriv_state = geometry_deriv_state()[0];
+
+
   local_secondary_bank().emplace_back(bank);
   return true;
 }
@@ -209,6 +212,9 @@ void Particle::from_source(const SourceSite* src)
   wgt_born() = src->wgt_born;
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
+
+  if(src->geom_deriv_state.geometry_derivative_idx != C_NONE)
+  geometry_deriv_state()[0] = src->geom_deriv_state;
 }
 
 void Particle::event_calculate_xs()
@@ -300,9 +306,10 @@ void Particle::event_advance()
 
   // update geometric derivatives if the particle's trajectory
   // intersects a surface that is part of a geometry derivative computation
-  if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
-    this->update_geometry_derivatives();
-  }
+  this->update_geometry_derivatives();
+  // if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
+  //   this->update_geometry_derivatives();
+  // }
 
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];

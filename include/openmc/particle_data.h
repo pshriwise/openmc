@@ -20,6 +20,7 @@
 namespace openmc {
 
 class ParticleData;
+
 //==============================================================================
 // Constants
 //==============================================================================
@@ -35,6 +36,36 @@ constexpr double CACHE_INVALID {-1.0};
 
 //==========================================================================
 // Aliases and type definitions
+
+
+struct GeometryDerivativeState {
+
+  GeometryDerivativeState& operator=(const GeometryDerivativeState& other) {
+    f = other.f;
+    df = other.df;
+    j = other.j;
+    dj = other.dj;
+    geometry_derivative_idx = other.geometry_derivative_idx;
+    surface_id = other.surface_id;
+    parameter_idx = other.parameter_idx;
+    x_dot = other.x_dot;
+    return *this;
+  }
+
+  double f {1.0}, df {0.0}, j {1.0}, dj {0.0};
+  int geometry_derivative_idx {C_NONE};
+  int surface_id {SURFACE_NONE};
+  int parameter_idx {C_NONE};
+  Position x_dot {0.0, 0.0, 0.0};
+
+  void update_params(ParticleData& pd);
+
+  void reset() {
+    f = j = 1.0;
+    df = dj = 0.0;
+    x_dot = {0.0, 0.0, 0.0};
+  }
+};
 
 //! Saved ("banked") state of a particle
 //! NOTE: This structure's MPI type is built in initialize_mpi() of
@@ -61,6 +92,8 @@ struct SourceSite {
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
   int n_collision {0};
+
+  GeometryDerivativeState geom_deriv_state;
 };
 
 struct CollisionTrackSite {
@@ -100,18 +133,6 @@ struct TrackStateHistory {
   std::vector<TrackState> states;
 };
 
-struct GeometryDerivativeState {
-  double f {0.0}, df {0.0}, j {0.0}, dj {0.0};
-  int geometry_derivative_idx {C_NONE};
-  int surface_id {SURFACE_NONE};
-  int parameter_idx {C_NONE};
-
-  void update_params(ParticleData& pd);
-
-  void reset() {
-    f = df = j = dj = 0.0;
-  }
-};
 
 
 //! Saved ("banked") state of a particle, for nu-fission tallying

@@ -73,7 +73,7 @@ void GeometryDerivative::init_results()
   int n_tally_bins = tally->results().shape(0) * tally->results().shape(1);
   tally_derivatives_ =
     tensor::Tensor<double>({static_cast<size_t>(n_surface_params),
-      static_cast<size_t>(n_tally_bins), 6});
+      static_cast<size_t>(n_tally_bins), 10});
 }
 
 void GeometryDerivative::reset()
@@ -105,6 +105,11 @@ void GeometryDerivative::accumulate()
       tally_derivatives_(i, j, 2) = 0.0;
       tally_derivatives_(i, j, 5) += tally_derivatives_(i, j, 4) * norm;
       tally_derivatives_(i, j, 4) = 0.0;
+      tally_derivatives_(i, j, 7) += tally_derivatives_(i, j, 6) * norm;
+      tally_derivatives_(i, j, 6) = 0.0;
+      tally_derivatives_(i, j, 9) += tally_derivatives_(i, j, 8) * norm;
+      tally_derivatives_(i, j, 8) = 0.0;
+
     }
   }
 }
@@ -133,16 +138,36 @@ void prepare_geometry_derivatives()
   }
 }
 
-void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, int32_t param_idx, double score, double dJ, double datt) {
+void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, int32_t param_idx, double score, const GeometryDerivativeState& gs, const Particle& p) {
+  // std::cout << "Geom Deriv Score: " << score << std::endl;
   const auto& geom_deriv = model::geometry_derivatives[geometry_deriv_idx];
   // update the tally derivative with respect to the surface parameter
-  double deriv = (dJ + datt) * score;
+  double deriv = (gs.dj + gs.df) * score;
+
+  // std::cout
+  // << "TALLY"
+  // << "\t history: " << p.id()
+  // << "\t collision: " << p.n_collision()
+  // << "\t cell: " << p.lowest_coord().cell()
+  // << "\t material: " << p.material()
+  // << "\t sigma_t: " << p.macro_xs().total
+  // << "\t score: " << score
+  // << "\t dj: " << gs.dj
+  // << "\t df: " << gs.df
+  // << "\t Sdj: " << score * gs.dj
+  // << "\t Sdf: " << score * gs.df
+  // << "\t total: " << score * (gs.dj + gs.df)
+  // << '\n';
 #pragma omp atomic
     geom_deriv->tally_derivatives()(param_idx, score_bin, 0) += deriv;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 2) += score * datt;
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 2) += score * gs.df;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 4) += score * dJ;
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 4) += score * gs.dj;
+#pragma omp atomic
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 6) += gs.df;
+#pragma omp atomic
+    geom_deriv->tally_derivatives()(param_idx, score_bin, 8) += gs.dj;
 }
 
 void tally_geometry_derivatives(Particle& p, int32_t tally_id, int64_t score_bin, double score)
@@ -152,7 +177,7 @@ void tally_geometry_derivatives(Particle& p, int32_t tally_id, int64_t score_bin
     if (geom_deriv->tally_id() != tally_id) {
       continue;
     }
-    tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx, score_bin, geom_deriv_state.parameter_idx, score, geom_deriv_state.dj, geom_deriv_state.df);
+    tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx, score_bin, geom_deriv_state.parameter_idx, score, geom_deriv_state, p);
   }
 }
 
