@@ -4021,16 +4021,32 @@ class GeometricDerivative(IDManagerMixin):
         Unique ID for the geometric derivative
     tally : openmc.Tally
         Tally to which the geometric derivative is applied
-    cell : openmc.Cell
-        Cell to which the geometric derivative is applied
+    surface : openmc.Surface
+        Surface to which the geometric derivative is applied
+    surface_parameters : iterable of str
+        Iterable of surface parameters to differentiate with respect to.
     """
     next_id = 1
     used_ids = set()
 
-    def __init__(self, tally : openmc.Tally, cell: openmc.Cell, id: int = None):
+    def __init__(self, tally : openmc.Tally, surface: openmc.Surface, id: int = None):
         self.id = id
         self.tally = tally
-        self.cell = cell
+        self.surface = surface
+        self._surface_parameters = self.surface.diff_params()
+
+    @property
+    def surface_parameters(self):
+        return self._surface_parameters
+
+    @surface_parameters.setter
+    def surface_parameters(self, value):
+        if not isinstance(value, Iterable):
+            raise ValueError("surface_parameters must be an iterable of strings")
+        for param in value:
+            if param not in self.surface.diff_params():
+                raise ValueError(f"Invalid surface parameter: {param}")
+        self._surface_parameters = value
 
     def n_bins(self):
         """Return the number of bins in the geometric derivative
@@ -4043,12 +4059,7 @@ class GeometricDerivative(IDManagerMixin):
         # the number of bins in this geometric deriative
         # is the number of tally bins multiplied by the number
         # of differentiable surface parameters
-
-        surfaces = self.cell.region.get_surfaces().values()
-
-        n_surface_parameters = sum([s.n_diff_params() for s in surfaces])
-
-        return self.tally.num_filter_bins * n_surface_parameters
+        return self.tally.num_filter_bins * len(self.surface_parameters)
 
     def to_xml_element(self):
         """Create a 'derivative' element to be written to an XML file.
@@ -4062,11 +4073,12 @@ class GeometricDerivative(IDManagerMixin):
         element = ET.Element("geometry_derivative")
         element.set("id", str(self.id))
         element.set("tally", str(self.tally.id))
-        element.set("cell", str(self.cell.id))
+        element.set("surface", str(self.surface.id))
+        element.set("surface_parameters", " ".join(self.surface_parameters))
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, tallies=None, cells=None):
+    def from_xml_element(cls, elem, tallies=None, surfaces=None):
         """Generate a geometric derivative from an XML element
 
         Parameters
@@ -4077,10 +4089,10 @@ class GeometricDerivative(IDManagerMixin):
             A dictionary with tally IDs as keys and tally instances as values that
             have already been read from XML. Pre-existing tallies are used
             and new tallies are added to when creating geometric derivative objects.
-        cells : dict or None
-            A dictionary with cell IDs as keys and cell instances as values that
-            have already been read from XML. Pre-existing cells are used
-            and new cells are added to when creating geometric derivative objects.
+        surfaces : dict or None
+            A dictionary with surface IDs as keys and surface instances as values that
+            have already been read from XML. Pre-existing surfaces are used
+            and new surfaces are added to when creating geometric derivative objects.
 
         Returns
         -------
@@ -4090,9 +4102,13 @@ class GeometricDerivative(IDManagerMixin):
         """
         id = int(elem.get("id"))
         tally = tallies[int(elem.get("tally"))]
-        cell = cells[int(elem.get("cell"))]
-        return cls(tally, cell, id=id)
+        surface = surfaces[int(elem.get("surface"))]
+        out = cls(tally, surface, id=id)
+        if elem.get("surface_parameters") is not None:
+            surface_parameters = elem.get("surface_parameters").split()
+            out.surface_parameters = surface_parameters
 
+        return out
 
 class GeometricDerivatives(cv.CheckedList):
     """Collection of GeometricDerivatives used for an OpenMC simulation.
@@ -4130,7 +4146,7 @@ class GeometricDerivatives(cv.CheckedList):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem, tallies=None, cells=None):
+    def from_xml_element(cls, elem, tallies=None, surfaces=None):
         """Generate geometric derivatives from an XML element
 
         Parameters
@@ -4141,10 +4157,10 @@ class GeometricDerivatives(cv.CheckedList):
             A dictionary with tally IDs as keys and tally instances as values that
             have already been read from XML. Pre-existing tallies are used
             and new tallies are added to when creating geometric derivative objects.
-        cells : dict or None
-            A dictionary with cell IDs as keys and cell instances as values that
-            have already been read from XML. Pre-existing cells are used
-            and new cells are added to when creating geometric derivative objects.
+        surfaces : dict or None
+            A dictionary with surface IDs as keys and surface instances as values that
+            have already been read from XML. Pre-existing surfaces are used
+            and new surfaces are added to when creating geometric derivative objects.
 
         Returns
         -------

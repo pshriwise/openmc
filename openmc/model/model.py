@@ -460,9 +460,9 @@ class Model:
 
             if root.find('geometry_derivatives') is not None:
                 tally_dict = {tally.id: tally for tally in model.tallies}
-                cell_dict = model.geometry.get_all_cells()
+                surface_dict = model.geometry.get_all_surfaces()
                 model.geometry_derivatives = openmc.GeometricDerivatives.from_xml_element(
-                    root.find('geometry_derivatives'), tally_dict, cell_dict)
+                    root.find('geometry_derivatives'), tally_dict, surface_dict)
 
         return model
 

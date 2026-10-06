@@ -6,6 +6,7 @@
 #include "openmc/error.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/string_utils.h"
 #include "openmc/source.h"
 
 #include "openmc/tallies/tally.h"
@@ -15,7 +16,6 @@ namespace openmc {
 namespace model {
 std::unordered_map<int32_t, int32_t> geometry_derivatives_map;
 vector<unique_ptr<GeometryDerivative>> geometry_derivatives;
-std::unordered_set<int32_t> derivative_surface_indices;
 std::unordered_set<int32_t> geometry_derivative_tallies;
 } // namespace model
 
@@ -33,31 +33,31 @@ GeometryDerivative::GeometryDerivative(pugi::xml_node node)
   }
   tally_id_ = std::stoi(get_node_value(node, "tally"));
 
-  if (!check_for_node(node, "cell")) {
-    fatal_error("Must specify cell of geometry derivative in "
+  if (!check_for_node(node, "surface")) {
+    fatal_error("Must specify surface of geometry derivative in "
                 "geometry_derivatives XML file.");
   }
-  cell_id_ = std::stoi(get_node_value(node, "cell"));
+  surface_parameters_ = get_node_value(node, "surface_parameters");
 }
 
 void GeometryDerivative::init_results()
 {
-  surface_indices_.clear();
-  surface_ids_.clear();
+  surface_parameter_map_.clear();
   tally_derivatives_ = {};
 
-  // determine number of differentiable parameters on the cell
-  const auto& cell = model::cells[model::cell_map[cell_id_]];
-  const auto& surfaces = cell->surfaces();
+  auto surface_params = split(surface_parameters_);
+  int n_params = surface_params.size();
 
-  int n_surface_params = 0;
-  for (const auto& surf_token : surfaces) {
-    int32_t surface_index = std::abs(surf_token) - 1;
-    model::derivative_surface_indices.insert(surface_index);
-    const auto& surf = model::surfaces[surface_index];
-    surface_indices_[surf->id_] = n_surface_params;
-    surface_ids_.push_back(surf->id_);
-    n_surface_params += surf->n_diff_params();
+  const auto& surface = model::surfaces[model::surface_map[surface_id_]];
+  for (int i = 0; i < n_params; ++i) {
+    int param_idx = surface->diff_param_index(surface_params[i]);
+    if (param_idx == -1) {
+      fatal_error(fmt::format(
+        "Surface {} does not have a parameter named {} for geometry "
+        "derivative {}.",
+        surface_id_, surface_params[i], id_));
+    }
+    surface_parameter_map_[param_idx] = i;
   }
 
   const auto& tally = model::tallies[model::tally_map[tally_id_]];
@@ -70,9 +70,11 @@ void GeometryDerivative::init_results()
       tally_id_));
   }
 
+  model::geometry_derivative_tallies.insert(tally_id_);
+
   int n_tally_bins = tally->results().shape(0) * tally->results().shape(1);
   tally_derivatives_ =
-    tensor::Tensor<double>({static_cast<size_t>(n_surface_params),
+    tensor::Tensor<double>({static_cast<size_t>(n_params),
       static_cast<size_t>(n_tally_bins), 10});
 }
 
@@ -130,7 +132,6 @@ void read_geometry_derivatives(pugi::xml_node node)
 
 void prepare_geometry_derivatives()
 {
-  model::derivative_surface_indices.clear();
   model::geometry_derivative_tallies.clear();
   for (const auto& geom_deriv : model::geometry_derivatives) {
     geom_deriv->init_results();
@@ -144,6 +145,7 @@ void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, in
   // update the tally derivative with respect to the surface parameter
   double deriv = (gs.dj + gs.df) * score;
 
+  int32_t data_index = geom_deriv->surface_parameter_map().at(param_idx);
   // std::cout
   // << "TALLY"
   // << "\t history: " << p.id()
@@ -159,15 +161,15 @@ void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, in
   // << "\t total: " << score * (gs.dj + gs.df)
   // << '\n';
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 0) += deriv;
+    geom_deriv->tally_derivatives()(data_index, score_bin, 0) += deriv;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 2) += score * gs.df;
+    geom_deriv->tally_derivatives()(data_index, score_bin, 2) += score * gs.df;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 4) += score * gs.dj;
+    geom_deriv->tally_derivatives()(data_index, score_bin, 4) += score * gs.dj;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 6) += gs.df;
+    geom_deriv->tally_derivatives()(data_index, score_bin, 6) += gs.df;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(param_idx, score_bin, 8) += gs.dj;
+    geom_deriv->tally_derivatives()(data_index, score_bin, 8) += gs.dj;
 }
 
 void tally_geometry_derivatives(Particle& p, int32_t tally_id, int64_t score_bin, double score)
@@ -199,7 +201,6 @@ void free_memory_geometry_derivatives()
 {
   model::geometry_derivatives_map.clear();
   model::geometry_derivatives.clear();
-  model::derivative_surface_indices.clear();
   model::geometry_derivative_tallies.clear();
 }
 

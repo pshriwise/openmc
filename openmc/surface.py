@@ -1739,9 +1739,11 @@ class Sphere(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
+    def differentiable_params(self):
+        return ('x0', 'y0', 'z0', 'r')
+
     def n_diff_params(self):
-        # sphere radius is the only differentiable parameter, so return 1
-        return 1
+        return 4
 
     def bounding_box(self, side):
         if side == '-':

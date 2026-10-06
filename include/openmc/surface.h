@@ -105,6 +105,12 @@ public:
   //! to compute for each surface.
   virtual int n_diff_params() const { return 0; }
 
+  //! Return the differentiable parameter index for this surface
+  virtual int diff_param_index(std::string param_name) const {
+    fatal_error(fmt::format("Attempting to compute a derivative on surface {} for an invalid parameter name {}", id_, param_name));
+    return C_NONE;
+  }
+
   virtual std::vector<double> derivatives(Position r, Direction u) const {
     std::vector<double> derivatives;
     for (int i = 0; i < n_diff_params(); ++i) {
@@ -270,9 +276,29 @@ public:
   BoundingBox bounding_box(bool pos_side) const override;
 
   // just one differentiable parameter (the radius) for now
-  int n_diff_params() const override { return 1; }
+  int n_diff_params() const override { return 4; }
+
+  int diff_param_index(std::string param_name) const override {
+    if (param_name == "x0") {
+      return 0;
+    } else if (param_name == "y0") {
+      return 1;
+    } else if (param_name == "z0") {
+      return 2;
+    } else if (param_name == "r") {
+      return 3;
+    } else {
+      fatal_error(fmt::format("Attempting to compute a derivative on surface {} for an invalid parameter name {}", id_, param_name));
+      return C_NONE;
+    }
+  }
 
   double derivative(Position r, Direction u, int param_idx) const override;
+
+  double radial_derivative(Position r, Direction u) const;
+
+  template<typename I>
+  double origin_derivative(Position r, Direction u) const;
 
   double x0_, y0_, z0_, radius_;
 };

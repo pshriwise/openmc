@@ -307,9 +307,6 @@ void Particle::event_advance()
   // update geometric derivatives if the particle's trajectory
   // intersects a surface that is part of a geometry derivative computation
   this->update_geometry_derivatives();
-  // if (model::derivative_surface_indices.count(boundary().surface_index()) > 0) {
-  //   this->update_geometry_derivatives();
-  // }
 
   double speed = this->speed();
   double time_cutoff = settings::time_cutoff[type().transport_index()];

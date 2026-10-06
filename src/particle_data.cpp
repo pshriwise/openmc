@@ -107,15 +107,13 @@ ParticleData::ParticleData()
   // Allocate space for geometry derivative states
   for (int i = 0; i < model::geometry_derivatives.size(); ++i) {
     const auto& geom_deriv = model::geometry_derivatives[i];
-    for (const auto& surface_pair : geom_deriv->surface_indices()) {
-      const auto& surface = model::surfaces[model::surface_map[surface_pair.first]];
-      for (int j = 0; j < surface->n_diff_params(); ++j) {
-        geometry_deriv_state().push_back(GeometryDerivativeState());
-        auto& state = geometry_deriv_state().back();
-        state.geometry_derivative_idx = i;
-        state.surface_id = surface_pair.first;
-        state.parameter_idx = j;
-      }
+    for (const auto& surface_parameter_pair : geom_deriv->surface_parameter_map()) {
+      int surface_parameter_index = surface_parameter_pair.first;
+      geometry_deriv_state().push_back(GeometryDerivativeState());
+      auto& state = geometry_deriv_state().back();
+      state.geometry_derivative_idx = i;
+      state.surface_id = geom_deriv->surface_id();
+      state.parameter_idx = surface_parameter_index;
     }
   }
 
@@ -164,9 +162,9 @@ void GeometryDerivativeState::update_params(ParticleData& pd)
 
   const auto& geom_deriv = model::geometry_derivatives[geometry_derivative_idx];
 
-  if (geom_deriv->surface_indices().count(surface_id) == 0) {
-    return;
-  }
+  // if (geom_deriv->surface_indices().count(surface_id) == 0) {
+  //   return;
+  // }
 
   const auto& surface = model::surfaces[model::surface_map[surface_id]];
 

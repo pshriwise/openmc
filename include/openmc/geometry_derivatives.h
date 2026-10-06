@@ -18,7 +18,6 @@ class GeometryDerivative;
 namespace model {
 extern std::unordered_map<int32_t, int32_t> geometry_derivatives_map;
 extern vector<unique_ptr<GeometryDerivative>> geometry_derivatives;
-extern std::unordered_set<int32_t> derivative_surface_indices;
 extern std::unordered_set<int32_t> geometry_derivative_tallies;
 } // namespace model
 
@@ -46,20 +45,21 @@ public:
   // Accessors
   int32_t id() const { return id_; }
   int32_t tally_id() const { return tally_id_; }
-  int32_t cell_id() const { return cell_id_; }
+  int32_t surface_id() const { return surface_id_; }
 
-  const auto& surface_indices() const { return surface_indices_; }
-  auto& surface_indices() { return surface_indices_; }
-  const auto& surface_ids() const { return surface_ids_; }
   auto& tally_derivatives() { return tally_derivatives_; }
   const auto& tally_derivatives() const { return tally_derivatives_; }
-
+  const auto& surface_parameter_map() const { return surface_parameter_map_; }
   void accumulate();
 
 private:
   int32_t id_;
   int32_t tally_id_;
-  int32_t cell_id_;
+  int32_t surface_id_;
+  std::string surface_parameters_;
+
+  //! map of data index to surface parameter index
+  std::unordered_map<int32_t, int32_t> surface_parameter_map_;
 
   //! Results of the tally derivative with respsect to various geometric
   //! parameters. The first dimension of the array is for geometric parameter
@@ -69,12 +69,6 @@ private:
   //! the current batch. The fourth dimension is the final result with
   //! accumulation after each batch.
   tensor::Tensor<double> tally_derivatives_;
-
-  //! Store start in surface parameter index for the surface of each cell
-  std::unordered_map<int32_t, int32_t> surface_indices_;
-
-  //! Surface IDs participating in this derivative, ordered by cell region.
-  vector<int32_t> surface_ids_;
 };
 
 } // namespace openmc
