@@ -37,6 +37,7 @@ GeometryDerivative::GeometryDerivative(pugi::xml_node node)
     fatal_error("Must specify surface of geometry derivative in "
                 "geometry_derivatives XML file.");
   }
+  surface_id_ = std::stoi(get_node_value(node, "surface"));
   surface_parameters_ = get_node_value(node, "surface_parameters");
 }
 
@@ -254,26 +255,25 @@ extern "C" int openmc_geometry_derivative_get_tally_id(
   return 0;
 }
 
-extern "C" int openmc_geometry_derivative_get_cell_id(
+extern "C" int openmc_geometry_derivative_get_surface_id(
   int32_t index, int32_t* id)
 {
   auto* deriv = get_geometry_derivative(index);
   if (!deriv)
     return OPENMC_E_OUT_OF_BOUNDS;
 
-  *id = deriv->cell_id();
+  *id = deriv->surface_id();
   return 0;
 }
 
-extern "C" int openmc_geometry_derivative_get_surface_ids(
-  int32_t index, const int32_t** surface_ids, size_t* n)
+extern "C" int openmc_geometry_derivative_get_surface_parameters(
+  int32_t index, const char** parameters)
 {
   auto* deriv = get_geometry_derivative(index);
   if (!deriv)
     return OPENMC_E_OUT_OF_BOUNDS;
 
-  *surface_ids = deriv->surface_ids().data();
-  *n = deriv->surface_ids().size();
+  *parameters = deriv->surface_parameters().c_str();
   return 0;
 }
 

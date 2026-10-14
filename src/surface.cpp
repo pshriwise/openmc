@@ -715,8 +715,7 @@ double SurfaceSphere::radial_derivative(Position r, Direction u) const
   }
 }
 
-template<typename I>
-double SurfaceSphere::origin_derivative(Position r, Direction u) const
+double SurfaceSphere::origin_derivative(Position r, Direction u, int i) const
 {
      // compute relevant factors
   Position r0 {r.x - x0_, r.y - y0_, r.z - z0_};
@@ -730,17 +729,17 @@ double SurfaceSphere::origin_derivative(Position r, Direction u) const
     fatal_error(fmt::format("Attempting to compute a derivative on surface {} for a particle that does not intersect the surface", id_));
   }
 
-  double d_1 = (u / (2*a));
-  double d_2 = (2 * a * r0 - b * u) / (2 * a * sqrt(q));
+  Position d_1 = u / a;
+  Position d_2 = (2 * a * r0 - b * u) / (a * sqrt(q));
 
   if (std::abs(c) < FP_COINCIDENT || c < 0.0) {
     // if c is less than or approx zero, we know we should use the positive root
     // to compute the derivative
-    return d_1.get<I>() + d_2.get<I>()
+    return d_1[i] + d_2[i];
   } else {
     // if c is greater than zero, we know we should use the negative root
     // to compute the derivative
-    return d_1.get<I>() - d_2.get<I>();
+    return d_1[i] - d_2[i];
   }
 }
 
@@ -750,7 +749,7 @@ double SurfaceSphere::derivative(Position r, Direction u, int param_idx) const
   if (param_idx == 3) {
     return radial_derivative(r, u);
   } else if (param_idx < 3) {
-    return origin_derivative<param_idx>(r, u);
+    return origin_derivative(r, u, param_idx);
   } else {
     fatal_error(fmt::format("Attempting to compute a derivative on surface {} for an invalid parameter index {}", id_, param_idx));
   }

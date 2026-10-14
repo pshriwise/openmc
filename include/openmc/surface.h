@@ -297,8 +297,7 @@ public:
 
   double radial_derivative(Position r, Direction u) const;
 
-  template<typename I>
-  double origin_derivative(Position r, Direction u) const;
+  double origin_derivative(Position r, Direction u, int i) const;
 
   double x0_, y0_, z0_, radius_;
 };

@@ -1,12 +1,11 @@
 from collections.abc import Mapping
-from ctypes import c_double, c_int, c_int32, c_size_t, POINTER
+from ctypes import c_char_p, c_double, c_int, c_int32, c_size_t, POINTER
 from weakref import WeakValueDictionary
 
 from numpy.ctypeslib import as_array
 
 from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
-from .cell import cells
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .tally import tallies
@@ -28,14 +27,14 @@ _dll.openmc_geometry_derivative_get_tally_id.argtypes = [
     c_int32, POINTER(c_int32)]
 _dll.openmc_geometry_derivative_get_tally_id.restype = c_int
 _dll.openmc_geometry_derivative_get_tally_id.errcheck = _error_handler
-_dll.openmc_geometry_derivative_get_cell_id.argtypes = [
+_dll.openmc_geometry_derivative_get_surface_id.argtypes = [
     c_int32, POINTER(c_int32)]
-_dll.openmc_geometry_derivative_get_cell_id.restype = c_int
-_dll.openmc_geometry_derivative_get_cell_id.errcheck = _error_handler
-_dll.openmc_geometry_derivative_get_surface_ids.argtypes = [
-    c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
-_dll.openmc_geometry_derivative_get_surface_ids.restype = c_int
-_dll.openmc_geometry_derivative_get_surface_ids.errcheck = _error_handler
+_dll.openmc_geometry_derivative_get_surface_id.restype = c_int
+_dll.openmc_geometry_derivative_get_surface_id.errcheck = _error_handler
+_dll.openmc_geometry_derivative_get_surface_parameters.argtypes = [
+    c_int32, POINTER(c_char_p)]
+_dll.openmc_geometry_derivative_get_surface_parameters.restype = c_int
+_dll.openmc_geometry_derivative_get_surface_parameters.errcheck = _error_handler
 _dll.openmc_geometry_derivative_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t*3)]
 _dll.openmc_geometry_derivative_results.restype = c_int
@@ -64,19 +63,18 @@ class GeometryDerivative(_FortranObjectWithID):
 
     Attributes
     ----------
-    cell : openmc.lib.Cell
-        Cell to which the geometry derivative is applied.
-    cell_id : int
-        ID of the cell to which the geometry derivative is applied.
     id : int
         ID of the geometry derivative.
     mean : numpy.ndarray
         Batch-averaged geometry derivative results.
     results : numpy.ndarray
         Raw geometry derivative results. The last axis stores the current
-        batch accumulator and accumulated sum.
-    surface_ids : list of int
-        IDs of surfaces used by the geometry derivative.
+        batch accumulator and accumulated sum for the total derivative,
+        attenuation contribution, Jacobian contribution, df, and dj.
+    surface_id : int
+        ID of the surface to which the geometry derivative is applied.
+    surface_parameters : list of str
+        Surface parameters in the order of the first results axis.
     tally : openmc.lib.Tally
         Tally to which the geometry derivative is applied.
     tally_id : int
@@ -117,22 +115,17 @@ class GeometryDerivative(_FortranObjectWithID):
         return tallies[self.tally_id]
 
     @property
-    def cell_id(self):
-        cell_id = c_int32()
-        _dll.openmc_geometry_derivative_get_cell_id(self._index, cell_id)
-        return cell_id.value
+    def surface_id(self):
+        surface_id = c_int32()
+        _dll.openmc_geometry_derivative_get_surface_id(self._index, surface_id)
+        return surface_id.value
 
     @property
-    def cell(self):
-        return cells[self.cell_id]
-
-    @property
-    def surface_ids(self):
-        surface_ids = POINTER(c_int32)()
-        n = c_size_t()
-        _dll.openmc_geometry_derivative_get_surface_ids(
-            self._index, surface_ids, n)
-        return [surface_ids[i] for i in range(n.value)]
+    def surface_parameters(self):
+        parameters = c_char_p()
+        _dll.openmc_geometry_derivative_get_surface_parameters(
+            self._index, parameters)
+        return parameters.value.decode().split()
 
     @property
     def results(self):

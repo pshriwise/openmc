@@ -4033,7 +4033,7 @@ class GeometricDerivative(IDManagerMixin):
         self.id = id
         self.tally = tally
         self.surface = surface
-        self._surface_parameters = self.surface.diff_params()
+        self._surface_parameters = self.surface.differentiable_params()
 
     @property
     def surface_parameters(self):
@@ -4044,7 +4044,7 @@ class GeometricDerivative(IDManagerMixin):
         if not isinstance(value, Iterable):
             raise ValueError("surface_parameters must be an iterable of strings")
         for param in value:
-            if param not in self.surface.diff_params():
+            if param not in self.surface.differentiable_params():
                 raise ValueError(f"Invalid surface parameter: {param}")
         self._surface_parameters = value
 
@@ -4170,5 +4170,5 @@ class GeometricDerivatives(cv.CheckedList):
         """
         gds = cls()
         for gd_elem in elem.findall("geometry_derivative"):
-            gds.append(GeometricDerivative.from_xml_element(gd_elem, tallies, cells))
+            gds.append(GeometricDerivative.from_xml_element(gd_elem, tallies, surfaces))
         return gds

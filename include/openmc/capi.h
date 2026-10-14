@@ -267,11 +267,9 @@ int openmc_tally_reset(int32_t index);
 int openmc_tally_results(int32_t index, double** ptr, size_t shape_[3]);
 int openmc_geometry_derivative_get_id(int32_t index, int32_t* id);
 int openmc_geometry_derivative_get_tally_id(int32_t index, int32_t* id);
-int openmc_geometry_derivative_get_cell_id(int32_t index, int32_t* id);
-int openmc_geometry_derivative_get_surface_ids(
-  int32_t index, const int32_t** surface_ids, size_t* n);
-int openmc_geometry_derivative_parameters(
-  int32_t index, double** parameters, size_t shape_[2]);
+int openmc_geometry_derivative_get_surface_id(int32_t index, int32_t* id);
+int openmc_geometry_derivative_get_surface_parameters(
+  int32_t index, const char** parameters);
 int openmc_geometry_derivative_results(
   int32_t index, double** results, size_t shape_[3]);
 int openmc_geometry_derivative_reset(int32_t index);

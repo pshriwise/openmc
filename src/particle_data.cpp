@@ -179,7 +179,6 @@ void GeometryDerivativeState::update_params(ParticleData& pd)
 
   double adv_distance = std::min(pd.boundary().distance(), pd.collision_distance());
 
-
   Position x_dot_prev = this->x_dot;
 
   const auto& hit_surface = model::surfaces[pd.boundary().surface_index()];

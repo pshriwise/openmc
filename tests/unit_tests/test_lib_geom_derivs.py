@@ -35,7 +35,7 @@ def test_geometry_derivative_results_and_reset(mpi_intracomm):
     tally.scores = ['flux']
     model.tallies.append(tally)
 
-    geom_deriv = openmc.GeometricDerivative(tally, cell, id=1)
+    geom_deriv = openmc.GeometricDerivative(tally, surface, id=1)
     model.geometry_derivatives = [geom_deriv]
 
     model.settings.batches = 3
@@ -57,16 +57,14 @@ def test_geometry_derivative_results_and_reset(mpi_intracomm):
         assert isinstance(deriv, openmc.lib.GeometryDerivative)
         assert deriv.id == 1
         assert deriv.tally_id == tally.id
-        assert deriv.cell_id == cell.id
+        assert deriv.surface_id == surface.id
         assert deriv.tally is openmc.lib.tallies[tally.id]
-        assert deriv.cell is openmc.lib.cells[cell.id]
 
         openmc.lib.run(output=False)
 
-        assert deriv.surface_ids == [surface.id]
-        assert deriv.geom_parameters.shape == (1, 4)
-        assert deriv.results.shape == (1, 1, 2)
-        assert deriv.mean.shape == (1, 1)
+        assert deriv.surface_parameters == list(geom_deriv.surface_parameters)
+        assert deriv.results.shape == (4, 1, 10)
+        assert deriv.mean.shape == (4, 1)
 
         deriv.reset()
         assert np.all(deriv.results == 0.0)
