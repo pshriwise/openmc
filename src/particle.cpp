@@ -120,7 +120,7 @@ bool Particle::create_secondary(
   bank.wgt_ww_born = wgt_ww_born();
   bank.n_split = n_split();
 
-  bank.geom_deriv_state = geometry_deriv_state()[0];
+  bank.geom_deriv_state = geometry_deriv_state();
 
 
   local_secondary_bank().emplace_back(bank);
@@ -213,8 +213,13 @@ void Particle::from_source(const SourceSite* src)
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
 
-  if(src->geom_deriv_state.geometry_derivative_idx != C_NONE)
-  geometry_deriv_state()[0] = src->geom_deriv_state;
+  geometry_deriv_state().clear();
+
+  for (int i = 0; i < src->geom_deriv_state.size(); ++i) {
+    if (src->geom_deriv_state[i].geometry_derivative_idx != C_NONE) {
+      geometry_deriv_state().push_back(src->geom_deriv_state[i]);
+    }
+  }
 }
 
 void Particle::event_calculate_xs()

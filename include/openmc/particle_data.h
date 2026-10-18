@@ -93,7 +93,7 @@ struct SourceSite {
   int64_t n_split {0};
   int n_collision {0};
 
-  GeometryDerivativeState geom_deriv_state;
+  vector<GeometryDerivativeState> geom_deriv_state;
 };
 
 struct CollisionTrackSite {
