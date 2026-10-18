@@ -6,6 +6,7 @@ from openmc.checkvalue import *
 from openmc.mesh import *
 from openmc.element import *
 from openmc.geometry import *
+from openmc.geometry_derivatives import *
 from openmc.nuclide import *
 from openmc.macroscopic import *
 from openmc.material import *
