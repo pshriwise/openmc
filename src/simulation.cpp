@@ -100,14 +100,6 @@ int openmc_simulation_init()
     open_track_file();
   }
 
-  // If doing an event-based simulation, intialize the particle buffer
-  // and event queues
-  if (settings::event_based) {
-    int64_t event_buffer_length =
-      std::min(simulation::work_per_rank, settings::max_particles_in_flight);
-    init_event_queues(event_buffer_length);
-  }
-
   // Allocate tally results arrays if they're not allocated yet
   for (auto& t : model::tallies) {
     t->set_strides();
@@ -115,6 +107,13 @@ int openmc_simulation_init()
   }
 
   prepare_geometry_derivatives();
+
+  // Initialize event particles after the geometry derivative parameter maps.
+  if (settings::event_based) {
+    int64_t event_buffer_length =
+      std::min(simulation::work_per_rank, settings::max_particles_in_flight);
+    init_event_queues(event_buffer_length);
+  }
 
   // Set up material nuclide index mapping
   for (auto& mat : model::materials) {

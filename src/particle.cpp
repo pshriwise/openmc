@@ -213,12 +213,10 @@ void Particle::from_source(const SourceSite* src)
   wgt_ww_born() = src->wgt_ww_born;
   n_split() = src->n_split;
 
-  geometry_deriv_state().clear();
-
-  for (int i = 0; i < src->geom_deriv_state.size(); ++i) {
-    if (src->geom_deriv_state[i].geometry_derivative_idx != C_NONE) {
-      geometry_deriv_state().push_back(src->geom_deriv_state[i]);
-    }
+  // Primary source sites start with the reset states allocated for this
+  // particle. Secondary sites carry the accumulated states of their parent.
+  if (!src->geom_deriv_state.empty()) {
+    geometry_deriv_state() = src->geom_deriv_state;
   }
 }
 

@@ -27,12 +27,12 @@ _dll.openmc_geometry_derivative_get_tally_id.argtypes = [
     c_int32, POINTER(c_int32)]
 _dll.openmc_geometry_derivative_get_tally_id.restype = c_int
 _dll.openmc_geometry_derivative_get_tally_id.errcheck = _error_handler
-_dll.openmc_geometry_derivative_get_surface_id.argtypes = [
-    c_int32, POINTER(c_int32)]
-_dll.openmc_geometry_derivative_get_surface_id.restype = c_int
-_dll.openmc_geometry_derivative_get_surface_id.errcheck = _error_handler
+_dll.openmc_geometry_derivative_get_surface_ids.argtypes = [
+    c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
+_dll.openmc_geometry_derivative_get_surface_ids.restype = c_int
+_dll.openmc_geometry_derivative_get_surface_ids.errcheck = _error_handler
 _dll.openmc_geometry_derivative_get_surface_parameters.argtypes = [
-    c_int32, POINTER(c_char_p)]
+    c_int32, c_int32, POINTER(c_char_p)]
 _dll.openmc_geometry_derivative_get_surface_parameters.restype = c_int
 _dll.openmc_geometry_derivative_get_surface_parameters.errcheck = _error_handler
 _dll.openmc_geometry_derivative_results.argtypes = [
@@ -71,10 +71,11 @@ class GeometryDerivative(_FortranObjectWithID):
         Raw geometry derivative results. The last axis stores the current
         batch accumulator and accumulated sum for the total derivative,
         attenuation contribution, Jacobian contribution, df, and dj.
-    surface_id : int
-        ID of the surface to which the geometry derivative is applied.
-    surface_parameters : list of str
-        Surface parameters in the order of the first results axis.
+    surface_ids : list of int
+        IDs of the surfaces, in input order.
+    surface_parameters : dict of int to list of str
+        Mapping from surface IDs to parameter names. Flattening the values in
+        insertion order gives the order of the first results axis.
     tally : openmc.lib.Tally
         Tally to which the geometry derivative is applied.
     tally_id : int
@@ -115,17 +116,21 @@ class GeometryDerivative(_FortranObjectWithID):
         return tallies[self.tally_id]
 
     @property
-    def surface_id(self):
-        surface_id = c_int32()
-        _dll.openmc_geometry_derivative_get_surface_id(self._index, surface_id)
-        return surface_id.value
+    def surface_ids(self):
+        ids = POINTER(c_int32)()
+        n = c_size_t()
+        _dll.openmc_geometry_derivative_get_surface_ids(self._index, ids, n)
+        return [ids[i] for i in range(n.value)]
 
     @property
     def surface_parameters(self):
-        parameters = c_char_p()
-        _dll.openmc_geometry_derivative_get_surface_parameters(
-            self._index, parameters)
-        return parameters.value.decode().split()
+        surface_parameters = {}
+        for surface_id in self.surface_ids:
+            parameters = c_char_p()
+            _dll.openmc_geometry_derivative_get_surface_parameters(
+                self._index, surface_id, parameters)
+            surface_parameters[surface_id] = parameters.value.decode().split()
+        return surface_parameters
 
     @property
     def results(self):

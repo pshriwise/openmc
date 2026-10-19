@@ -3,11 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 import lxml.etree as ET
 
-from scipy.stats import chi2, norm
-
 import openmc
 import openmc.checkvalue as cv
-from openmc import Tally
 
 from .mixin import IDManagerMixin
 
@@ -39,13 +36,14 @@ class GeometricDerivative(IDManagerMixin):
     @surface_parameters.setter
     def surface_parameters(self, value):
         cv.check_type('Surface parameters', value, Mapping)
+        value = dict(value)
 
         for key, val in value.items():
             cv.check_type('Surface', key, (openmc.Surface, int))
 
             if val == ['all']:
                 if isinstance(key, openmc.Surface):
-                    value[key] = key.differentiable_params()
+                    val = value[key] = key.differentiable_params()
                 else:
                     raise ValueError(f"Surface parameters for surface ID {key} cannot be set to ['all'] without a Surface object.")
             cv.check_type('Surface parameters', val, Iterable)
@@ -141,9 +139,9 @@ class GeometricDerivatives(cv.CheckedList):
     example demonstrates:
 
     >>> t1 = openmc.Tally()
-    >>> c1 = openmc.Cell()
-    >>> gd1 = openmc.GeometricDerivative(t1, c1)
-    >>> gd2 = openmc.GeometricDerivative(t1, c1)
+    >>> s1 = openmc.Sphere()
+    >>> gd1 = openmc.GeometricDerivative(t1, {s1: ['r']})
+    >>> gd2 = openmc.GeometricDerivative(t1, {s1: ['x0', 'y0', 'z0']})
     >>> gds = openmc.GeometricDerivatives([gd1])
     >>> gds.append(gd2)
 

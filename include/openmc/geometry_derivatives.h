@@ -24,8 +24,6 @@ extern std::unordered_set<int32_t> geometry_derivative_tallies;
 void read_geometry_derivatives(pugi::xml_node node);
 void prepare_geometry_derivatives();
 void tally_geometry_derivatives(
-  int32_t tally_id, int64_t score_bin, double score);
-void tally_geometry_derivatives(
   Particle& p, int32_t tally_id, int64_t score_bin, double score);
 void accumulate_geometry_derivatives();
 void report_geometry_derivatives();
@@ -45,8 +43,8 @@ public:
   // Accessors
   int32_t id() const { return id_; }
   int32_t tally_id() const { return tally_id_; }
-  int32_t surface_id() const { return surface_id_; }
-  const std::string& surface_parameters() const { return surface_parameters_; }
+  const auto& surface_ids() const { return surface_ids_; }
+  const auto& surface_parameters() const { return surface_parameters_; }
 
   auto& tally_derivatives() { return tally_derivatives_; }
   const auto& tally_derivatives() const { return tally_derivatives_; }
@@ -56,11 +54,21 @@ public:
 private:
   int32_t id_;
   int32_t tally_id_;
-  int32_t surface_id_;
-  std::string surface_parameters_;
+  vector<int32_t> surface_ids_;
+  vector<std::string> surface_parameters_;
 
-  //! map of data index to surface parameter index
-  std::unordered_map<int32_t, int32_t> surface_parameter_map_;
+
+  //! Type alias and custom hash function for surface-parameter pair
+  using SurfaceParameterPair = std::pair<int, int>;
+  struct SurfaceParameterPairHash {
+    std::size_t operator()(const SurfaceParameterPair& pair) const {
+      return std::hash<int>()(pair.first) ^ std::hash<int>()(pair.second);
+    }
+  };
+
+  //! Map surface IDs and parameter indices to flattened result indices.
+  //! The first key is the surface ID and the second key is the parameter index.
+  std::unordered_map<SurfaceParameterPair, int32_t, SurfaceParameterPairHash> surface_parameter_map_;
 
   //! Results of the tally derivative with respsect to various geometric
   //! parameters. The first dimension of the array is for geometric parameter
@@ -79,9 +87,10 @@ extern "C" {
 int openmc_get_geometry_derivative_index(int32_t id, int32_t* index);
 int openmc_geometry_derivative_get_id(int32_t index, int32_t* id);
 int openmc_geometry_derivative_get_tally_id(int32_t index, int32_t* id);
-int openmc_geometry_derivative_get_surface_id(int32_t index, int32_t* id);
+int openmc_geometry_derivative_get_surface_ids(
+  int32_t index, const int32_t** ids, size_t* n);
 int openmc_geometry_derivative_get_surface_parameters(
-  int32_t index, const char** parameters);
+  int32_t index, int32_t surface_id, const char** parameters);
 int openmc_geometry_derivative_results(
   int32_t index, double** results, size_t* shape);
 int openmc_geometry_derivative_reset(int32_t index);

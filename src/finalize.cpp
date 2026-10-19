@@ -63,9 +63,9 @@ void free_memory()
   if (mpi::master) {
     free_memory_cmfd();
   }
-  if (settings::event_based) {
-    free_event_queues();
-  }
+  // Settings may already have been reset by openmc_finalize. Always discard
+  // event particles so a later model cannot inherit their derivative states.
+  free_event_queues();
 }
 
 } // namespace openmc

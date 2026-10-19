@@ -107,13 +107,13 @@ ParticleData::ParticleData()
   // Allocate space for geometry derivative states
   for (int i = 0; i < model::geometry_derivatives.size(); ++i) {
     const auto& geom_deriv = model::geometry_derivatives[i];
-    for (const auto& surface_parameter_pair : geom_deriv->surface_parameter_map()) {
-      int surface_parameter_index = surface_parameter_pair.first;
-      geometry_deriv_state().push_back(GeometryDerivativeState());
+    for (const auto& [key, _] : geom_deriv->surface_parameter_map()) {
+      const auto& [surface_id, parameter_idx] = key;
+      geometry_deriv_state().emplace_back();
       auto& state = geometry_deriv_state().back();
       state.geometry_derivative_idx = i;
-      state.surface_id = geom_deriv->surface_id();
-      state.parameter_idx = surface_parameter_index;
+      state.surface_id = surface_id;
+      state.parameter_idx = parameter_idx;
     }
   }
 
@@ -170,7 +170,7 @@ void GeometryDerivativeState::update_params(ParticleData& pd)
 
   double rdot_direct = 0.0;
   // only update if we're moving toward the surface of interest
-  if (surface_id == std::abs(pd.boundary().surface())) {
+  if (surface_id == model::surfaces[pd.boundary().surface_index()]->id_) {
     rdot_direct = surface->derivative(pd.r(), pd.u(), parameter_idx);
   }
 

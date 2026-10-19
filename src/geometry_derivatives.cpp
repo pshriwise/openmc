@@ -6,8 +6,8 @@
 #include "openmc/error.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
-#include "openmc/string_utils.h"
 #include "openmc/source.h"
+#include "openmc/string_utils.h"
 
 #include "openmc/tallies/tally.h"
 
@@ -33,12 +33,20 @@ GeometryDerivative::GeometryDerivative(pugi::xml_node node)
   }
   tally_id_ = std::stoi(get_node_value(node, "tally"));
 
-  if (!check_for_node(node, "surface")) {
-    fatal_error("Must specify surface of geometry derivative in "
-                "geometry_derivatives XML file.");
+  for (auto surface_node : node.children("surface")) {
+    if (!check_for_node(surface_node, "id") ||
+        !check_for_node(surface_node, "parameters")) {
+      fatal_error("Must specify id and parameters for each geometry derivative "
+                  "surface.");
+    }
+    int32_t surface_id = std::stoi(get_node_value(surface_node, "id"));
+    if (contains(surface_ids_, surface_id)) {
+      fatal_error(fmt::format(
+        "Duplicate surface {} in geometry derivative {}.", surface_id, id_));
+    }
+    surface_ids_.push_back(surface_id);
+    surface_parameters_.push_back(get_node_value(surface_node, "parameters"));
   }
-  surface_id_ = std::stoi(get_node_value(node, "surface"));
-  surface_parameters_ = get_node_value(node, "surface_parameters");
 }
 
 void GeometryDerivative::init_results()
@@ -46,22 +54,39 @@ void GeometryDerivative::init_results()
   surface_parameter_map_.clear();
   tally_derivatives_ = {};
 
-  auto surface_params = split(surface_parameters_);
-  int n_params = surface_params.size();
-
-  const auto& surface = model::surfaces[model::surface_map[surface_id_]];
-  for (int i = 0; i < n_params; ++i) {
-    int param_idx = surface->diff_param_index(surface_params[i]);
-    if (param_idx == -1) {
-      fatal_error(fmt::format(
-        "Surface {} does not have a parameter named {} for geometry "
-        "derivative {}.",
-        surface_id_, surface_params[i], id_));
+  int n_params = 0;
+  for (int i = 0; i < surface_ids_.size(); ++i) {
+    int32_t surface_id = surface_ids_[i];
+    auto surface_it = model::surface_map.find(surface_id);
+    if (surface_it == model::surface_map.end()) {
+      fatal_error(
+        fmt::format("Could not find surface {} for geometry derivative {}.",
+          surface_id, id_));
     }
-    surface_parameter_map_[param_idx] = i;
+    const auto& surface = model::surfaces[surface_it->second];
+    for (const auto& param : split(surface_parameters_[i])) {
+      int param_idx = surface->diff_param_index(param);
+      if (param_idx == -1) {
+        fatal_error(fmt::format(
+          "Surface {} does not have a parameter named {} for geometry "
+          "derivative {}.",
+          surface_id, param, id_));
+      }
+      if (surface_parameter_map_.count({surface_id, param_idx}) != 0) {
+        fatal_error(fmt::format("Duplicate parameter {} for surface {} in "
+                                "geometry derivative {}.",
+          param, surface_id, id_));
+      }
+      surface_parameter_map_[{surface_id, param_idx}] = n_params++;
+    }
   }
 
-  const auto& tally = model::tallies[model::tally_map[tally_id_]];
+  auto tally_it = model::tally_map.find(tally_id_);
+  if (tally_it == model::tally_map.end()) {
+    fatal_error(fmt::format(
+      "Could not find tally {} for geometry derivative {}.", tally_id_, id_));
+  }
+  const auto& tally = model::tallies[tally_it->second];
 
   // ensure that the tally is using a collision estimator (for now)
   if (tally->estimator_ != TallyEstimator::COLLISION) {
@@ -74,9 +99,8 @@ void GeometryDerivative::init_results()
   model::geometry_derivative_tallies.insert(tally_id_);
 
   int n_tally_bins = tally->results().shape(0) * tally->results().shape(1);
-  tally_derivatives_ =
-    tensor::Tensor<double>({static_cast<size_t>(n_params),
-      static_cast<size_t>(n_tally_bins), 10});
+  tally_derivatives_ = tensor::Tensor<double>(
+    {static_cast<size_t>(n_params), static_cast<size_t>(n_tally_bins), 10});
 }
 
 void GeometryDerivative::reset()
@@ -112,7 +136,6 @@ void GeometryDerivative::accumulate()
       tally_derivatives_(i, j, 6) = 0.0;
       tally_derivatives_(i, j, 9) += tally_derivatives_(i, j, 8) * norm;
       tally_derivatives_(i, j, 8) = 0.0;
-
     }
   }
 }
@@ -140,13 +163,16 @@ void prepare_geometry_derivatives()
   }
 }
 
-void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, int32_t param_idx, double score, const GeometryDerivativeState& gs, const Particle& p) {
+void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin,
+  double score, const GeometryDerivativeState& gs, const Particle& p)
+{
   // std::cout << "Geom Deriv Score: " << score << std::endl;
   const auto& geom_deriv = model::geometry_derivatives[geometry_deriv_idx];
   // update the tally derivative with respect to the surface parameter
   double deriv = (gs.dj + gs.df) * score;
 
-  int32_t data_index = geom_deriv->surface_parameter_map().at(param_idx);
+  int32_t data_index =
+    geom_deriv->surface_parameter_map().at({gs.surface_id, gs.parameter_idx});
   // std::cout
   // << "TALLY"
   // << "\t history: " << p.id()
@@ -162,25 +188,28 @@ void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin, in
   // << "\t total: " << score * (gs.dj + gs.df)
   // << '\n';
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(data_index, score_bin, 0) += deriv;
+  geom_deriv->tally_derivatives()(data_index, score_bin, 0) += deriv;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(data_index, score_bin, 2) += score * gs.df;
+  geom_deriv->tally_derivatives()(data_index, score_bin, 2) += score * gs.df;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(data_index, score_bin, 4) += score * gs.dj;
+  geom_deriv->tally_derivatives()(data_index, score_bin, 4) += score * gs.dj;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(data_index, score_bin, 6) += gs.df;
+  geom_deriv->tally_derivatives()(data_index, score_bin, 6) += gs.df;
 #pragma omp atomic
-    geom_deriv->tally_derivatives()(data_index, score_bin, 8) += gs.dj;
+  geom_deriv->tally_derivatives()(data_index, score_bin, 8) += gs.dj;
 }
 
-void tally_geometry_derivatives(Particle& p, int32_t tally_id, int64_t score_bin, double score)
+void tally_geometry_derivatives(
+  Particle& p, int32_t tally_id, int64_t score_bin, double score)
 {
   for (const auto& geom_deriv_state : p.geometry_deriv_state()) {
-    const auto& geom_deriv = model::geometry_derivatives[geom_deriv_state.geometry_derivative_idx];
+    const auto& geom_deriv =
+      model::geometry_derivatives[geom_deriv_state.geometry_derivative_idx];
     if (geom_deriv->tally_id() != tally_id) {
       continue;
     }
-    tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx, score_bin, geom_deriv_state.parameter_idx, score, geom_deriv_state, p);
+    tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx,
+      score_bin, score, geom_deriv_state, p);
   }
 }
 
@@ -255,26 +284,34 @@ extern "C" int openmc_geometry_derivative_get_tally_id(
   return 0;
 }
 
-extern "C" int openmc_geometry_derivative_get_surface_id(
-  int32_t index, int32_t* id)
+extern "C" int openmc_geometry_derivative_get_surface_ids(
+  int32_t index, const int32_t** ids, size_t* n)
 {
   auto* deriv = get_geometry_derivative(index);
   if (!deriv)
     return OPENMC_E_OUT_OF_BOUNDS;
 
-  *id = deriv->surface_id();
+  *ids = deriv->surface_ids().data();
+  *n = deriv->surface_ids().size();
   return 0;
 }
 
 extern "C" int openmc_geometry_derivative_get_surface_parameters(
-  int32_t index, const char** parameters)
+  int32_t index, int32_t surface_id, const char** parameters)
 {
   auto* deriv = get_geometry_derivative(index);
   if (!deriv)
     return OPENMC_E_OUT_OF_BOUNDS;
 
-  *parameters = deriv->surface_parameters().c_str();
-  return 0;
+  for (size_t i = 0; i < deriv->surface_ids().size(); ++i) {
+    if (deriv->surface_ids()[i] == surface_id) {
+      *parameters = deriv->surface_parameters()[i].c_str();
+      return 0;
+    }
+  }
+  set_errmsg(fmt::format("Geometry derivative {} does not include surface {}.",
+    deriv->id(), surface_id));
+  return OPENMC_E_INVALID_ID;
 }
 
 extern "C" int openmc_geometry_derivative_results(
