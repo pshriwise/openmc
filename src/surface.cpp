@@ -755,6 +755,21 @@ double SurfaceSphere::derivative(Position r, Direction u, int param_idx) const
   }
 }
 
+void Surface::register_differentiable_parameter(const std::string& param)
+{
+  if (param == "all") {
+    for (int i = 0; i < n_diff_params(); i++) { register_differentiable_parameter(i); }
+    return;
+  }
+
+  register_differentiable_parameter(diff_param_index(param));
+}
+
+void Surface::register_differentiable_parameter(int param_idx)
+{
+  differentiable_parameters_.insert(param_idx);
+}
+
 Direction SurfaceSphere::normal(Position r) const
 {
   return {2.0 * (r.x - x0_), 2.0 * (r.y - y0_), 2.0 * (r.z - z0_)};

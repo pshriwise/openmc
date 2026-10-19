@@ -96,6 +96,13 @@ void GeometryDerivative::init_results()
       tally_id_));
   }
 
+  // register differentiable surface parameters with surface objects
+  for (const auto& [key, _] : surface_parameter_map_) {
+    const auto [surface_id, param_idx] = key;
+    const auto& surface = model::surfaces[model::surface_map.at(surface_id)];
+    surface->register_differentiable_parameter(param_idx);
+  }
+
   model::geometry_derivative_tallies.insert(tally_id_);
 
   int n_tally_bins = tally->results().shape(0) * tally->results().shape(1);

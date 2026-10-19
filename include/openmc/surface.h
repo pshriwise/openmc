@@ -40,6 +40,7 @@ public:
   std::string name_;                 //!< User-defined name
   unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
   bool surf_source_ {false}; //!< Activate source banking for the surface?
+  std::unordered_set<int> differentiable_parameters_;
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -106,10 +107,14 @@ public:
   virtual int n_diff_params() const { return 0; }
 
   //! Return the differentiable parameter index for this surface
-  virtual int diff_param_index(std::string param_name) const {
+  virtual int diff_param_index(const std::string& param_name) const {
     fatal_error(fmt::format("Attempting to compute a derivative on surface {} for an invalid parameter name {}", id_, param_name));
     return C_NONE;
   }
+
+  virtual void register_differentiable_parameter(const std::string& param);
+
+  virtual void register_differentiable_parameter(int param_idx);
 
   virtual std::vector<double> derivatives(Position r, Direction u) const {
     std::vector<double> derivatives;
@@ -278,7 +283,7 @@ public:
   // just one differentiable parameter (the radius) for now
   int n_diff_params() const override { return 4; }
 
-  int diff_param_index(std::string param_name) const override {
+  int diff_param_index(const std::string& param_name) const override {
     if (param_name == "x0") {
       return 0;
     } else if (param_name == "y0") {
