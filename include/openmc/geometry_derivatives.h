@@ -49,6 +49,10 @@ public:
   auto& tally_derivatives() { return tally_derivatives_; }
   const auto& tally_derivatives() const { return tally_derivatives_; }
   const auto& surface_parameter_map() const { return surface_parameter_map_; }
+  auto& surface_parameter_map() { return surface_parameter_map_; }
+
+  void score_tally(int tally_bin, double score, const GeometryDerivativeState& geom_deriv_state, const ParticleData& particle);
+
   void accumulate();
 
 private:

@@ -117,6 +117,37 @@ void GeometryDerivative::reset()
   }
 }
 
+void GeometryDerivative::score_tally(int tally_bin, double score, const GeometryDerivativeState& geom_deriv_state, const ParticleData& particle)
+{
+  double deriv = (geom_deriv_state.dj + geom_deriv_state.df) * score;
+
+  int32_t data_index = surface_parameter_map()[{geom_deriv_state.surface_id, geom_deriv_state.parameter_idx}];
+  // std::cout
+  // << "TALLY"
+  // << "\t history: " << p.id()
+  // << "\t collision: " << p.n_collision()
+  // << "\t cell: " << p.lowest_coord().cell()
+  // << "\t material: " << p.material()
+  // << "\t sigma_t: " << p.macro_xs().total
+  // << "\t score: " << score
+  // << "\t dj: " << gs.dj
+  // << "\t df: " << gs.df
+  // << "\t Sdj: " << score * gs.dj
+  // << "\t Sdf: " << score * gs.df
+  // << "\t total: " << score * (gs.dj + gs.df)
+  // << '\n';
+#pragma omp atomic
+  this->tally_derivatives()(data_index, tally_bin, 0) += deriv;
+#pragma omp atomic
+  this->tally_derivatives()(data_index, tally_bin, 2) += score * geom_deriv_state.df;
+#pragma omp atomic
+  this->tally_derivatives()(data_index, tally_bin, 4) += score * geom_deriv_state.dj;
+#pragma omp atomic
+  this->tally_derivatives()(data_index, tally_bin, 6) += geom_deriv_state.df;
+#pragma omp atomic
+  this->tally_derivatives()(data_index, tally_bin, 8) += geom_deriv_state.dj;
+}
+
 void GeometryDerivative::accumulate()
 {
   double total_source = settings::run_mode == RunMode::FIXED_SOURCE
@@ -209,15 +240,23 @@ void tally_geometry_derivative(int32_t geometry_deriv_idx, int64_t score_bin,
 void tally_geometry_derivatives(
   Particle& p, int32_t tally_id, int64_t score_bin, double score)
 {
-  for (const auto& geom_deriv_state : p.geometry_deriv_state()) {
-    const auto& geom_deriv =
-      model::geometry_derivatives[geom_deriv_state.geometry_derivative_idx];
-    if (geom_deriv->tally_id() != tally_id) {
-      continue;
+  for (const auto& geom_deriv : model::geometry_derivatives) {
+    if (geom_deriv->tally_id() != tally_id) continue;
+    for (const auto& gds : p.geometry_deriv_state()) {
+      if (geom_deriv->surface_parameter_map().count({gds.surface_id, gds.parameter_idx})) {
+        geom_deriv->score_tally(score_bin, score, gds, p);
+      }
     }
-    tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx,
-      score_bin, score, geom_deriv_state, p);
   }
+  // for (const auto& geom_deriv_state : p.geometry_deriv_state()) {
+  //   const auto& geom_deriv =
+  //     model::geometry_derivatives[geom_deriv_state.geometry_derivative_idx];
+  //   if (geom_deriv->tally_id() != tally_id) {
+  //     continue;
+  //   }
+  //   tally_geometry_derivative(geom_deriv_state.geometry_derivative_idx,
+  //     score_bin, score, geom_deriv_state, p);
+  // }
 }
 
 void accumulate_geometry_derivatives()

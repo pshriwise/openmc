@@ -104,18 +104,18 @@ ParticleData::ParticleData()
     zero_flux_derivs();
   }
 
-  // Allocate space for geometry derivative states
-  for (int i = 0; i < model::geometry_derivatives.size(); ++i) {
-    const auto& geom_deriv = model::geometry_derivatives[i];
-    for (const auto& [key, _] : geom_deriv->surface_parameter_map()) {
-      const auto& [surface_id, parameter_idx] = key;
-      geometry_deriv_state().emplace_back();
-      auto& state = geometry_deriv_state().back();
-      state.geometry_derivative_idx = i;
-      state.surface_id = surface_id;
-      state.parameter_idx = parameter_idx;
-    }
-  }
+  // // Allocate space for geometry derivative states
+  // for (int i = 0; i < model::geometry_derivatives.size(); ++i) {
+  //   const auto& geom_deriv = model::geometry_derivatives[i];
+  //   for (const auto& [key, _] : geom_deriv->surface_parameter_map()) {
+  //     const auto& [surface_id, parameter_idx] = key;
+  //     geometry_deriv_state().emplace_back();
+  //     auto& state = geometry_deriv_state().back();
+  //     state.geometry_derivative_idx = i;
+  //     state.surface_id = surface_id;
+  //     state.parameter_idx = parameter_idx;
+  //   }
+  // }
 
   // Allocate space for tally filter matches
   filter_matches_.resize(model::tally_filters.size());
@@ -132,8 +132,26 @@ ParticleData::ParticleData()
 
 void ParticleData::update_geometry_derivatives()
 {
-  for (auto& d : geometry_deriv_state()) {
-    d.update_params(*this);
+  // Get the surface and it's differentiable parameters for the current boundary crossing
+  const auto& surface = model::surfaces[boundary().surface_index()];
+  for  (const auto param_idx : surface->differentiable_parameters()) {
+    bool found = false;
+    for (auto& gds : geometry_deriv_state()){
+      // update geometry derivative state
+      if (gds.surface_id == surface->id_ && gds.parameter_idx == param_idx) {
+        gds.update_params(*this);
+        found = true;
+      }
+    }
+    // if no match was found on the particle for this surface-parameter combination
+    // add it to the particle state and update it
+    if (!found) {
+      geometry_deriv_state().emplace_back();
+      auto& state = geometry_deriv_state().back();
+      state.surface_id = surface->id_;
+      state.parameter_idx = param_idx;
+      state.update_params(*this);
+    }
   }
 }
 
@@ -156,16 +174,6 @@ TrackState ParticleData::get_track_state() const
 
 void GeometryDerivativeState::update_params(ParticleData& pd)
 {
-  if (geometry_derivative_idx == C_NONE) {
-    return;
-  }
-
-  const auto& geom_deriv = model::geometry_derivatives[geometry_derivative_idx];
-
-  // if (geom_deriv->surface_indices().count(surface_id) == 0) {
-  //   return;
-  // }
-
   const auto& surface = model::surfaces[model::surface_map[surface_id]];
 
   double rdot_direct = 0.0;

@@ -124,6 +124,10 @@ public:
     return derivatives;
   }
 
+  //! Accessors for registered derivative parameters
+  const std::unordered_set<int>& differentiable_parameters() const { return differentiable_parameters_; }
+  std::unordered_set<int>& differentiable_parameters() { return differentiable_parameters_; }
+
   //! Return the derivative of the surface with respect to the given position
   //! and direction
   virtual double derivative(Position r, Direction u, int param_idx) const

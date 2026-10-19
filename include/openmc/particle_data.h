@@ -45,7 +45,6 @@ struct GeometryDerivativeState {
     df = other.df;
     j = other.j;
     dj = other.dj;
-    geometry_derivative_idx = other.geometry_derivative_idx;
     surface_id = other.surface_id;
     parameter_idx = other.parameter_idx;
     x_dot = other.x_dot;
@@ -53,7 +52,6 @@ struct GeometryDerivativeState {
   }
 
   double f {1.0}, df {0.0}, j {1.0}, dj {0.0};
-  int geometry_derivative_idx {C_NONE};
   int surface_id {SURFACE_NONE};
   int parameter_idx {C_NONE};
   Position x_dot {0.0, 0.0, 0.0};
