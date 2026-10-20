@@ -134,7 +134,14 @@ void ParticleData::update_geometry_derivatives()
 {
   // Get the surface and it's differentiable parameters for the current boundary crossing
   const auto& surface = model::surfaces[boundary().surface_index()];
-  for  (const auto param_idx : surface->differentiable_parameters()) {
+
+  // extra filter for affected parameters based on the particle's intersection location
+  auto intersection_parameters = surface->particle_intersection_parameters(*this);
+
+  for  (const auto param_idx : intersection_parameters) {
+    if (surface->differentiable_parameters().count(param_idx) == 0) {
+      continue;
+    }
     bool found = false;
     for (auto& gds : geometry_deriv_state()){
       // update geometry derivative state
@@ -230,8 +237,6 @@ void GeometryDerivativeState::update_params(ParticleData& pd)
 //   << "\t dj_before: " << dj_old
 //   << "\t dj_after: " << dj
 //   << '\n';
-
-
 }
 
 

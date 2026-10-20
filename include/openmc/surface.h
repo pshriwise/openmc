@@ -124,6 +124,9 @@ public:
     return derivatives;
   }
 
+  //! parameter/coefficient indices influencing an intersection position with this surface
+  virtual std::unordered_set<int> particle_intersection_parameters(const ParticleData& pd);
+
   //! Accessors for registered derivative parameters
   const std::unordered_set<int>& differentiable_parameters() const { return differentiable_parameters_; }
   std::unordered_set<int>& differentiable_parameters() { return differentiable_parameters_; }

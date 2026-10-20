@@ -770,6 +770,17 @@ void Surface::register_differentiable_parameter(int param_idx)
   differentiable_parameters_.insert(param_idx);
 }
 
+std::unordered_set<int>
+Surface::particle_intersection_parameters(const ParticleData& pd)
+{
+  std::unordered_set<int> parameters;
+  // for CSG let's assume that all parameters are involved
+  for (int i = 0; i < n_diff_params(); i++) {
+    parameters.insert(i);
+  }
+  return parameters;
+}
+
 Direction SurfaceSphere::normal(Position r) const
 {
   return {2.0 * (r.x - x0_), 2.0 * (r.y - y0_), 2.0 * (r.z - z0_)};
