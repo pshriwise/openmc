@@ -56,7 +56,7 @@ struct GeometryDerivativeState {
   int parameter_idx {C_NONE};
   Position x_dot {0.0, 0.0, 0.0};
 
-  void update_params(ParticleData& pd);
+  void update_params(ParticleData& pd, double derivative = 0.0);
 
   void reset() {
     f = j = 1.0;
@@ -454,6 +454,7 @@ public:
 
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
+  const BoundaryInfo& boundary() const { return boundary_; }
 
 #ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
@@ -463,6 +464,7 @@ public:
 #ifdef OPENMC_XDG_ENABLED
   // Previously intersected XDG faces
   std::vector<xdg::MeshID>& xdg_prev_elements() { return xdg_prev_elements_; }
+  const std::vector<xdg::MeshID>& xdg_prev_elements() const { return xdg_prev_elements_; }
 #endif
 
 #if defined(OPENMC_DAGMC_ENABLED) || defined(OPENMC_XDG_ENABLED)

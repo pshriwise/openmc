@@ -690,8 +690,11 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
   }
 }
 
-double SurfaceSphere::radial_derivative(Position r, Direction u) const
+double SurfaceSphere::radial_derivative(const GeometryState& g) const
 {
+  Position r = g.r();
+  Direction u = g.u();
+
    // compute relevant factors
   Position r0 {r.x - x0_, r.y - y0_, r.z - z0_};
   double a = u.dot(u);
@@ -715,9 +718,12 @@ double SurfaceSphere::radial_derivative(Position r, Direction u) const
   }
 }
 
-double SurfaceSphere::origin_derivative(Position r, Direction u, int i) const
+double SurfaceSphere::origin_derivative(const GeometryState& g, int i) const
 {
-     // compute relevant factors
+  Position r = g.r();
+  Direction u = g.u();
+
+  // compute relevant factors
   Position r0 {r.x - x0_, r.y - y0_, r.z - z0_};
   double a = u.dot(u);
   double b = 2.0 * r0.dot(u);
@@ -743,13 +749,15 @@ double SurfaceSphere::origin_derivative(Position r, Direction u, int i) const
   }
 }
 
-double SurfaceSphere::derivative(Position r, Direction u, int param_idx) const
+double SurfaceSphere::derivative(const GeometryState& g, int param_idx) const
 {
+  Position r = g.r();
+  Direction u = g.u();
 
   if (param_idx == 3) {
-    return radial_derivative(r, u);
+    return radial_derivative(g);
   } else if (param_idx < 3) {
-    return origin_derivative(r, u, param_idx);
+    return origin_derivative(g, param_idx);
   } else {
     fatal_error(fmt::format("Attempting to compute a derivative on surface {} for an invalid parameter index {}", id_, param_idx));
   }

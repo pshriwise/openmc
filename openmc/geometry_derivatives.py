@@ -41,18 +41,13 @@ class GeometricDerivative(IDManagerMixin):
         for key, val in value.items():
             cv.check_type('Surface', key, (openmc.Surface, int))
 
-            if val == ['all']:
-                if isinstance(key, openmc.Surface):
-                    val = value[key] = key.differentiable_params()
-                else:
-                    raise ValueError(f"Surface parameters for surface ID {key} cannot be set to ['all'] without a Surface object.")
-            cv.check_type('Surface parameters', val, Iterable)
-            cv.check_iterable_type('Surface parameters', val, str)
+            if val != 'all':
+                cv.check_iterable_type('Surface parameters', val, str)
 
-            for param in val:
-                if isinstance(key, openmc.Surface):
-                    if param not in key.differentiable_params():
-                        raise ValueError(f"Invalid surface parameter: {param}")
+                for param in val:
+                    if isinstance(key, openmc.Surface):
+                        if param not in key.differentiable_params():
+                            raise ValueError(f"Invalid surface parameter: {param}")
 
         self._surface_parameters = value
 
@@ -88,7 +83,7 @@ class GeometricDerivative(IDManagerMixin):
         for surface, params in self.surface_parameters.items():
             surface_elem = ET.SubElement(element, "surface")
             surface_elem.set("id", str(surface.id if isinstance(surface, openmc.Surface) else surface))
-            surface_elem.set("parameters", " ".join(params))
+            surface_elem.set("parameters", "all" if params == "all" else " ".join(params))
 
         return element
 
@@ -122,7 +117,11 @@ class GeometricDerivative(IDManagerMixin):
         for surface_elem in elem.findall("surface"):
             surface_id = int(surface_elem.get("id"))
             surface = surfaces[surface_id]
-            params = surface_elem.get("parameters").split()
+            params = surface_elem.get("parameters")
+            if params == "all":
+                params = "all"
+            else:
+                params = params.split()
             surface_parameters[surface] = params
 
         out.surface_parameters = surface_parameters

@@ -116,10 +116,11 @@ public:
 
   virtual void register_differentiable_parameter(int param_idx);
 
-  virtual std::vector<double> derivatives(Position r, Direction u) const {
-    std::vector<double> derivatives;
+  virtual std::vector<std::pair<int, double>> derivatives(const GeometryState& g) const {
+    std::vector<std::pair<int, double>> derivatives;
     for (int i = 0; i < n_diff_params(); ++i) {
-      derivatives.push_back(derivative(r, u, i));
+      if (this->differentiable_parameters().count(i) == 0) continue;
+      derivatives.push_back({i, derivative(g, i)});
     }
     return derivatives;
   }
@@ -133,7 +134,7 @@ public:
 
   //! Return the derivative of the surface with respect to the given position
   //! and direction
-  virtual double derivative(Position r, Direction u, int param_idx) const
+  virtual double derivative(const GeometryState& g, int param_idx) const
   {
     return 0.0;
   }
@@ -305,11 +306,11 @@ public:
     }
   }
 
-  double derivative(Position r, Direction u, int param_idx) const override;
+  double derivative(const GeometryState& g, int param_idx) const override;
 
-  double radial_derivative(Position r, Direction u) const;
+  double radial_derivative(const GeometryState& g) const;
 
-  double origin_derivative(Position r, Direction u, int i) const;
+  double origin_derivative(const GeometryState& g, int i) const;
 
   double x0_, y0_, z0_, radius_;
 };

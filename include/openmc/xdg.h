@@ -165,6 +165,16 @@ public:
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
 
+  int n_diff_params() const override;
+
+  double derivative(const GeometryState& g, int param_idx) const override;
+
+  std::vector<std::pair<int, double>> derivatives(const GeometryState& g) const override;
+
+  void register_differentiable_parameter(const std::string& param) override;
+
+  std::unordered_set<int> particle_intersection_parameters(const ParticleData& pd) override;
+
   Direction normal(Position r) const override;
   Direction reflect(Position r, Direction u, GeometryState* p) const override;
 

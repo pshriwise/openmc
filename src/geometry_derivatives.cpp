@@ -10,6 +10,7 @@
 #include "openmc/string_utils.h"
 
 #include "openmc/tallies/tally.h"
+#include "openmc/xdg.h"
 
 namespace openmc {
 
@@ -64,20 +65,28 @@ void GeometryDerivative::init_results()
           surface_id, id_));
     }
     const auto& surface = model::surfaces[surface_it->second];
-    for (const auto& param : split(surface_parameters_[i])) {
-      int param_idx = surface->diff_param_index(param);
-      if (param_idx == -1) {
-        fatal_error(fmt::format(
-          "Surface {} does not have a parameter named {} for geometry "
-          "derivative {}.",
-          surface_id, param, id_));
+
+    if (surface->geom_type() == GeometryType::XDG_SURFACE_MESH) {
+      XDGSurface* xdg_surf = dynamic_cast<XDGSurface*>(surface.get());
+      for (int p = 0; p < xdg_surf->n_diff_params(); p++) {
+        surface_parameter_map_[{surface->id_, p}] = n_params++;
       }
-      if (surface_parameter_map_.count({surface_id, param_idx}) != 0) {
-        fatal_error(fmt::format("Duplicate parameter {} for surface {} in "
-                                "geometry derivative {}.",
-          param, surface_id, id_));
+    } else {
+      for (const auto& param : split(surface_parameters_[i])) {
+        int param_idx = surface->diff_param_index(param);
+        if (param_idx == -1) {
+          fatal_error(fmt::format(
+            "Surface {} does not have a parameter named {} for geometry "
+            "derivative {}.",
+            surface_id, param, id_));
+        }
+        if (surface_parameter_map_.count({surface_id, param_idx}) != 0) {
+          fatal_error(fmt::format("Duplicate parameter {} for surface {} in "
+                                  "geometry derivative {}.",
+            param, surface_id, id_));
+        }
+        surface_parameter_map_[{surface_id, param_idx}] = n_params++;
       }
-      surface_parameter_map_[{surface_id, param_idx}] = n_params++;
     }
   }
 
@@ -100,7 +109,13 @@ void GeometryDerivative::init_results()
   for (const auto& [key, _] : surface_parameter_map_) {
     const auto [surface_id, param_idx] = key;
     const auto& surface = model::surfaces[model::surface_map.at(surface_id)];
-    surface->register_differentiable_parameter(param_idx);
+    if (surface->geom_type() == GeometryType::XDG_SURFACE_MESH) {
+      XDGSurface* xdg_surface =
+        dynamic_cast<XDGSurface*>(surface.get());
+        xdg_surface->register_differentiable_parameter("all");
+    } else {
+        surface->register_differentiable_parameter(param_idx);
+    }
   }
 
   model::geometry_derivative_tallies.insert(tally_id_);

@@ -216,7 +216,7 @@ void XDGUniverse::init_geometry()
   next_surf_id++;
 
   for (auto surface : xdg_ptr()->mesh_manager()->surfaces()) {
-    auto s = std::make_unique<XDGSurface>(xdg_instance_, surface);
+    auto s = std::make_unique<XDGSurface>(xdg_ptr(), surface);
     s->id_ = adjust_geometry_ids_ ? next_surf_id++ : surface;
 
     s->surf_source_ = contains(settings::source_write_surf_id, s->id_);
@@ -566,6 +566,103 @@ double XDGSurface::distance(Position r, Direction u, bool coincident) const
   double dir[3] = {u.x, u.y, u.z};
   std::pair<double, xdg::MeshID> result = xdg_ptr()->ray_fire(xdg_id(), pnt, dir);
   return result.first < 0.0 ? INFTY : result.first;
+}
+
+int XDGSurface::n_diff_params() const
+{
+  // return three parameters for each vertex in the mesh, corresponding to the
+  // x, y, and z coordinates of the vertex
+  return 3 * xdg_ptr()->mesh_manager()->num_vertices();
+}
+
+double XDGSurface::derivative(const GeometryState& g, int param_idx) const
+{
+  fatal_error("Single-parameter derivative not implemented for XDG surfaces");
+}
+
+std::vector<std::pair<int, double>>
+XDGSurface::derivatives(const GeometryState& g) const
+{
+  // look up last intersected face on the geometry
+  xdg::MeshID last_face = g.xdg_prev_elements().back();
+
+  xdg::Position r = {g.r().x, g.r().y, g.r().z};
+  xdg::Direction u = {g.u().x, g.u().y, g.u().z};
+
+  // get the sense-adjusted normal of the face that was hit
+  xdg::Direction normal = xdg_ptr()->surface_normal(xdg_id(), r, &g.xdg_prev_elements());
+
+  // get the intersection location
+  xdg::Position intersection = r + u * g.boundary().distance();
+
+  // get the vertices of the face that was hit
+  std::vector<xdg::Vertex> face_vertices = xdg_ptr()->mesh_manager()->face_vertex_coordinates(last_face);
+
+  // determine the barycentric coordinates of the intersection point with respect to the face
+  xdg::Position v0 = face_vertices[1] - face_vertices[0];
+  xdg::Position v1 = face_vertices[2] - face_vertices[0];
+  xdg::Position v2 = intersection - face_vertices[0];
+
+  // construct a matrix of the face vertices
+  double dot00 = v0.dot(v0);
+  double dot01 = v0.dot(v1);
+  double dot11 = v1.dot(v1);
+  double dot20 = v2.dot(v0);
+  double dot21 = v2.dot(v1);
+
+  double denom = dot00 * dot11 - dot01 * dot01;
+  double a = (dot11 * dot20 - dot01 * dot21) / denom;
+  double b = (dot00 * dot21 - dot01 * dot20) / denom;
+  double c = 1.0 - a - b;
+
+  xdg::Position bary = {a, b, c};
+
+  double dot = u.dot(normal);
+
+  std::vector<std::pair<int, double>> out;
+
+  auto vertex_ids = xdg_ptr()->mesh_manager()->face_vertices(last_face);
+  for (int v = 0; v < 3; v++) {
+    auto vertex_idx = xdg_ptr()->mesh_manager()->vertex_index(vertex_ids[v]);
+    double bc = bary[v];
+    // loop over x, y, z
+    for (int i = 0; i < 3; i++) {
+      int param = 3 * vertex_idx + i;
+      if (differentiable_parameters_.count(param) == 0) continue;
+      double derivative = bc * normal[i] * u[i] / dot;
+      out.push_back({param, derivative});
+    }
+  }
+  return out;
+}
+
+void XDGSurface::register_differentiable_parameter(const std::string& param)
+{
+  if (param == "all") {
+    for (int i = 0; i < n_diff_params(); i++) { differentiable_parameters_.insert(i); }
+    return;
+  }
+
+  fatal_error(fmt::format("XDGSurface does not support registering differentiable parameter by name: {}", param));
+}
+
+std::unordered_set<int> XDGSurface::particle_intersection_parameters(const ParticleData& pd)
+{
+  auto last_hit = pd.xdg_prev_elements().back();
+
+  // get the face vertices
+  auto face_vertices = xdg_ptr()->mesh_manager()->face_vertices(last_hit);
+
+  std::unordered_set<int> param_indices;
+  // compute the parameter indices using the vertex index
+  for (auto vertex : face_vertices) {
+    auto vertex_index = xdg_ptr()->mesh_manager()->vertex_index(vertex);
+    // one parameter for each vertex coordinate
+    for (int i = 0; i < 3; i++) {
+      param_indices.insert(3 * vertex_index + i);
+    }
+  }
+  return param_indices;
 }
 
 Direction XDGSurface::normal(Position r) const

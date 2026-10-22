@@ -135,29 +135,22 @@ void ParticleData::update_geometry_derivatives()
   // Get the surface and it's differentiable parameters for the current boundary crossing
   const auto& surface = model::surfaces[boundary().surface_index()];
 
-  // extra filter for affected parameters based on the particle's intersection location
-  auto intersection_parameters = surface->particle_intersection_parameters(*this);
+  auto derivatives = surface->derivatives(*this);
 
-  for  (const auto param_idx : intersection_parameters) {
-    if (surface->differentiable_parameters().count(param_idx) == 0) {
-      continue;
-    }
+  // update derivative states corresponding to these derivatives
+  for (auto [param_idx, derivative] : derivatives) {
     bool found = false;
-    for (auto& gds : geometry_deriv_state()){
-      // update geometry derivative state
-      if (gds.surface_id == surface->id_ && gds.parameter_idx == param_idx) {
-        gds.update_params(*this);
-        found = true;
-      }
+    for (auto& gds : geometry_deriv_state()) {
+      if (gds.parameter_idx != param_idx || gds.surface_id != surface->id_) continue;
+      gds.update_params(*this, derivative);
+      found = true;
     }
-    // if no match was found on the particle for this surface-parameter combination
-    // add it to the particle state and update it
     if (!found) {
       geometry_deriv_state().emplace_back();
       auto& state = geometry_deriv_state().back();
       state.surface_id = surface->id_;
       state.parameter_idx = param_idx;
-      state.update_params(*this);
+      state.update_params(*this, derivative);
     }
   }
 }
@@ -179,14 +172,14 @@ TrackState ParticleData::get_track_state() const
   return state;
 }
 
-void GeometryDerivativeState::update_params(ParticleData& pd)
+void GeometryDerivativeState::update_params(ParticleData& pd, double derivative)
 {
   const auto& surface = model::surfaces[model::surface_map[surface_id]];
 
   double rdot_direct = 0.0;
   // only update if we're moving toward the surface of interest
   if (surface_id == model::surfaces[pd.boundary().surface_index()]->id_) {
-    rdot_direct = surface->derivative(pd.r(), pd.u(), parameter_idx);
+    rdot_direct = derivative;
   }
 
   double r = pd.boundary().distance();
