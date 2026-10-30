@@ -97,14 +97,6 @@ void GeometryDerivative::init_results()
   }
   const auto& tally = model::tallies[tally_it->second];
 
-  // ensure that the tally is using a collision estimator (for now)
-  if (tally->estimator_ != TallyEstimator::COLLISION) {
-    fatal_error(fmt::format(
-      "Tally {} is not using a collision estimator. Geometry derivatives "
-      "are only supported for collision estimators.",
-      tally_id_));
-  }
-
   // register differentiable surface parameters with surface objects
   for (const auto& [key, _] : surface_parameter_map_) {
     const auto [surface_id, param_idx] = key;

@@ -2708,6 +2708,11 @@ void score_surface_tally(
 #pragma omp atomic
         tally.results_(filter_index, score_index, TallyResult::VALUE) +=
           score * filter_weight;
+
+        if (model::geometry_derivative_tallies.count(tally.id()) > 0) {
+          int64_t flat_bin_index = filter_index * tally.results_.shape(1) + score_index;
+          tally_geometry_derivatives(p, tally.id(), flat_bin_index, score * filter_weight);
+        }
       }
     }
     // If the user has specified that we can assume all tallies are spatially

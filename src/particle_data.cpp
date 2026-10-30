@@ -141,17 +141,31 @@ void ParticleData::update_geometry_derivatives()
   for (auto [param_idx, derivative] : derivatives) {
     bool found = false;
     for (auto& gds : geometry_deriv_state()) {
-      if (gds.parameter_idx != param_idx || gds.surface_id != surface->id_) continue;
-      gds.update_params(*this, derivative);
-      found = true;
+      if (gds.parameter_idx == param_idx && gds.surface_id == surface->id_) {
+        found = true;
+        break;
+      }
     }
     if (!found) {
       geometry_deriv_state().emplace_back();
       auto& state = geometry_deriv_state().back();
       state.surface_id = surface->id_;
       state.parameter_idx = param_idx;
-      state.update_params(*this, derivative);
     }
+  }
+
+  // Propagate all states, including those without a direct contribution.
+  for (auto& state : geometry_deriv_state()) {
+    double direct = 0.0;
+    if (state.surface_id == surface->id_) {
+      for (const auto& [param_idx, derivative] : derivatives) {
+        if (state.parameter_idx == param_idx) {
+          direct = derivative;
+          break;
+        }
+      }
+    }
+    state.update_params(*this, direct);
   }
 }
 

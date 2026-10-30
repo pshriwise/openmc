@@ -586,8 +586,8 @@ XDGSurface::derivatives(const GeometryState& g) const
   // look up last intersected face on the geometry
   xdg::MeshID last_face = g.xdg_prev_elements().back();
 
-  xdg::Position r = {g.r().x, g.r().y, g.r().z};
-  xdg::Direction u = {g.u().x, g.u().y, g.u().z};
+  xdg::Position r = {g.r_local().x, g.r_local().y, g.r_local().z};
+  xdg::Direction u = {g.u_local().x, g.u_local().y, g.u_local().z};
 
   // get the sense-adjusted normal of the face that was hit
   xdg::Direction normal = xdg_ptr()->surface_normal(xdg_id(), r, &g.xdg_prev_elements());
@@ -615,7 +615,9 @@ XDGSurface::derivatives(const GeometryState& g) const
   double b = (dot00 * dot21 - dot01 * dot20) / denom;
   double c = 1.0 - a - b;
 
-  xdg::Position bary = {a, b, c};
+  // ordering reflects the order of the vertices in the face, which is important
+  // for determining the correct barycentric coordinates in the calculation below
+  xdg::Position bary = {c, a, b};
 
   double dot = u.dot(normal);
 
@@ -629,7 +631,7 @@ XDGSurface::derivatives(const GeometryState& g) const
     for (int i = 0; i < 3; i++) {
       int param = 3 * vertex_idx + i;
       if (differentiable_parameters_.count(param) == 0) continue;
-      double derivative = bc * normal[i] * u[i] / dot;
+      double derivative = bc * normal[i] / dot;
       out.push_back({param, derivative});
     }
   }
